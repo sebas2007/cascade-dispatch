@@ -2670,10 +2670,15 @@ function procUpdate(dt) {
     }
     case 'ROLLOUT': {
       const sa = toRw(arr.rw, s.p[0], s.p[2]);
-      if (gs < 30 && Math.abs(sa[1]) > arr.rw.W / 2 + 18) {
-        L.vacated = true; G.route = arrRoute(P.ap1, arr, s.p[0], s.p[2]); buildRoute(G.route, P.ap1.elevM); G.routeSide = 'in';
-        say('Cascade Ground', `${P.tail}, taxi to the ramp via ${viaText(G.route && G.route.via, 'Alpha')}.`); setPhase('TAXI_IN');
-      } else if (gs < 28 && !G.exitSaid) { G.exitSaid = true; say('Cascade Tower', `${P.tail}, exit the runway when able.`); }
+      if (G.cutT != null) {
+        G.cutT += dt; G.parking = true; ctl.thr = 0;
+        if (G.cutT > 3.6) { G.cutT = null; G.parking = false; const e = document.getElementById('cutCard'); if (e) e.remove(); L.parked = true; finishFlight(null); }
+      } else if (gs < 30 && Math.abs(sa[1]) > arr.rw.W / 2 + 38) {
+        L.vacated = true; G.cutT = 0; say('Cascade Tower', `${P.tail}, contact ground, good day.`);
+        const e = document.createElement('div'); e.id = 'cutCard';
+        e.style.cssText = 'position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font:600 18px system-ui;opacity:0;transition:opacity 1s;pointer-events:none';
+        e.textContent = 'Taxiing to the ramp...'; document.body.appendChild(e); requestAnimationFrame(() => requestAnimationFrame(() => { e.style.opacity = '0.92'; }));
+      } else if (gs < 28 && !G.exitSaid) { G.exitSaid = true; say('Cascade Tower', `${P.tail}, exit the runway past the hold short line.`); }
       break;
     }
     case 'TAXI_IN': {

@@ -94,6 +94,28 @@ def make_trees(tl, rng):
         i = rng.randrange(len(out) // 3) * 3; del out[i:i + 3]
     return out
 
+
+import struct, time, gzip
+def pack_tile(d):
+    """compact binary tile: JSON skeleton + delta/zigzag/varint number arrays (no server compression needed)"""
+    data = bytearray()
+    def varint(n):
+        while n >= 0x80: data.append((n & 0x7f) | 0x80); n >>= 7
+        data.append(n)
+    def enc(v, stride):
+        if isinstance(v, list):
+            if len(v) >= 6 and all(isinstance(x, (int, float)) for x in v):
+                isf = any(isinstance(x, float) for x in v)
+                vals = [int(round(x * 10)) if isf else int(x) for x in v]; st = stride if isf else 1; off = len(data)
+                for i, x in enumerate(vals):
+                    dv = x - (vals[i - st] if i >= st else 0); varint((dv << 1) if dv >= 0 else ((-dv) << 1) - 1)
+                return '~%s%d:%d:%d' % ('f' if isf else 'i', st, off, len(v))
+            return [enc(x, stride) for x in v]
+        return v
+    meta = {k: (enc(v, 3 if k == 'trees' else 2) if isinstance(v, list) else v) for k, v in d.items()}
+    j = json.dumps(meta, separators=(',', ':')).encode()
+    return struct.pack('<I', len(j)) + j + bytes(data)
+
 def inbox(lat, lon):
     if not args.bbox: return True
     s, w, n, e = args.bbox; return s <= lat <= n and w <= lon <= e
@@ -222,9 +244,10 @@ for (ix, iz), tl in tiles.items():
     tl['land'].sort(key=lambda e: ORDER.index(e[0]))
     tl['roads'].sort(key=lambda r: (r[3], -r[0]))
     tl['trees'] = make_trees(tl, random.Random(ix * 7919 + iz * 104729))
-    name = 't_%d_%d.json' % (ix, iz)
-    with open(os.path.join(args.out, name), 'w') as f: json.dump({'v': 1, 'ix': ix, 'iz': iz, **tl}, f, separators=(',', ':'))
+    name = 't_%d_%d.bin' % (ix, iz)
+    with open(os.path.join(args.out, name), 'wb') as f: f.write(gzip.compress(pack_tile({'v': 1, 'ix': ix, 'iz': iz, **tl}), 9, mtime=0))
     index['tiles']['%d_%d' % (ix, iz)] = [len(tl['roads']), len(tl['bld']), len(tl['land'])]
+index['fmt'] = 'bin1gz'; index['ver'] = int(time.time())
 with open(os.path.join(args.out, 'index.json'), 'w') as f: json.dump(index, f, separators=(',', ':'))
 MAGVAR = -13.0
 def angd(a, b): return (a - b + 540) % 360 - 180

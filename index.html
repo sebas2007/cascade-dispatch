@@ -2545,7 +2545,7 @@ function procUpdate(dt) {
   const s = G.s, A = G.A, P = G.plan, L = G.log, at = attitude(s), ias = iasOf(s, G.windV), gs = at.gs;
   const agl = s.p[1] - surfH(s.p[0], s.p[2]), altFt = s.p[1] / FT, dep = P.dep, arr = P.arr;
   G.agl = agl; G.ias = ias; G.at = at;
-  if (!s.air && ['CLR', 'TAXI', 'HOLD', 'TAXI_IN', 'CLEARED'].includes(G.phase)) L.maxTaxi = Math.max(L.maxTaxi, gs);
+  if (!s.air && ['CLR', 'TAXI', 'HOLD', 'TAXI_IN', 'CLEARED'].includes(G.phase) && (G.phase !== 'CLEARED' || ctl.thr < 0.4)) L.maxTaxi = Math.max(L.maxTaxi, gs);
   if (s.air && !L.speedBust) { const lim = A.id === 'kestrel' ? (altFt < 10000 ? 250 : 330) : A.cruise * 1.35; if (ias > lim) { L.speedBust = true; say('Cascade Departure', `${P.tail}, check your speed.`); } }
   const sd = toRw(dep.rw, s.p[0], s.p[2]), onDep = Math.abs(sd[0]) < dep.rw.L / 2 + 8 && Math.abs(sd[1]) < dep.rw.W / 2 + 4;
   switch (G.phase) {
@@ -2724,7 +2724,7 @@ function buildHUD() {
     <div id="atc"></div>
     <div id="nextHint"><span id="hintTxt"></span><div id="wp"><div id="arrow"></div><span id="wpd"></span></div></div>
     <div id="side"></div>
-    <div id="strip"><div class="rd"><span>SPD</span><b id="rSpd">0</b></div><div class="rd"><span id="rAltL">ALT</span><b id="rAlt">0</b></div>
+    <div id="strip"><div class="rd"><span id="rSpdL">SPD</span><b id="rSpd">0</b></div><div class="rd"><span id="rAltL">ALT</span><b id="rAlt">0</b></div>
       <canvas id="adi" width="96" height="96"></canvas>
       <div class="rd"><span>V/S</span><b id="rVs">0</b></div><div class="rd"><span>HDG</span><b id="rHdg">000</b></div><div id="rMisc"></div></div>
     <div id="cfgBar"></div><canvas id="appr" width="132" height="132" hidden></canvas><div id="apPanel" hidden></div>
@@ -2786,7 +2786,7 @@ function updateHUD() {
   G.camT += 0.016; if (G.camT > 0.6) { G.camT = 0; renderAtc(); }
   updateApPanel();
   const alt = s.p[1] / FT, low = G.agl < 150 && s.air;
-  $('rSpd').textContent = Math.round(G.ias); $('rSpd').className = s.air && G.ias < G.A.vr * 0.8 ? 'warn' : '';
+  $('rSpdL').textContent = s.air ? 'SPD' : 'GS'; $('rSpd').textContent = Math.round(s.air ? G.ias : G.at.gs); $('rSpd').className = s.air ? (G.ias < G.A.vr * 0.8 ? 'warn' : '') : (G.at.gs > 22 && G.phase !== 'ROLL' && G.phase !== 'ROLLOUT' && ctl.thr < 0.4 ? 'warn' : '');
   $('rAltL').textContent = low ? 'AGL' : 'ALT'; $('rAlt').textContent = low ? Math.max(0, Math.round(G.agl / FT / 5) * 5).toLocaleString() : (Math.round(alt / 10) * 10).toLocaleString();
   $('rVs').textContent = (at.vs > 0 ? '+' : '') + Math.round(at.vs / 50) * 50; $('rHdg').textContent = fmtHdg(at.hdg);
   { const dd = G.plan && G.c && apOf(G.c.to) ? Math.hypot(apOf(G.c.to).x - s.p[0], apOf(G.c.to).z - s.p[2]) : 0, gsk = Math.hypot(s.v[0], s.v[2]) / KT, ete = gsk > 25 ? dd / (gsk * KT) : 0; G.gsTxt = s.air ? 'GS ' + Math.round(gsk) + ' kt   DIST ' + (dd / NM).toFixed(1) + ' nm' + (ete ? '   ETE ' + Math.floor(ete / 60) + ':' + String(Math.floor(ete % 60)).padStart(2, '0') : '') + '   ' : ''; }

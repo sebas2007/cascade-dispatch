@@ -165,7 +165,7 @@ body.compact #rMisc{font-size:10px}
 <div id="exam" class="modal" hidden></div>
 <div id="debrief" class="modal" hidden></div>
 <div id="instr" class="modal" hidden><div class="sheet wide"><div class="eh">Instructions</div><div id="instrBody"></div><div class="btns"><button class="go" id="instrBack">Back</button></div></div></div>
-<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="btns"><button class="go" data-act="resume">Resume</button><button data-act="instr" id="instrBtn">Instructions</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
+<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="btns"><button class="go" data-act="resume">Resume</button><button data-act="instr" id="instrBtn">Instructions</button><button id="endHere" hidden>End flight here</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
 <div id="toast"></div>
 <script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => { }));</script>
 <script src="three.min.js"></script>
@@ -422,12 +422,13 @@ async function tileGet(k) {
 }
 async function tileLoad(k, far) {
   TL.busy.add(k);
-  try { const d = await tileGet(k); TL.got.set(k, tileBuild(d, far)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [] }); console.warn('tile', k, e); }
+  try { const d = await tileGet(k); TL.got.set(k, tileBuild(d, far)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [], retry: performance.now() + 12000 }); console.warn('tile', k, e); if (TL.fail === 3 && typeof toast === 'function') toast('Some map tiles did not load. Retrying.', 3500); }
   TL.busy.delete(k);
 }
 function tileTick(dt, px, pz, py) {
   if (!TL.idx) return; for (const o of TL.got.values()) if (o.cars) tileCars(o, dt);
-  TL.t -= dt; if (TL.t > 0 || (frame.ema || 16) > 45) return; TL.t = 0.5;
+  TL.t -= dt; if (TL.t > 0) return; TL.t = (frame.ema || 16) > 45 ? 2.5 : 0.5;
+  for (const [k, o] of TL.got) if (o.retry && performance.now() > o.retry) TL.got.delete(k);
   const T = TL.T, NEAR = 6500, mult = { short: 0.7, normal: 1, far: 1.5 }[SS('saver') ? 'short' : SS('dist')] || 1, FAR = clamp(10000 + Math.max(0, py || 0) * 5, 10000, 20000) * mult;
   const ix0 = Math.floor(px / T), iz0 = Math.floor(pz / T), rg = Math.ceil(FAR / T) + 1, want = [];
   for (let a = -rg; a <= rg; a++) for (let b = -rg; b <= rg; b++) { const ix = ix0 + a, iz = iz0 + b, k = ix + '_' + iz; if (!TL.idx.tiles[k]) continue; const dd = Math.hypot((ix + 0.5) * T - px, (iz + 0.5) * T - pz); if (dd < FAR) want.push([dd, k, dd > NEAR]); }
@@ -729,6 +730,7 @@ function step(s, c, dt, env) {
   let qd = effE * (kmE * c.pit - A.ks * (alpha - aEq)) - A.kd * s.qr * (0.3 + 0.7 * Math.min(1, effE)) - stallPush * Math.min(1, eff * 1.5);
   qd += tauR / A.Iy;
   s.qr += qd * dt;
+  if (grounded && noseC && mainC) s.qr *= Math.exp(-dt * 6);
   const effR = Math.min(1, eff * 1.3);
   const pt = c.rol * A.pmax * effR;
   s.pr += ((pt - s.pr) * 4.5 + tauF / A.Ix) * dt;
@@ -1048,8 +1050,8 @@ function apStep(ap, s, wind, dt) {
   ap.bank += clamp(bankT - ap.bank, -6 * dt, 6 * dt);
   const rol = clamp((ap.bank - at.bank) * 0.035, -1, 1);
   // vertical: feed-forward angle of attack for the load factor, feedback on flight-path angle
-  const lim = A.id === 'kestrel' ? 2000 : A.id === 'heron' ? 1200 : 650;
-  const vsT = clamp((ap.alt - alt) * 4, -lim * 0.9, lim);
+  const lim = A.id === 'kestrel' ? 2200 : A.id === 'heron' ? 1400 : 750, limD = A.id === 'kestrel' ? 2600 : A.id === 'heron' ? 1700 : 1000;
+  const vsT = clamp((ap.alt - alt) * 4, -limD, lim);
   const gT = Math.asin(clamp(vsT * FT / 60 / V, -0.25, 0.25));
   const gam = Math.asin(clamp(s.v[1] / V, -0.5, 0.5));
   const rho = airDensity(s.p[1]), q = 0.5 * rho * V * V, W = mass(s) * GRAV;
@@ -1628,6 +1630,10 @@ function buildArcher() {
   for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.2, 0.1, 0.03), panelM, s * 0.17, -0.33, -2.55);
   { const sp = new THREE.ConeGeometry(0.21, 0.4, 10); sp.rotateX(-Math.PI / 2); add(sp, navy, 0, -0.27, -2.72); }
   { const ex = new THREE.CylinderGeometry(0.035, 0.045, 0.4, 6); ex.rotateX(Math.PI / 2); add(ex, M(0x575d64), 0.2, -0.66, -1.75); }
+  for (const s of [1, -1]) { add(stripGeo(zsB(-0.07, 0.15), degs(0, 62, 4), 0.016, s), dark, 0, 0, 0); add(stripGeo(zsB(-1.22, -1.17), degs(0, 62, 4), 0.016, s), dark, 0, 0, 0); add(stripGeo(zsB(0.93, 0.98), degs(0, 56, 4), 0.016, s), dark, 0, 0, 0); }
+  add(stripGeo(zsB(-0.65, -0.6), degs(60, 120, 4), 0.016, 1), dark, 0, 0, 0);
+  add(stripGeo(zsB(-2.12, -2.08), degs(0, 360, 24), 0.012, 1), dark, 0, 0, 0);
+  { const bp = new THREE.CircleGeometry(0.23, 12); add(bp, dark, 0, -0.27, -2.545); }
   // door (right side) and handle
   { const dp = [[-1.0, 75], [-1.0, -30], [0.1, -30], [0.1, 75]].map(q => pos(q[0], q[1] * D2R, 0.018)); for (let i = 0; i < 3; i++) seg(dp[i], dp[i + 1], 0.014, dark); const h = pos(-0.15, 10 * D2R, 0.03); add(new THREE.BoxGeometry(0.03, 0.04, 0.12), metal, h[0], h[1], h[2]); }
   // registration decals
@@ -1678,9 +1684,14 @@ function buildArcher() {
   // ---- fixed tricycle gear; the nose leg steers
   const gear = new THREE.Group(); g.add(gear); let nose = null;
   for (const w of A.wheels) {
-    const wx = w[2], wz = -w[0], isN = !!w[3], R = isN ? 0.15 : 0.19, wy = -1.25 + R;
-    if (isN) { nose = new THREE.Group(); nose.position.set(0, -0.42, -1.3); gear.add(nose); const rel = [0, wy + 0.42, wz + 1.3];
-      seg([0, 0, 0], [0, rel[1] + 0.08, rel[2] - 0.1], 0.075, metal, nose); const t = new THREE.CylinderGeometry(R, R, 0.11, 12); t.rotateZ(Math.PI / 2); add(t, tyre, rel[0], rel[1], rel[2], nose); add(new THREE.CylinderGeometry(R * 0.5, R * 0.5, 0.13, 8).rotateZ(Math.PI / 2), metal, rel[0], rel[1], rel[2], nose); }
+    const wx = w[2], wz = -w[0], isN = !!w[3], R = isN ? 0.19 : 0.21, wy = -1.25 + R;
+    if (isN) { nose = new THREE.Group(); nose.position.set(0, -0.38, -1.3); gear.add(nose); const R2 = 0.19, ry = -1.25 + R2 + 0.38, rz = wz + 1.3, chrome = new THREE.MeshPhongMaterial({ color: 0xd4dae0, shininess: 90 }), rim = new THREE.MeshLambertMaterial({ color: 0xb8c0c8 });
+      add(new THREE.CylinderGeometry(0.075, 0.075, 0.4, 8), chrome, 0, -0.19, rz - 0.06, nose);
+      add(new THREE.CylinderGeometry(0.05, 0.05, 0.42, 8), metal, 0, -0.47, rz - 0.04, nose);
+      for (const sx of [-0.1, 0.1]) add(new THREE.BoxGeometry(0.035, 0.34, 0.07), metal, sx, ry + 0.17, rz, nose);
+      add(new THREE.BoxGeometry(0.1, 0.08, 0.1), dark, 0, -0.62, rz - 0.07, nose);
+      const t = new THREE.CylinderGeometry(R2, R2, 0.15, 14); t.rotateZ(Math.PI / 2); add(t, tyre, 0, ry, rz, nose);
+      add(new THREE.CylinderGeometry(R2 * 0.56, R2 * 0.56, 0.17, 10).rotateZ(Math.PI / 2), rim, 0, ry, rz, nose); }
     else { const top = [wx * 0.62, -0.62, wz - 0.05]; seg(top, [wx, wy + 0.06, wz], 0.08, metal, gear); const t = new THREE.CylinderGeometry(R, R, 0.16, 12); t.rotateZ(Math.PI / 2); add(t, tyre, wx, wy, wz, gear); add(new THREE.CylinderGeometry(R * 0.5, R * 0.5, 0.2, 8).rotateZ(Math.PI / 2), metal, wx, wy, wz, gear); const fg = new THREE.SphereGeometry(1, 8, 6); fg.scale(0.06, 0.22, 0.3); add(fg, navy, wx + (wx > 0 ? 0.1 : -0.1), wy + 0.08, wz, gear); }
   }
   const spot = new THREE.SpotLight(0xfff4dc, 0, 170, 0.3, 0.95, 1.6); spot.position.set(0, -0.35, -2.3); g.add(spot); const tg = new THREE.Object3D(); tg.position.set(0, -9, -80); g.add(tg); spot.target = tg;
@@ -2242,7 +2253,7 @@ function hangarHTML() {
     ${tg('autoRud', 'Automatic rudder', 'Coordinates turns for you. The wheel steers the nose wheel on the ground and rolls the airplane in the air.')}
     ${tg('trees', 'Trees', 'Turn off for a smoother frame rate on older phones.')}
     ${tg('lamps', 'Street and building lights at night', 'Turn off for a smoother frame rate on older phones.')}
-    ${sg('cam', 'Starting camera', [['free', 'Free'], ['chase', 'Chase'], ['cockpit', 'Cockpit']])}
+    ${sg('cam', 'Starting camera', [['free', 'Free'], ['chase', 'Chase'], ['cockpit', 'Cockpit'], ['auto', 'Auto']])}
     ${sg('smooth', 'Control smoothing', [[0.05, 'Snappy'], [0.12, 'Smooth'], [0.24, 'Silky']])}
     ${sg('sens', 'Wheel sensitivity', [[0.7, 'Gentle'], [1, 'Normal'], [1.3, 'Sharp']])}
     ${sg('detail', 'Scenery detail (restart the app to apply)', [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']])}
@@ -2506,7 +2517,7 @@ function beginFlight() {
   const dest = apOf(P.c.to); beacon.position.set(dest.x, dest.elevM, dest.z); beacon.visible = true;
   ensureDetail(apOf(P.c.from)); ensureDetail(apOf(P.c.to));
   buildRoute(G.route, apOf(P.c.from).elevM);
-  $('plan').hidden = true; $('menu').hidden = true; $('pill').hidden = true; document.body.classList.remove('peek'); $('hud').hidden = false; mode = 'fly'; camMode = ({ free: 3, chase: 0, cockpit: 1 })[SS('cam')]; freeCam.init = false; apOpen = false; paused = false; mapOpen = false; $('mapwrap').hidden = true;
+  $('plan').hidden = true; $('menu').hidden = true; $('pill').hidden = true; document.body.classList.remove('peek'); $('hud').hidden = false; mode = 'fly'; camMode = ({ free: 3, chase: 0, cockpit: 1, auto: 6 })[SS('cam')]; camAuto.t = 0; camAuto.i = 0; freeCam.init = false; apOpen = false; paused = false; mapOpen = false; $('mapwrap').hidden = true;
   buildHUD(); setPhase('COLD');
   say('Cascade Ground', `${P.tail}, wind ${windText(P.wind)}, altimeter ${P.wind.alt || '29.92'}. Report when ready to taxi.`);
   if (P.c.limitMin && !P.resume) setTimeout(() => toast('Deadline: ' + P.c.limitMin + ' minutes from engine start for the full bonus.', 6000), 1500);
@@ -2571,6 +2582,7 @@ document.addEventListener('click', e => {
   const t = e.target && e.target.closest && e.target.closest('#instrBtn,#instrBack'); if (!t) return; e.stopPropagation();
   if (t.id === 'instrBtn') { $('instrBody').innerHTML = instrHTML(); $('instr').hidden = false; } else $('instr').hidden = true;
 }, true);
+document.addEventListener('click', e => { const b = e.target && e.target.closest && e.target.closest('#endHere'); if (!b) return; e.stopPropagation(); if (G && G.tdDone && !G.s.air) { setPause(false); finishFlight(null); } }, true);
 function radioPress() {
   if (!G || mode !== 'fly') return; const cs = G.plan.tail, P = G.plan;
   if (G.phase === 'CLR') {
@@ -2587,6 +2599,7 @@ function procUpdate(dt) {
   const s = G.s, A = G.A, P = G.plan, L = G.log, at = attitude(s), ias = iasOf(s, G.windV), gs = at.gs;
   const agl = s.p[1] - surfH(s.p[0], s.p[2]), altFt = s.p[1] / FT, dep = P.dep, arr = P.arr;
   G.agl = agl; G.ias = ias; G.at = at;
+  if (s.touch && !G.tdDone && agl > 150) s.touch = null; // a bounce right after liftoff must not count as the landing
   if (!s.air && ['CLR', 'TAXI', 'HOLD', 'TAXI_IN', 'CLEARED'].includes(G.phase) && (G.phase !== 'CLEARED' || ctl.thr < 0.4)) L.maxTaxi = Math.max(L.maxTaxi, gs);
   if (s.air && !L.speedBust) { const lim = A.id === 'kestrel' ? (altFt < 10000 ? 250 : 330) : A.cruise * 1.35; if (ias > lim) { L.speedBust = true; say('Cascade Departure', `${P.tail}, check your speed.`); } }
   const sd = toRw(dep.rw, s.p[0], s.p[2]), onDep = Math.abs(sd[0]) < dep.rw.L / 2 + 8 && Math.abs(sd[1]) < dep.rw.W / 2 + 4;
@@ -2663,7 +2676,9 @@ function procUpdate(dt) {
     }
     case 'TAXI_IN': {
       const pk = P.ap1.ref(P.ap1.park[0], P.ap1.park[1]);
-      if (Math.hypot(s.p[0] - pk[0], s.p[2] - pk[1]) < 22 && gs < 1.5 && ctl.brk > 0.9) { L.parked = true; finishFlight(null); }
+      const dpk = Math.hypot(s.p[0] - pk[0], s.p[2] - pk[1]); G.stopT = gs < 0.8 ? (G.stopT || 0) + dt : 0;
+      if ((dpk < 22 && gs < 1.5 && ctl.brk > 0.9) || (dpk < 45 && G.stopT > 2.5)) { L.parked = true; finishFlight(null); }
+      else if (G.stopT > 20 && !G.stopMsg) { G.stopMsg = true; toast('Taxi to the ramp to finish the flight, or open Menu and choose End flight here.', 7000); }
       break;
     }
   }
@@ -2690,6 +2705,10 @@ function readControls(dt) {
   else { ctl.pit = approach(ctl.pit, tp, (tp === 0 ? 3.5 : 2.2) / sm * dt); ctl.rol = approach(ctl.rol, tr, (tr === 0 ? 4 : 2.6) / sm * dt); ctl.yaw = approach(ctl.yaw, ty, (ty === 0 ? 5 : 3) / sm * dt); }
   if (keys.w) ctl.thr += 0.6 * dt; if (keys.s) ctl.thr -= 0.6 * dt; if (keys.x) ctl.thr = 0; if (keys.Shift) ctl.thr = 1;
   if (keys.t) ctl.trim = clamp(ctl.trim + dt * 0.6, -1, 1); if (keys.g2) ctl.trim = clamp(ctl.trim - dt * 0.6, -1, 1);
+  if (G.set.stab && s.air && !G.ap.on && G.agl > 60 && G.at) { // auto-trim: let go of the stick and the airplane holds the pitch you left it at
+    if (Math.abs(ctl.pit) > 0.06) { G.holdP = null; G.holdT = 0; }
+    else { G.holdT = (G.holdT || 0) + dt; if (G.holdT > 0.5) { if (G.holdP == null) G.holdP = G.at.pitch; ctl.trim = clamp(ctl.trim + (G.holdP - G.at.pitch) * 0.12 * dt, -1, 1); } }
+  }
   ctl.thr = clamp(ctl.thr, 0, 1);
   ctl.brk = G.parking ? 1 : (keys[' '] ? 1 : 0);
   const out = { pit: ctl.pit, rol: ctl.rol, yaw: ctl.yaw, thr: ctl.thr, brk: ctl.brk, flapCmd: ctl.flapCmd, gearCmd: ctl.gearCmd, trim: ctl.trim };
@@ -2737,14 +2756,19 @@ function setFlaps(d) { ctl.flapCmd = clamp(ctl.flapCmd + d, 0, 3); renderSide();
 function toggleGear() { if (!G.A.retract) { toast('Fixed landing gear'); return; } ctl.gearCmd = ctl.gearCmd ? 0 : 1; renderSide(); }
 function toggleLights() { G.lights = !G.lights; renderSide(); }
 function toggleParking() { G.parking = !G.parking; renderSide(); }
+const camAuto = { t: 0, i: 0, list: [[0, 7], [4, 6], [3, 7], [5, 6]] };
+function camAutoStep(dt) {
+  camAuto.t += dt; if (camAuto.t > camAuto.list[camAuto.i][1]) { camAuto.t = 0; camAuto.i = (camAuto.i + 1) % camAuto.list.length; if (camAuto.list[camAuto.i][0] === 3) freeCam.init = false; }
+  return camAuto.list[camAuto.i][0];
+}
 function cycleCam() {
-  const order = [3, 0, 1]; let i = order.indexOf(camMode); if (i < 0) i = 0; camMode = order[(i + 1) % 3];
-  if (camMode === 3) freeCam.init = false;
-  toast(['Chase view', 'Cockpit view', 'Autopilot orbit', 'Free camera: drag to orbit, pinch to zoom'][camMode], 1800);
+  const order = [3, 0, 1, 4, 5, 6]; let i = order.indexOf(camMode); if (i < 0) i = 0; camMode = order[(i + 1) % order.length];
+  if (camMode === 3) freeCam.init = false; if (camMode === 6) { camAuto.t = 0; camAuto.i = 0; }
+  toast(['Chase view', 'Cockpit view', 'Autopilot orbit', 'Free camera: drag to orbit, pinch to zoom', 'Wing view', 'Engine view from the wing', 'Auto camera: cycles through the views'][camMode], 1800);
   renderApPanel();
 }
 function setPause(p) {
-  paused = p; $('pause').hidden = !p; if (p && mapOpen) toggleMap();
+  paused = p; $('pause').hidden = !p; { const eb = $('endHere'); if (eb) eb.hidden = !(p && G && G.tdDone && !G.s.air); } if (p && mapOpen) toggleMap();
 }
 window.addEventListener('keydown', e => {
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -2997,20 +3021,26 @@ function placeModel() {
   const blink = Math.floor(s.time * 1.8) % 2 === 0 && s.time % 1.8 < 0.2 + 0.9 * (Math.floor(s.time * 1.8) % 2 === 0 ? 1 : 0); if (ud.strobes) for (const o of ud.strobes) o.visible = !!G.lights && (Math.floor(s.time * 2.2) % 3 === 0 || (s.time * 2.2) % 3 < 1.2 && Math.floor(s.time * 8.8) % 2 === 0); if (ud.landing) ud.landing.visible = !!G.lights;
 }
 function updateCamera(dt) {
-  const s = G.s, A = G.A, f = s.f, u = s.u, r = s.r, p = s.p;
-  if (camMode === 1) {
+  const s = G.s, A = G.A, f = s.f, u = s.u, r = s.r, p = s.p, cm = camMode === 6 ? camAutoStep(dt) : camMode;
+  if (cm === 1) {
     camera.position.set(p[0] + f[0] * 0.8 + u[0] * 0.62, p[1] + f[1] * 0.8 + u[1] * 0.62, p[2] + f[2] * 0.8 + u[2] * 0.62);
     camera.up.set(u[0], u[1], u[2]); camera.lookAt(camera.position.x + f[0] * 50 - u[0] * 1.2, camera.position.y + f[1] * 50 - u[1] * 1.2, camera.position.z + f[2] * 50 - u[2] * 1.2);
-  } else if (camMode === 0) {
+  } else if (cm === 0) {
     const d = A.id === 'wren' ? 15 : A.id === 'heron' ? 21 : 26, h = A.id === 'wren' ? 4.2 : 5.5;
     camera.position.set(p[0] - f[0] * d + u[0] * h, p[1] - f[1] * d + u[1] * h, p[2] - f[2] * d + u[2] * h);
     camera.up.set(0, 1, 0); camera.up.lerp(new THREE.Vector3(u[0], u[1], u[2]), 0.5).normalize(); camera.lookAt(p[0] + f[0] * 16, p[1] + f[1] * 16 + 0.6, p[2] + f[2] * 16);
-  } else if (camMode === 3) {
+  } else if (cm === 3) {
     const fc = freeCam, R = (A.id === 'wren' ? 15 : A.id === 'heron' ? 20 : 25) * fc.dist, hd = Math.atan2(f[0], -f[2]);
     if (!fc.init || fc.h === undefined) fc.h = hd; let dh = hd - fc.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); fc.h += dh * (1 - Math.exp(-dt * 1.6));
     const yw = fc.h + Math.PI + fc.yaw, ch = Math.cos(fc.pit), wx = p[0] + Math.sin(yw) * ch * R, wz = p[2] - Math.cos(yw) * ch * R, wy = Math.max(p[1] + 1.2 + Math.sin(fc.pit) * R, surfH(wx, wz) + 1.6);
     if (!fc.init) { camera.position.set(wx, wy, wz); fc.init = true; } else { const k = 1 - Math.exp(-dt * 9); camera.position.x += (wx - camera.position.x) * k; camera.position.y += (wy - camera.position.y) * k; camera.position.z += (wz - camera.position.z) * k; }
     camera.up.set(0, 1, 0); camera.lookAt(p[0], p[1] + 1.2, p[2]);
+  } else if (cm === 4 || cm === 5) {
+    const W = (x, y, z) => [p[0] + r[0] * x + u[0] * y - f[0] * z, p[1] + r[1] * x + u[1] * y - f[1] * z, p[2] + r[2] * x + u[2] * y - f[2] * z], semi = A.span / 2, hw = 0.6 + (A.span - 11) * 0.04, side = (camAuto.i % 2 ? 1 : -1) * (camMode === 6 ? 1 : 1);
+    let cp, tg;
+    if (cm === 4) { cp = W(-hw * 0.4, 1.05, 0.5); tg = W(-semi * 1.05, 0.15, 0.6); }
+    else { cp = W(-semi * 0.5, 0.42, 0.35); tg = A.prop ? W(0, -0.2, -A.nose) : W(-1.0, 0.2, A.tail * 0.6); }
+    camera.position.set(cp[0], cp[1], cp[2]); camera.up.set(u[0], u[1], u[2]); camera.lookAt(tg[0], tg[1], tg[2]);
   } else {
     apCam.yaw += dt * 0.05; const R = (A.id === 'wren' ? 26 : 38) * apCam.dist, ch = Math.cos(apCam.pit), yw = apCam.yaw;
     camera.position.set(p[0] + Math.sin(yw) * ch * R, p[1] + Math.sin(apCam.pit) * R, p[2] + Math.cos(yw) * ch * R); camera.up.set(0, 1, 0); camera.lookAt(p[0], p[1], p[2]);

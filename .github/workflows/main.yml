@@ -11,22 +11,21 @@ jobs:
       - name: Download OpenStreetMap data
         run: |
           mkdir -p data
-          BBOX="40.69,-73.46,40.77,-73.36"
-          fetch() {
-            name="$1"; query="$2"
-            for server in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
+          for W in -73.44 -73.415; do
+            for S in 40.71 40.73; do
+              E=$(python3 -c "print(round($W+0.025,3))")
+              N=$(python3 -c "print(round($S+0.02,3))")
+              f="data/osm_${W}_${S}.osm"
               for try in 1 2 3; do
-                if curl -sS -f -m 120 -A "cascade-dispatch/1.0" --data-urlencode "data=$query" "$server" -o "data/$name.json"; then
-                  n=$(python3 -c "import json;print(len(json.load(open('data/$name.json'))['elements']))" 2>/dev/null || echo 0)
-                  if [ "$n" -gt 0 ]; then echo "$name: $n elements from $server"; return 0; fi
+                if curl -sS -f -m 120 -A "cascade-dispatch/1.0" "https://api.openstreetmap.org/api/0.6/map?bbox=$W,$S,$E,$N" -o "$f"; then
+                  echo "OK $f $(wc -c < $f) bytes"; break
                 fi
                 sleep 10
               done
             done
-            echo "FAILED: $name"; return 1
-          }
-          fetch kfrg_aeroway "[out:json][timeout:90];nwr[\"aeroway\"]($BBOX);out geom;"
-          fetch kfrg_roads "[out:json][timeout:90];way[\"highway\"]($BBOX);out geom;"
+          done
+          ls -l data
+          ls data/*.osm
       - name: Commit data
         run: |
           git config user.name "github-actions"

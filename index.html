@@ -130,7 +130,7 @@ h3{font:700 18px var(--disp);letter-spacing:.08em;text-transform:uppercase;color
 @media (pointer:coarse){#rud{left:calc(max(16px,env(safe-area-inset-left,0px)) + 135px)}#stick{display:block;position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(max(16px,env(safe-area-inset-bottom,0px)) + 130px);width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);touch-action:none}
 #knob{position:absolute;left:41px;top:41px;width:38px;height:38px;border-radius:50%;background:rgba(255,178,62,.8)}}
 @media (max-width:760px){#menu{padding-left:16px;background:rgba(8,13,24,.9);width:100%}#atc{width:min(430px,92vw)}#side{width:min(300px,56vw)}.brand{font-size:24px}#pill{font-size:11px}}
-#mapwrap{position:fixed;inset:max(60px,env(safe-area-inset-top,0px)) 14px 14px;z-index:6;background:rgba(5,9,16,.92);border:1px solid var(--line)}#map{width:100%;height:100%;display:block}#mapX{position:absolute;top:8px;right:8px;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(10,16,28,.9);color:#fff;font-size:22px;line-height:1;z-index:2;touch-action:manipulation}
+#mapwrap{position:fixed;inset:max(60px,env(safe-area-inset-top,0px)) 14px 14px;z-index:6;background:rgba(5,9,16,.92);border:1px solid var(--line)}#map{width:100%;height:100%;display:block}#mapZ{position:absolute;top:64px;right:8px;display:flex;flex-direction:column;gap:8px;z-index:2}#mapZ button{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(10,16,28,.9);color:#fff;font-size:24px;line-height:1;touch-action:manipulation}#map{touch-action:none}#mapX{position:absolute;top:8px;right:8px;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(10,16,28,.9);color:#fff;font-size:22px;line-height:1;z-index:2;touch-action:manipulation}
 #apPanel{left:50%!important;top:calc(max(8px,env(safe-area-inset-top,0px)) + 56px)!important;transform:translateX(-50%)!important;width:min(380px,94vw)!important;padding:8px 10px!important;background:rgba(10,18,32,.92)!important;gap:6px!important}
 .apcols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .apc{background:#0e1a2e;border:1px solid var(--line);padding:5px;display:grid;gap:3px;text-align:center}
@@ -160,11 +160,12 @@ body.compact #rMisc{font-size:10px}
 <div id="pill"><i></i><span>SIM</span><b id="pillAp">KRNT</b><span id="pillName"></span><span id="nearby">0 flying nearby</span><button data-act="peek" id="peekBtn">Hide / show menu</button></div>
 <div id="menu"><div id="mHead"></div><div id="mTabs"></div><div id="mBody"></div></div>
 <div id="hud" hidden></div>
-<div id="mapwrap" hidden><canvas id="map"></canvas><button id="mapX" aria-label="Close map">&#10005;</button></div>
+<div id="mapwrap" hidden><canvas id="map"></canvas><button id="mapX" aria-label="Close map">&#10005;</button><div id="mapZ"><button id="mZi" aria-label="Zoom in">+</button><button id="mZo" aria-label="Zoom out">&minus;</button><button id="mZm" aria-label="Centre on me">&#9678;</button></div></div>
 <div id="plan" class="modal" hidden></div>
 <div id="exam" class="modal" hidden></div>
 <div id="debrief" class="modal" hidden></div>
-<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="btns"><button class="go" data-act="resume">Resume</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
+<div id="instr" class="modal" hidden><div class="sheet wide"><div class="eh">Instructions</div><div id="instrBody"></div><div class="btns"><button class="go" id="instrBack">Back</button></div></div></div>
+<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="btns"><button class="go" data-act="resume">Resume</button><button data-act="instr" id="instrBtn">Instructions</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
 <div id="toast"></div>
 <script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => { }));</script>
 <script src="three.min.js"></script>
@@ -2481,7 +2482,7 @@ function buildRoute(pts, y) {
   g.visible = !!G.set.guide; G.routeGrp = g; scene.add(g);
 }
 function say(who, text) {
-  if (!G) return; G.atc.push({ who, text, t: performance.now() }); if (G.atc.length > 5) G.atc.shift(); renderAtc();
+  if (!G) return; G.atc.push({ who, text, t: performance.now() }); if (G.atc.length > 40) G.atc.shift(); renderAtc();
 }
 function renderAtc() {
   const now = performance.now();
@@ -2513,6 +2514,21 @@ const HINTS = {
   TAXI_IN: 'Follow the yellow line to the ramp. Stop and press B.'
 };
 const RADIO = { CLR: 'Request taxi', HOLD: 'Ready for departure' };
+function instrHTML() {
+  if (!G || !G.plan) return '<p class="lead">No flight in progress.</p>';
+  const P = G.plan, A = G.A, row = (k, v) => `<div class="pr"><span>${k}</span><b>${v}</b></div>`, ph = G.phase;
+  const depKnown = !['COLD', 'CLR'].includes(ph), arrKnown = ['FINAL', 'ROLLOUT', 'TAXI_IN'].includes(ph) || G.landClr;
+  const last = G.atc.length ? G.atc[G.atc.length - 1] : null;
+  const hist = G.atc.slice().reverse().map(m => `<div class="msg" style="margin:6px 0"><b>${m.who}</b> ${m.text}</div>`).join('') || '<p class="lead">No radio calls yet.</p>';
+  return `<h2 style="margin:4px 0 10px">${P.tail} &middot; ${P.c.from} to ${P.c.to}</h2>
+    ${last ? `<section><h4>Latest ATC instruction</h4><div class="msg"><b>${last.who}</b> ${last.text}</div></section>` : ''}
+    <section><h4>Flight plan</h4>${row('Aircraft', A.name)}${row('Assigned cruise altitude', P.alt.toLocaleString() + ' ft')}${row('Distance', (P.dist / 1852).toFixed(0) + ' nm')}${row('Departure runway', depKnown ? P.dep.name : 'Ground will assign it when you request taxi')}${row('Taxi route', depKnown ? viaText(P.route.via, 'Alpha') : 'After taxi clearance')}${row('Arrival runway', arrKnown ? P.arr.name : 'Assigned by the controller on approach')}${row('Wind', windText(P.wind) + ' kt')}${row('Altimeter', P.wind.alt || '29.92')}</section>
+    <section><h4>Radio log, newest first</h4>${hist}</section>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target && e.target.closest && e.target.closest('#instrBtn,#instrBack'); if (!t) return; e.stopPropagation();
+  if (t.id === 'instrBtn') { $('instrBody').innerHTML = instrHTML(); $('instr').hidden = false; } else $('instr').hidden = true;
+}, true);
 function radioPress() {
   if (!G || mode !== 'fly') return; const cs = G.plan.tail, P = G.plan;
   if (G.phase === 'CLR') {
@@ -2764,7 +2780,7 @@ function updateApPanel() {
 function updateHUD() {
   const s = G.s, at = G.at; if (!at) return;
   const wp = G.route, nr = routeDist(wp, s.p[0], s.p[2]);
-  const show = G.set.guide && ['COLD', 'CLR', 'TAXI', 'HOLD', 'CLEARED', 'TAXI_IN'].includes(G.phase) && !s.air;
+  const show = G.set.guide && ['TAXI', 'HOLD', 'CLEARED', 'TAXI_IN'].includes(G.phase) && !s.air;
   const wpEl = $('wp'); if (wpEl) { wpEl.style.display = show && G.phase !== 'COLD' ? 'flex' : 'none'; const tgt = wp[Math.min(wp.length - 1, nr.next)], brg = ((Math.atan2(tgt[0] - s.p[0], -(tgt[1] - s.p[2])) / DEG) + 360) % 360; $('arrow').style.transform = `rotate(${((brg - at.hdg + 540) % 360) - 180}deg)`; $('wpd').textContent = Math.round(Math.hypot(tgt[0] - s.p[0], tgt[1] - s.p[2])) + ' m'; }
   if (G.routeGrp) G.routeGrp.visible = G.set.guide && show;
   G.camT += 0.016; if (G.camT > 0.6) { G.camT = 0; renderAtc(); }
@@ -2811,6 +2827,21 @@ function bindTouch() {
 /* ---------- map ---------- */
 let mapBase = null;
 document.addEventListener('click', e => { if (e.target && e.target.id === 'mapX') { e.stopPropagation(); if (mapOpen) toggleMap(); } }, true);
+(function () {
+  const ptr = new Map(); let last = 0, moved = false;
+  const zin = f => { MV.zoom = Math.min(80, Math.max(1, MV.zoom * f)); if (MV.zoom <= 1.02) { MV.zoom = 1; MV.free = false; } };
+  document.addEventListener('click', e => { const t = e.target && e.target.closest && e.target.closest('#mZi,#mZo,#mZm'); if (!t) return; e.stopPropagation(); if (t.id === 'mZi') { if (MV.zoom === 1 && !MV.free) { MV.free = false; } zin(2); } else if (t.id === 'mZo') zin(0.5); else { MV.free = false; if (MV.zoom < 4) MV.zoom = 6; } if (mapOpen) drawMap(); }, true);
+  const mc = () => $('map');
+  document.addEventListener('pointerdown', e => { if (e.target !== mc()) return; mc().setPointerCapture(e.pointerId); ptr.set(e.pointerId, [e.clientX, e.clientY]); last = 0; moved = false; });
+  document.addEventListener('pointermove', e => {
+    if (!ptr.has(e.pointerId)) return; const o = ptr.get(e.pointerId), n = [e.clientX, e.clientY];
+    if (ptr.size === 2) { const ids = [...ptr.keys()], a = ptr.get(ids[0]), b = ptr.get(ids[1]), d0 = Math.hypot(a[0] - b[0], a[1] - b[1]); ptr.set(e.pointerId, n); const a2 = ptr.get(ids[0]), b2 = ptr.get(ids[1]), d1 = Math.hypot(a2[0] - b2[0], a2[1] - b2[1]); if (d0 > 10) zin(d1 / d0); }
+    else if (ptr.size === 1 && MV.zoom > 1.02) { const c = mc(), v = mapView(c.clientWidth * 2, c.clientHeight * 2), dx = (n[0] - o[0]) * 2 / v.sc, dz = (n[1] - o[1]) * 2 / v.sc; if (!MV.free) { MV.free = true; MV.cx = v.cx; MV.cz = v.cz; } MV.cx -= dx; MV.cz -= dz; ptr.set(e.pointerId, n); }
+    if (mapOpen) drawMap();
+  });
+  const up = e => { ptr.delete(e.pointerId); }; document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+  document.addEventListener('wheel', e => { if (e.target === mc()) { e.preventDefault(); zin(e.deltaY < 0 ? 1.25 : 0.8); drawMap(); } }, { passive: false });
+})();
 function toggleMap() {
   mapOpen = !mapOpen; $('mapwrap').hidden = !mapOpen; if (mapOpen) { if (!mapBase) mapBase = makeMapBase(); drawMap(); }
 }
@@ -2823,18 +2854,49 @@ function makeMapBase() {
   }
   x.putImageData(im, 0, 0); return cv;
 }
+const MV = { zoom: 1, cx: 0, cz: 0, free: false, win: null };
+function mapView(W, H) {
+  const sc0 = Math.min(W / (TB.x1 - TB.x0), H / (TB.z1 - TB.z0)) * 0.96, sc = sc0 * MV.zoom;
+  let cx = (TB.x0 + TB.x1) / 2, cz = (TB.z0 + TB.z1) / 2;
+  if (MV.zoom > 1.02) { if (MV.free) { cx = MV.cx; cz = MV.cz; } else { cx = G.s.p[0]; cz = G.s.p[2]; } }
+  return { sc0, sc, cx, cz, W, H };
+}
+function mapWin(v) { // finer terrain colours around the view when zoomed in
+  const wm = v.W / v.sc, hm = v.H / v.sc, k = MV.win;
+  if (k && Math.abs(k.cx - v.cx) < wm * 0.15 && Math.abs(k.cz - v.cz) < hm * 0.15 && k.wm >= wm * 0.95 && k.wm <= wm * 2.6) return k;
+  const w = 150, h = 230, ww = wm * 1.6, hh = hm * 1.6, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'), im = x.createImageData(w, h);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const px = v.cx - ww / 2 + (i + 0.5) / w * ww, pz = v.cz - hh / 2 + (j + 0.5) / h * hh, y = groundH(px, pz), kk = (j * w + i) * 4;
+    let r, g, b; if (y <= 0.4) { r = 30; g = 72; b = 98; } else if (y > 1500) { r = 235; g = 240; b = 245; } else if (y > 800) { r = 130; g = 128; b = 118; } else { const f = clamp(y / 700, 0, 1), n = 0.93 + 0.14 * hash2(i >> 0, j >> 0); r = (66 + f * 20) * n; g = (96 + f * 10) * n; b = (62 + f * 10) * n; }
+    im.data[kk] = r; im.data[kk + 1] = g; im.data[kk + 2] = b; im.data[kk + 3] = 255;
+  }
+  x.putImageData(im, 0, 0); return MV.win = { cv, cx: v.cx, cz: v.cz, wm: ww, hm: hh };
+}
 function drawMap() {
   const c = $('map'), x = c.getContext('2d'), W = c.width = c.clientWidth * 2, H = c.height = c.clientHeight * 2; x.clearRect(0, 0, W, H);
-  const sc = Math.min(W / (TB.x1 - TB.x0), H / (TB.z1 - TB.z0)) * 0.96, ox = (W - (TB.x1 - TB.x0) * sc) / 2, oy = (H - (TB.z1 - TB.z0) * sc) / 2;
-  const P = (px, pz) => [ox + (px - TB.x0) * sc, oy + (pz - TB.z0) * sc];
-  x.imageSmoothingEnabled = true; x.drawImage(mapBase, ox, oy, (TB.x1 - TB.x0) * sc, (TB.z1 - TB.z0) * sc);
+  const v = mapView(W, H), sc = v.sc, P = (px, pz) => [W / 2 + (px - v.cx) * sc, H / 2 + (pz - v.cz) * sc], zoomed = MV.zoom >= 3;
+  x.imageSmoothingEnabled = true;
+  x.drawImage(mapBase, W / 2 + (TB.x0 - v.cx) * sc, H / 2 + (TB.z0 - v.cz) * sc, (TB.x1 - TB.x0) * sc, (TB.z1 - TB.z0) * sc);
+  if (MV.zoom >= 4) { const k = mapWin(v); x.drawImage(k.cv, W / 2 + (k.cx - k.wm / 2 - v.cx) * sc, H / 2 + (k.cz - k.hm / 2 - v.cz) * sc, k.wm * sc, k.hm * sc); }
   x.font = '600 22px "Barlow Condensed", sans-serif'; x.textBaseline = 'middle';
-  const a0 = G.plan.ap0, a1 = G.plan.ap1; x.strokeStyle = '#4fd6e8'; x.setLineDash([14, 10]); x.lineWidth = 3; const p0 = P(a0.x, a0.z), p1 = P(a1.x, a1.z); x.beginPath(); x.moveTo(p0[0], p0[1]); x.lineTo(p1[0], p1[1]); x.stroke(); x.setLineDash([]);
+  const a0 = G.plan.ap0, a1 = G.plan.ap1, me0 = G.s.p; x.strokeStyle = '#4fd6e8'; x.setLineDash([14, 10]); x.lineWidth = 3; const p0 = P(a0.x, a0.z), p1 = P(a1.x, a1.z); x.beginPath(); x.moveTo(p0[0], p0[1]); x.lineTo(p1[0], p1[1]); x.stroke(); x.setLineDash([]);
   for (const ap of AIRPORTS) {
-    const p = P(ap.x, ap.z), dest = ap === a1; x.fillStyle = dest ? '#4fd6e8' : '#ffd37a'; x.beginPath(); x.arc(p[0], p[1], dest ? 9 : 6, 0, 7); x.fill(); x.fillText(ap.id, p[0] + 14, p[1] - 12);
+    const near = Math.hypot(ap.x - me0[0], ap.z - me0[2]) < 37000, dest = ap === a1;
+    if (zoomed || near) {
+      if (zoomed && ap.osm) { x.fillStyle = 'rgba(150,152,160,.55)'; for (const a of (ap.osm.apr || [])) { const f = a[0]; x.beginPath(); for (let q = 0; q + 1 < f.length; q += 2) { const p = P(f[q], f[q + 1]); q ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); } x.closePath(); x.fill(); }
+        x.strokeStyle = 'rgba(190,190,200,.8)'; x.lineWidth = Math.max(2, 18 * sc); for (const w of (ap.osm.tw || [])) { const f = w[1]; x.beginPath(); for (let q = 0; q + 1 < f.length; q += 2) { const p = P(f[q], f[q + 1]); q ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); } x.stroke(); } }
+      for (const rw of ap.rw) { const a = P(...rwPt(rw, -rw.L / 2, 0)), b = P(...rwPt(rw, rw.L / 2, 0)); x.strokeStyle = '#f4f4ee'; x.lineWidth = Math.max(4, rw.W * sc); x.lineCap = 'butt'; x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.stroke(); }
+      for (const e of ap.ends) { // extended centrelines on the approach side, only when you are near
+        const isArr = dest && G.plan.arr && e === G.plan.arr, len = isArr ? 14000 : 9000, a = P(...endPt(e, -30, 0)), b = P(...endPt(e, -len, 0));
+        x.strokeStyle = isArr ? '#4fd6e8' : 'rgba(255,255,255,.55)'; x.lineWidth = isArr ? 3 : 2; x.setLineDash([22, 14]); x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.stroke(); x.setLineDash([]);
+        for (let nm = 1; nm * 1852 < len; nm += 1) { const t = endPt(e, -nm * 1852, 0), tp = P(t[0], t[1]); x.fillStyle = x.strokeStyle; x.beginPath(); x.arc(tp[0], tp[1], 4, 0, 7); x.fill(); if (nm % 2 === 0 && MV.zoom >= 2) { x.font = '500 16px "IBM Plex Mono", monospace'; x.fillText(nm + '', tp[0] + 8, tp[1] - 8); } }
+        if (MV.zoom >= 2) { x.font = '600 20px "Barlow Condensed", sans-serif'; x.fillStyle = isArr ? '#4fd6e8' : '#fff'; const nb = P(...endPt(e, -250, 0)); x.fillText(e.name, nb[0] + 8, nb[1]); }
+      }
+    }
+    const p = P(ap.x, ap.z); x.font = '600 22px "Barlow Condensed", sans-serif'; x.fillStyle = dest ? '#4fd6e8' : '#ffd37a'; if (!zoomed) { x.beginPath(); x.arc(p[0], p[1], dest ? 9 : 6, 0, 7); x.fill(); } x.fillText(ap.id, p[0] + 14, p[1] - 12);
   }
-  const me = P(G.s.p[0], G.s.p[2]); x.save(); x.translate(me[0], me[1]); x.rotate(G.at.hdg * DEG); x.fillStyle = '#ff5ad0'; x.beginPath(); x.moveTo(0, -16); x.lineTo(10, 12); x.lineTo(0, 6); x.lineTo(-10, 12); x.closePath(); x.fill(); x.restore();
-  x.fillStyle = '#fff'; x.font = '500 20px "IBM Plex Mono", monospace'; x.fillText('Wind ' + windText(G.wind) + ' kt  /  North up', 24, 30);
+  const me = P(G.s.p[0], G.s.p[2]); x.save(); x.translate(me[0], me[1]); x.rotate(G.at.hdg * DEG); x.fillStyle = '#ff5ad0'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, -18); x.lineTo(11, 13); x.lineTo(0, 7); x.lineTo(-11, 13); x.closePath(); x.fill(); x.stroke(); x.restore();
+  x.fillStyle = '#fff'; x.font = '500 20px "IBM Plex Mono", monospace'; x.textAlign = 'left'; x.fillText('Wind ' + windText(G.wind) + ' kt  /  North up  /  ' + (W / sc / 1852).toFixed(W / sc / 1852 < 10 ? 1 : 0) + ' nm wide', 24, 30);
 }
 
 /* ================= DEBRIEF ================= */

@@ -23,7 +23,24 @@ jobs:
           sudo apt-get install -y osmium-tool
           pip install osmium numpy mapbox-earcut
       - name: Download OpenStreetMap extract
-        run: curl -L --fail -o region.osm.pbf "https://download.geofabrik.de/${{ github.event.inputs.region }}-latest.osm.pbf"
+        run: |
+          R="${{ github.event.inputs.region }}"
+          UA="Mozilla/5.0 (X11; Linux x86_64) CascadeDispatch-tiler"
+          URLS=(
+            "https://download.geofabrik.de/${R}-latest.osm.pbf"
+            "https://download.openstreetmap.fr/extracts/${R}-latest.osm.pbf"
+          )
+          for U in "${URLS[@]}"; do
+            for TRY in 1 2 3; do
+              echo "Trying $U (attempt $TRY)"
+              rm -f region.osm.pbf
+              if curl -L --fail -A "$UA" -o region.osm.pbf "$U" && [ "$(stat -c%s region.osm.pbf)" -gt 5000000 ]; then
+                echo "Downloaded OK from $U"; ls -lh region.osm.pbf; exit 0
+              fi
+              sleep 15
+            done
+          done
+          echo "All download sources failed"; exit 1
       - name: Cut out the play area
         run: osmium extract --bbox ${{ github.event.inputs.bbox }} --strategy smart -o area.osm.pbf region.osm.pbf
       - name: Make tiles

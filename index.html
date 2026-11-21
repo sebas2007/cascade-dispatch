@@ -310,6 +310,13 @@ const AIRPORTS = ALL_AP.filter(a => a.region === RG.id);
 const TL = { idx: null, T: 4000, got: new Map(), busy: new Set(), t: 0, fail: 0 };
 function tileCovered(x, z) { return !!TL.idx && !!TL.idx.tiles[Math.floor(x / TL.T) + '_' + Math.floor(z / TL.T)]; }
 async function tileInit() { try { const r = await fetch('world/index.json'); if (r.ok) { const j = await r.json(); if (j && j.tiles) { TL.idx = j; TL.T = j.tile || 4000; } } } catch (e) { } }
+function afClr(x, z) { // true if a tree here would stand on a runway, taxiway or approach path
+  for (const ap of AIRPORTS) {
+    for (const rw of ap.rw) { const q = toRw(rw, x, z); if (Math.abs(q[0]) < rw.L / 2 + 140 && Math.abs(q[1]) < rw.W / 2 + 75) return true; }
+    const tw = ap.osm && ap.osm.tw; if (tw) for (const w of tw) { const fl = w[1], hw = Math.max(7, (w[0] || 18) / 2) + 22; for (let i = 0; i + 3 < fl.length; i += 2) { const ax = fl[i], az = fl[i + 1], bx = fl[i + 2] - ax, bz = fl[i + 3] - az, L2 = bx * bx + bz * bz || 1, t = clamp(((x - ax) * bx + (z - az) * bz) / L2, 0, 1); if (Math.hypot(x - ax - bx * t, z - az - bz * t) < hw) return true; } }
+  }
+  return false;
+}
 function tileFlat(pos, nor, col, i, c, x0, z0, x1, z1, hw, y) { // one road/rail quad
   const dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz) || 1, nx = -dz / L * hw, nz = dx / L * hw, y0 = Math.max(0, groundH(x0, z0)) + y, y1 = Math.max(0, groundH(x1, z1)) + y;
   pos.push(x0 + nx, y0, z0 + nz, x0 - nx, y0, z0 - nz, x1 + nx, y1, z1 + nz, x1 - nx, y1, z1 - nz);
@@ -343,9 +350,9 @@ function tileBuild(d, far) {
   if (blds.length && !far) { const m = buildBuildingsMesh(blds); scene.remove(m); g.add(m); }
   { // trees: forests, tree rows, yards
     const spots = [];
-    if (d.trees && d.trees.length) { for (let i = 0; i + 2 < d.trees.length; i += 3) if (keep(d.trees[i], d.trees[i + 1])) spots.push([d.trees[i], d.trees[i + 1], d.trees[i + 2] / 100]); }
-    else for (const [cl, p] of d.land) { if (cl !== 3) continue; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); } for (let x = x0; x < x1; x += 13) for (let z = z0; z < z1; z += 13) { const jx = x + (rng() - 0.5) * 9, jz = z + (rng() - 0.5) * 9; if (keep(jx, jz) && realInPoly(jx, jz, p)) spots.push([jx, jz, 0.55 + rng() * 0.5]); } }
-    if (!(d.trees && d.trees.length)) for (const r of d.rows) for (let i = 0; i + 3 < r.length; i += 2) { const dx = r[i + 2] - r[i], dz = r[i + 3] - r[i + 1], n = Math.floor(Math.hypot(dx, dz) / 8); for (let k = 0; k <= n; k++) if (keep(r[i], r[i + 1])) spots.push([r[i] + dx * k / Math.max(1, n), r[i + 1] + dz * k / Math.max(1, n), 0.5 + rng() * 0.4]); }
+    if (d.trees && d.trees.length) { for (let i = 0; i + 2 < d.trees.length; i += 3) if (keep(d.trees[i], d.trees[i + 1]) && !afClr(d.trees[i], d.trees[i + 1])) spots.push([d.trees[i], d.trees[i + 1], d.trees[i + 2] / 100]); }
+    else for (const [cl, p] of d.land) { if (cl !== 3) continue; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); } for (let x = x0; x < x1; x += 13) for (let z = z0; z < z1; z += 13) { const jx = x + (rng() - 0.5) * 9, jz = z + (rng() - 0.5) * 9; if (keep(jx, jz) && !afClr(jx, jz) && realInPoly(jx, jz, p)) spots.push([jx, jz, 0.55 + rng() * 0.5]); } }
+    if (!(d.trees && d.trees.length)) for (const r of d.rows) for (let i = 0; i + 3 < r.length; i += 2) { const dx = r[i + 2] - r[i], dz = r[i + 3] - r[i + 1], n = Math.floor(Math.hypot(dx, dz) / 8); for (let k = 0; k <= n; k++) if (keep(r[i], r[i + 1]) && !afClr(r[i], r[i + 1])) spots.push([r[i] + dx * k / Math.max(1, n), r[i + 1] + dz * k / Math.max(1, n), 0.5 + rng() * 0.4]); }
     if (!(d.trees && d.trees.length)) for (const b of blds) if (b.c === 0 && rng() < 0.55) { const c = cen(b.p), a = rng() * 6.283, r = 9 + rng() * 8; spots.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, 0.4 + rng() * 0.4]); }
     if (far) spots.length = 0;
     while (spots.length > 3500) spots.splice((rng() * spots.length) | 0, 1);
@@ -445,6 +452,7 @@ function buildOsmExtras(ap, g) {
   const d = ap.osm; if (!d) return;
   const pos = [], nor = [], col = [], idx = [], c1 = [0.43, 0.44, 0.46], c2 = [0.27, 0.28, 0.3], y = ap.elevM + 0.13;
   for (const a of (d.apr || [])) { const p = a[0], t = a[1], n = p.length / 2, b = pos.length / 3; for (let i = 0; i < n; i++) { pos.push(p[2 * i], y, p[2 * i + 1]); nor.push(0, 1, 0); col.push(c1[0], c1[1], c1[2]); } for (let k = 0; k < t.length; k++) idx.push(b + t[k]); }
+  for (const w of (d.tw || [])) { const fl = w[1], hw = Math.max(7, (w[0] || 18) / 2); for (let i = 0; i + 3 < fl.length; i += 2) tileFlat(pos, nor, col, idx, [0.5, 0.42, 0.15], fl[i], fl[i + 1], fl[i + 2], fl[i + 3], hw + 0.7, 0.14); }
   for (const w of (d.tw || [])) { const fl = w[1], hw = Math.max(7, (w[0] || 18) / 2); for (let i = 0; i + 3 < fl.length; i += 2) tileFlat(pos, nor, col, idx, c2, fl[i], fl[i + 1], fl[i + 2], fl[i + 3], hw, 0.15); }
   if (idx.length) { const m = tileMesh(pos, nor, col, idx, 2); m.renderOrder = 2; g.add(m); }
   const p2 = [], n2 = [], c3 = [], i2 = [];
@@ -1340,12 +1348,13 @@ function paintReal(cv, rect, mode) {
   c.lineJoin = 'round'; c.lineCap = 'butt';
   c.fillStyle = mask ? '#000' : rgb([0.28, 0.40, 0.21]); c.fillRect(0, 0, TX, TZ);
   for (const [cl, p] of REAL.land) { if (mask) { if (cl === 4 || cl === 5 || cl === 8 || cl === 10) poly(p, 0, true); } else poly(p, LAND_COL[cl]); }
-  for (const p of REAL.aprons) poly(p, [0.44, 0.45, 0.47], true);
+  for (const p of REAL.aprons) { poly(p, [0.44, 0.45, 0.47], true); if (!mask) { path(p, true); c.lineWidth = Math.max(1, 1.6 * sx); c.strokeStyle = rgb([0.66, 0.56, 0.2]); c.stroke(); } }
   if (!mask) for (const p of REAL.rails) stroke(p, 3.2, [0.27, 0.25, 0.23]);
   for (const r of REAL.roads) { stroke(r.p, r.w, ROAD_COL[r.c], 5); }
   if (!mask) for (const r of REAL.roads) if (r.c <= 2 && r.w >= 10) stroke(r.p, 0.35, [0.62, 0.52, 0.2]);
   for (const p of REAL.stopways) stroke(p, 46, [0.36, 0.36, 0.37], 10);
   for (const rw of REAL.runways) for (const cc of rw.c) stroke(cc, 46, [0.2, 0.21, 0.23], 20);
+  if (!mask) for (const t of REAL.taxiways) stroke(t.p, (t.k ? 10 : 15) + 2.4, [0.66, 0.56, 0.2]);
   for (const t of REAL.taxiways) stroke(t.p, t.k ? 10 : 15, [0.27, 0.28, 0.30], 6);
   if (!mask) {
     for (const h of REAL.helis) { c.beginPath(); c.arc(X(h[0]), Z(h[1]), 9 * sx, 0, 6.2832); c.fillStyle = rgb([0.5, 0.5, 0.52]); c.fill(); c.fillStyle = '#e8e8e0'; c.font = `bold ${Math.max(6, 11 * sx)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('H', X(h[0]), Z(h[1])); }
@@ -1924,7 +1933,7 @@ function buildAirfieldLights() {
         for (let i = 1; i <= 24; i++) { const p = endPt(e, -i * 30, 0); lb.add(p[0], y + 0.8, p[1], LC.white, 1.0 + (i % 5 === 0 ? 0.4 : 0)); if (i === 10) for (let t = -15; t <= 15; t += 3) { const q = endPt(e, -300, t); lb.add(q[0], y + 0.8, q[1], LC.white, 0.9); } }
         for (let t = -hw - 4; t <= hw + 4; t += 3) { if (Math.abs(t) < 8) continue; const p = endPt(e, -1, t); lb.add(p[0], y, p[1], LC.green, 0.7); }
         const pap = new LB(); for (let i = 0; i < 4; i++) { const p = endPt(e, 305, -(hw + 20 + i * 14)); pap.add(p[0], y + 1.2, p[1], i < 2 ? LC.red : LC.white, 2.2); }
-        const pm = mkPoints(pap, 12); pm.material.blending = THREE.NormalBlending; pm.material.transparent = false; pm.material.opacity = 1; L3.papi[ap.id + e.name] = { pts: pm, end: e };
+        const pm = mkPoints(pap, 12); const bx = []; for (let i = 0; i < 4; i++) { const p = endPt(e, 305, -(hw + 20 + i * 14)); const b = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.4, 3.2), new THREE.MeshBasicMaterial({ color: i < 2 ? 0xff3322 : 0xffffff, fog: false })); b.position.set(p[0], y + 1.2, p[1]); scene.add(b); bx.push(b); } pm.material.blending = THREE.NormalBlending; pm.material.transparent = false; pm.material.opacity = 1; L3.papi[ap.id + e.name] = { pts: pm, end: e, bx };
       }
       if (!ap.real) {
       const a = W(-hl - 90, tT), b = W(hl + 90, tT), l = rw.L + 180, n = Math.floor(l / 30);
@@ -2072,7 +2081,7 @@ function updatePapi(s, arr, ap) {
   const e = toEnd(arr, s.p[0], s.p[2]), d = 305 - e.along, col = P.pts.geometry.attributes.color; if (d < 30) return;
   const ang = Math.atan2(s.p[1] - ap.elevM - 1, d) / DEG, th = [3.5, 3.17, 2.83, 2.5];
   for (let i = 0; i < 4; i++) { const white = ang > th[i], c = white ? LC.white : LC.red; col.array[i * 3] = c[0]; col.array[i * 3 + 1] = c[1]; col.array[i * 3 + 2] = c[2]; }
-  col.needsUpdate = true; P.pts.material.size = clamp(14000 / Math.max(200, d), 10, 26);
+  if (P.bx) for (let i = 0; i < 4; i++) P.bx[i].material.color.setRGB(col.array[i * 3], col.array[i * 3 + 1], col.array[i * 3 + 2]); col.needsUpdate = true; P.pts.material.size = clamp(14000 / Math.max(200, d), 10, 26);
 }
 
 /* ---- game.js ---- */
@@ -2327,11 +2336,8 @@ function awayApply(sec) {
   if (tFuel < tArr && tFuel < sec) {
     s.fuel = 0; s.time += tFuel; finishFlight('Out of fuel while you were away'); return { kind: 'fuel' };
   }
-  if (sec >= tArr) {
-    s.time += tArr; s.fuel = Math.max(0, s.fuel - burn * tArr);
-    const L = G.log; Object.assign(L, { appCfg: true, stable: 0.5, stableNote: 'flown by autopilot', tdAlong: 420, tdLat: 3, tdVs: 280, vacated: true, parked: true });
-    G.landClr = true; G.tdDone = true; G.onRwy = true; G.autoLand = true; finishFlight(null); return { kind: 'arrived' };
-  }
+  let held = false;
+  if (sec >= tArr) { held = true; sec = tArr; } // never lands for you: the plane waits at the approach point
   const ux = dx / d, uz = dz / d, step = gs * sec, nx = s.p[0] + ux * step, nz = s.p[2] + uz * step, rem = d - step;
   let alt = Math.min(Math.max(s.p[1], s.p[1] + 3 * sec), Math.max(s.p[1], G.plan.alt * FT)); // keeps climbing to cruise if it was still climbing
   if (rem < G.dDesc) { const fr = clamp((rem - G.dFin) / Math.max(1, G.dDesc - G.dFin), 0, 1), floor = dest.elevM + 1500 * FT; alt = Math.min(alt, lerp(floor, Math.max(alt, floor), fr)); }
@@ -2340,11 +2346,12 @@ function awayApply(sec) {
   s.fuel = Math.max(0, s.fuel - burn * sec); s.time += sec;
   const ap = G.ap; ap.on = true; ap.hdg = ((Math.atan2(dx, -dz) / DEG) + 360) % 360; ap.alt = Math.round(alt / FT / 100) * 100; ap.bank = 0; ap.iv = 0; ap.it = s.thr;
   G.phase = 'ENROUTE'; setPhase('ENROUTE');
-  return { kind: 'cont', remNm: rem / NM };
+  return { kind: held ? 'held' : 'cont', remNm: rem / NM };
 }
 function awayMsg(sec, r) {
   if (!r) return; const m = Math.round(sec / 60), t = m >= 90 ? (m / 60).toFixed(1) + ' h' : m + ' min';
   if (r.kind === 'cont') toast('Welcome back. You were away ' + t + '. The autopilot flew on, ' + Math.round(r.remNm) + ' nm to ' + G.c.to + '.', 7000);
+  else if (r.kind === 'held') toast('Welcome back. You were away ' + t + '. The autopilot held the airplane on approach to ' + G.c.to + '. The landing is yours.', 9000);
   else if (r.kind === 'ground') toast('Welcome back. The airplane waited for you on the ground.', 5000);
 }
 function resumeApply() {
@@ -2718,7 +2725,8 @@ function updateHUD() {
   $('rSpd').textContent = Math.round(G.ias); $('rSpd').className = s.air && G.ias < G.A.vr * 0.8 ? 'warn' : '';
   $('rAltL').textContent = low ? 'AGL' : 'ALT'; $('rAlt').textContent = low ? Math.max(0, Math.round(G.agl / FT / 5) * 5).toLocaleString() : (Math.round(alt / 10) * 10).toLocaleString();
   $('rVs').textContent = (at.vs > 0 ? '+' : '') + Math.round(at.vs / 50) * 50; $('rHdg').textContent = fmtHdg(at.hdg);
-  $('rMisc').textContent = 'PWR ' + Math.round(s.thr * 100) + '%   FUEL ' + Math.round(s.fuel) + ' kg' + (G.ap.on ? '   AP ' + fmtHdg(G.ap.hdg) + ' / ' + Math.round(G.ap.alt) : '');
+  { const dd = G.plan && G.c && apOf(G.c.to) ? Math.hypot(apOf(G.c.to).x - s.p[0], apOf(G.c.to).z - s.p[2]) : 0, gsk = Math.hypot(s.v[0], s.v[2]) / KT, ete = gsk > 25 ? dd / (gsk * KT) : 0; G.gsTxt = s.air ? 'GS ' + Math.round(gsk) + ' kt   DIST ' + (dd / NM).toFixed(1) + ' nm' + (ete ? '   ETE ' + Math.floor(ete / 60) + ':' + String(Math.floor(ete % 60)).padStart(2, '0') : '') + '   ' : ''; }
+  $('rMisc').textContent = (G.gsTxt || '') + 'PWR ' + Math.round(s.thr * 100) + '%   FUEL ' + Math.round(s.fuel) + ' kg' + (G.ap.on ? '   AP ' + fmtHdg(G.ap.hdg) + ' / ' + Math.round(G.ap.alt) : '');
   drawADI(); drawApproach();
   const k = $('thrK'); if (k) k.style.bottom = (ctl.thr * 89) + '%';
 }

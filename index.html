@@ -320,8 +320,8 @@ function tileMesh(pos, nor, col, idx, off) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1)); g.computeVertexNormals();
   return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -off, polygonOffsetUnits: -off }));
 }
-function tileBuild(d) {
-  const o = { grp: new THREE.Group(), pts: [], cars: null }, g = o.grp, rng = mulberry((d.ix * 73856093) ^ (d.iz * 19349663) ^ 77);
+function tileBuild(d, far) {
+  const o = { grp: new THREE.Group(), pts: [], cars: null, far: !!far }, g = o.grp, rng = mulberry((d.ix * 73856093) ^ (d.iz * 19349663) ^ 77);
   const keep = (x, z) => !inKfrgBox(x, z, 0), cen = p => { let cx = 0, cz = 0; const n = p.length / 2; for (let i = 0; i < p.length; i += 2) { cx += p[i]; cz += p[i + 1]; } return [cx / n, cz / n]; };
   { // land cover
     const pos = [], nor = [], col = [], idx = [];
@@ -335,18 +335,19 @@ function tileBuild(d) {
   }
   { // roads and rails
     const pos = [], nor = [], col = [], idx = [];
-    for (const r of d.roads) { const p = r[2], c = ROAD_COL[r[0]] || ROAD_COL[3], hw = r[1] / 2; for (let i = 0; i + 3 < p.length; i += 2) if (keep((p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2)) tileFlat(pos, nor, col, idx, c, p[i], p[i + 1], p[i + 2], p[i + 3], hw, 0.2); }
+    for (const r of d.roads) { if (far && r[0] > 2) continue; const p = r[2], c = ROAD_COL[r[0]] || ROAD_COL[3], hw = r[1] / 2; for (let i = 0; i + 3 < p.length; i += 2) if (keep((p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2)) tileFlat(pos, nor, col, idx, c, p[i], p[i + 1], p[i + 2], p[i + 3], hw, 0.2); }
     for (const p of d.rails) for (let i = 0; i + 3 < p.length; i += 2) if (keep(p[i], p[i + 1])) tileFlat(pos, nor, col, idx, [0.27, 0.25, 0.23], p[i], p[i + 1], p[i + 2], p[i + 3], 1.5, 0.22);
     if (idx.length) { const m = tileMesh(pos, nor, col, idx, 3); m.renderOrder = 3; g.add(m); }
   }
   const blds = d.bld.filter(b => { const c = cen(b[2]); return keep(c[0], c[1]); }).map(b => ({ c: b[0], h: b[1], p: b[2], tri: b[3] }));
-  if (blds.length) { const m = buildBuildingsMesh(blds); scene.remove(m); g.add(m); }
+  if (blds.length && !far) { const m = buildBuildingsMesh(blds); scene.remove(m); g.add(m); }
   { // trees: forests, tree rows, yards
     const spots = [];
     if (d.trees && d.trees.length) { for (let i = 0; i + 2 < d.trees.length; i += 3) if (keep(d.trees[i], d.trees[i + 1])) spots.push([d.trees[i], d.trees[i + 1], d.trees[i + 2] / 100]); }
     else for (const [cl, p] of d.land) { if (cl !== 3) continue; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); } for (let x = x0; x < x1; x += 13) for (let z = z0; z < z1; z += 13) { const jx = x + (rng() - 0.5) * 9, jz = z + (rng() - 0.5) * 9; if (keep(jx, jz) && realInPoly(jx, jz, p)) spots.push([jx, jz, 0.55 + rng() * 0.5]); } }
     if (!(d.trees && d.trees.length)) for (const r of d.rows) for (let i = 0; i + 3 < r.length; i += 2) { const dx = r[i + 2] - r[i], dz = r[i + 3] - r[i + 1], n = Math.floor(Math.hypot(dx, dz) / 8); for (let k = 0; k <= n; k++) if (keep(r[i], r[i + 1])) spots.push([r[i] + dx * k / Math.max(1, n), r[i + 1] + dz * k / Math.max(1, n), 0.5 + rng() * 0.4]); }
     if (!(d.trees && d.trees.length)) for (const b of blds) if (b.c === 0 && rng() < 0.55) { const c = cen(b.p), a = rng() * 6.283, r = 9 + rng() * 8; spots.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, 0.4 + rng() * 0.4]); }
+    if (far) spots.length = 0;
     while (spots.length > 3500) spots.splice((rng() * spots.length) | 0, 1);
     if (spots.length) {
       const cg = new THREE.ConeGeometry(3.6, 15, 5, 1, true); cg.translate(0, 7.5, 0); const tr = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ color: 0xffffff }), spots.length), m4 = new THREE.Matrix4(), cl = new THREE.Color(); let n = 0;
@@ -357,14 +358,14 @@ function tileBuild(d) {
   scene.add(g);
   { // night lights: windows and street lamps
     const lb = new LB();
-    for (const b of blds) { const c = cen(b.p), y0 = groundH(c[0], c[1]); if (b.c === 0) { if (rng() < 0.4) lb.add(c[0], y0 + 3, c[1], rng() < 0.2 ? LC.white : LC.warm, 0.6 + rng() * 0.4); } else if (b.c !== 4) for (let k = 0; k < 1 + Math.min(4, (b.h / 8) | 0); k++) { const q = (rng() * b.p.length / 2) | 0; lb.add(b.p[2 * q], y0 + b.h * (0.3 + rng() * 0.5), b.p[2 * q + 1], LC.warm, 0.7); } }
-    for (const r of d.roads) { if (r[0] > 3) continue; const p = r[2], sp = r[0] <= 2 ? 45 : 65; let dd = 0, side = 1; for (let i = 0; i + 3 < p.length; i += 2) { const dx = p[i + 2] - p[i], dz = p[i + 3] - p[i + 1], L = Math.hypot(dx, dz); if (L < 0.01) continue; while (dd < L) { const x = p[i] + dx * dd / L, z = p[i + 1] + dz * dd / L; side = -side; if (keep(x, z)) lb.add(x - dz / L * (r[1] / 2 + 1.5) * side, groundH(x, z) + 7, z + dx / L * (r[1] / 2 + 1.5) * side, LC.amber, 0.85); dd += sp; } dd -= L; }
+    for (const b of blds) { const c = cen(b.p), y0 = groundH(c[0], c[1]); if (b.c === 0) { if (rng() < (far ? 0.12 : 0.4)) lb.add(c[0], y0 + 3, c[1], rng() < 0.2 ? LC.white : LC.warm, 0.6 + rng() * 0.4); } else if (b.c !== 4) for (let k = 0; k < 1 + Math.min(4, (b.h / 8) | 0); k++) { const q = (rng() * b.p.length / 2) | 0; lb.add(b.p[2 * q], y0 + b.h * (0.3 + rng() * 0.5), b.p[2 * q + 1], LC.warm, 0.7); } }
+    for (const r of d.roads) { if (r[0] > (far ? 1 : 3)) continue; const p = r[2], sp = (r[0] <= 2 ? 45 : 65) * (far ? 2 : 1); let dd = 0, side = 1; for (let i = 0; i + 3 < p.length; i += 2) { const dx = p[i + 2] - p[i], dz = p[i + 3] - p[i + 1], L = Math.hypot(dx, dz); if (L < 0.01) continue; while (dd < L) { const x = p[i] + dx * dd / L, z = p[i + 1] + dz * dd / L; side = -side; if (keep(x, z)) lb.add(x - dz / L * (r[1] / 2 + 1.5) * side, groundH(x, z) + 7, z + dx / L * (r[1] / 2 + 1.5) * side, LC.amber, 0.85); dd += sp; } dd -= L; }
     }
     if (lb.p.length) { const m = mkPoints(lb, 2); const t = curTod(); m.visible = t !== 'day'; m.material.opacity = t === 'dusk' ? 0.8 : 1; o.pts.push(m); }
   }
   { // moving cars: red tail lights going away, white headlights coming toward you
     const gap = { 0: 90, 1: 100, 2: 120, 3: 220, 4: 480 }, cars = [];
-    for (const r of d.roads) { if (r[0] > 4) continue; const p = r[2], cum = [0]; for (let i = 0; i + 3 < p.length; i += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[i + 2] - p[i], p[i + 3] - p[i + 1])); const Lt = cum[cum.length - 1]; if (Lt < 40) continue; const n = Math.floor(Lt / gap[r[0]]) + (rng() < (Lt / gap[r[0]]) % 1 ? 1 : 0); for (let k = 0; k < n; k++) cars.push({ p, cum, Lt, d: rng() * Lt, dir: rng() < 0.5 ? 1 : -1, spd: (r[0] <= 2 ? 14 : r[0] === 3 ? 10 : 7) * (0.8 + rng() * 0.5), lane: r[1] * 0.22, vx: 0, vz: 0 }); }
+    for (const r of d.roads) { if (r[0] > (far ? 0 : 4)) continue; const p = r[2], cum = [0]; for (let i = 0; i + 3 < p.length; i += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[i + 2] - p[i], p[i + 3] - p[i + 1])); const Lt = cum[cum.length - 1]; if (Lt < 40) continue; const n = Math.floor(Lt / gap[r[0]]) + (rng() < (Lt / gap[r[0]]) % 1 ? 1 : 0); for (let k = 0; k < n; k++) cars.push({ p, cum, Lt, d: rng() * Lt, dir: rng() < 0.5 ? 1 : -1, spd: (r[0] <= 2 ? 14 : r[0] === 3 ? 10 : 7) * (0.8 + rng() * 0.5), lane: r[1] * 0.22, vx: 0, vz: 0 }); }
     if (cars.length) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cars.length * 3), 3)); geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cars.length * 3), 3));
       const pt = new THREE.Points(geo, new THREE.PointsMaterial({ size: 3.5, sizeAttenuation: false, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); pt.frustumCulled = false; pt.visible = curTod() !== 'day'; scene.add(pt); L3.groups.push(pt); o.cars = { list: cars, pt }; o.pts.push(pt); }
   }
@@ -387,18 +388,20 @@ function tileFree(o) {
   if (!o.grp) return; scene.remove(o.grp); o.grp.traverse(m => { if (m.geometry) m.geometry.dispose(); });
   for (const p of o.pts) { scene.remove(p); p.geometry.dispose(); const i = L3.groups.indexOf(p); if (i >= 0) L3.groups.splice(i, 1); }
 }
-async function tileLoad(k) {
+async function tileLoad(k, far) {
   TL.busy.add(k);
-  try { const r = await fetch('world/t_' + k + '.json'); const d = await r.json(); TL.got.set(k, tileBuild(d)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [] }); console.warn('tile', k, e); }
+  try { const r = await fetch('world/t_' + k + '.json'); const d = await r.json(); TL.got.set(k, tileBuild(d, far)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [] }); console.warn('tile', k, e); }
   TL.busy.delete(k);
 }
-function tileTick(dt, px, pz) {
+function tileTick(dt, px, pz, py) {
   if (!TL.idx) return; for (const o of TL.got.values()) if (o.cars) tileCars(o, dt);
-  TL.t -= dt; if (TL.t > 0 || (frame.ema || 16) > 45) return; TL.t = 0.8; const T = TL.T, ix0 = Math.floor(px / T), iz0 = Math.floor(pz / T), want = [];
-  for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) { const ix = ix0 + a, iz = iz0 + b, k = ix + '_' + iz; if (!TL.idx.tiles[k]) continue; const dd = Math.hypot((ix + 0.5) * T - px, (iz + 0.5) * T - pz); if (dd < 5600) want.push([dd, k]); }
+  TL.t -= dt; if (TL.t > 0 || (frame.ema || 16) > 45) return; TL.t = 0.5;
+  const T = TL.T, NEAR = 6500, mult = { short: 0.7, normal: 1, far: 1.5 }[SS('dist')] || 1, FAR = clamp(10000 + Math.max(0, py || 0) * 5, 10000, 20000) * mult;
+  const ix0 = Math.floor(px / T), iz0 = Math.floor(pz / T), rg = Math.ceil(FAR / T) + 1, want = [];
+  for (let a = -rg; a <= rg; a++) for (let b = -rg; b <= rg; b++) { const ix = ix0 + a, iz = iz0 + b, k = ix + '_' + iz; if (!TL.idx.tiles[k]) continue; const dd = Math.hypot((ix + 0.5) * T - px, (iz + 0.5) * T - pz); if (dd < FAR) want.push([dd, k, dd > NEAR]); }
   want.sort((a, b) => a[0] - b[0]);
-  for (const [k, o] of TL.got) { const [ix, iz] = k.split('_').map(Number); if (Math.hypot((ix + 0.5) * T - px, (iz + 0.5) * T - pz) > 9500) { tileFree(o); TL.got.delete(k); } }
-  const w = want.find(q => !TL.got.has(q[1]) && !TL.busy.has(q[1])); if (w && TL.busy.size < 1) tileLoad(w[1]);
+  for (const [k, o] of TL.got) { const [ix, iz] = k.split('_').map(Number), dd = Math.hypot((ix + 0.5) * T - px, (iz + 0.5) * T - pz); if (dd > FAR + 3000 || (o.far && dd < NEAR - 800) || (!o.far && dd > NEAR + 2500)) { tileFree(o); TL.got.delete(k); } }
+  const w = want.find(q => !TL.got.has(q[1]) && !TL.busy.has(q[1])); if (w && TL.busy.size < 1) tileLoad(w[1], w[2]);
 }
 /* ---------- real map data (OpenStreetMap) for Republic, KFRG ---------- */
 const REAL = (RG.id === 'nyc' && typeof window !== 'undefined' && window.REAL_KFRG) || null;
@@ -2088,7 +2091,7 @@ function switchRegion(id) { if (!REGIONS[id] || id === RG.id) return; SV.region 
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(SV)); } catch (e) { } }
 let SV = loadSave(), G = null, mode = 'menu', tab = 'dispatch', sel = null, exam = null, camMode = 0, paused = false, mapOpen = false, lastTs = 0, menuT = 0;
 let AUTOQ = 1, apOpen = false;
-const SET_DEF = { autoQ: true, detail: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, trees: true, lamps: true };
+const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, trees: true, lamps: true };
 const SS = k => (SV.settings[k] === undefined ? SET_DEF[k] : SV.settings[k]);
 const freeCam = { yaw: 0, pit: 0.3, dist: 1, init: false, user: false, min: 0.2, max: 8, sgn: 1 };
 const keys = {}, ctl = { pit: 0, rol: 0, yaw: 0, thr: 0, brk: 1, trim: 0, flapCmd: 0, gearCmd: 1 };
@@ -2166,6 +2169,7 @@ function hangarHTML() {
     ${sg('smooth', 'Control smoothing', [[0.05, 'Snappy'], [0.12, 'Smooth'], [0.24, 'Silky']])}
     ${sg('sens', 'Wheel sensitivity', [[0.7, 'Gentle'], [1, 'Normal'], [1.3, 'Sharp']])}
     ${sg('detail', 'Scenery detail (restart the app to apply)', [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']])}
+    ${sg('dist', 'Draw distance (more can run hotter)', [['short', 'Short'], ['normal', 'Normal'], ['far', 'Far']])}
     ${sg('pixH', 'Pixel size', [[900, 'Fine'], [640, 'Normal'], [420, 'Chunky']])}
     ${sg('fov', 'Field of view', [[50, 'Narrow'], [62, 'Normal'], [78, 'Wide']])}
     <div class="seg"><span>Time of day</span>${['real', 'day', 'dusk', 'night'].map(t => `<button class="${(SV.settings.tod || 'real') === t ? 'on' : ''}" data-act="tod" data-v="${t}">${t === 'real' ? 'Real time' : t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>
@@ -2859,7 +2863,7 @@ function frame(ts) {
   const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016); lastTs = ts;
   const w = innerWidth, h = innerHeight, rs = renderScale(); if (Math.abs(rs - (frame.rs || 0)) > 0.001 || frame.w !== w || frame.h !== h) { frame.rs = rs; frame.w = w; frame.h = h; renderer.setPixelRatio(1); renderer.setSize(Math.max(2, Math.floor(w * rs)), Math.max(2, Math.floor(h * rs)), false); camera.aspect = w / h; camera.updateProjectionMatrix(); $('gl').classList.toggle('pix', !!SV.settings.pixel); }
   if (SV.settings.tod === 'real' && ts - (window._todT || 0) > 30000) { window._todT = ts; const c = curTod(); if (c !== window._todC) { window._todC = c; setWeather(false); } }
-  tileTick(dt, camera.position.x, camera.position.z);
+  tileTick(dt, camera.position.x, camera.position.z, camera.position.y);
   { const fv = SS('fov'); if (camera.fov !== fv) { camera.fov = fv; camera.updateProjectionMatrix(); } }
   updateLights(dt, ts / 1000); if (G && G.s && G.plan && G.plan.arr && mode === 'fly') updatePapi(G.s, G.plan.arr, G.plan.ap1); const nb = $('nearby'); if (nb && mode === 'menu') nb.textContent = nearbyTraffic(camera.position.x, camera.position.z, 30000) + ' flying nearby';
   if (mode === 'fly' && G && !paused) {

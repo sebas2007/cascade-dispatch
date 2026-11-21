@@ -397,15 +397,38 @@ function tileFree(o) {
   if (!o.grp) return; scene.remove(o.grp); o.grp.traverse(m => { if (m.geometry) m.geometry.dispose(); });
   for (const p of o.pts) { scene.remove(p); p.geometry.dispose(); const i = L3.groups.indexOf(p); if (i >= 0) L3.groups.splice(i, 1); }
 }
+function tileUnpack(buf) {
+  const u = new Uint8Array(buf), n = new DataView(buf).getUint32(0, true), meta = JSON.parse(new TextDecoder().decode(u.subarray(4, 4 + n))), base = 4 + n;
+  const dec = v => {
+    if (Array.isArray(v)) { for (let i = 0; i < v.length; i++) v[i] = dec(v[i]); return v; }
+    if (typeof v === 'string' && v.charCodeAt(0) === 126) {
+      const m = v.slice(1).split(':'), f = m[0][0] === 'f', st = +m[0].slice(1), cnt = +m[2], out = new Array(cnt); let p = base + (+m[1]);
+      for (let i = 0; i < cnt; i++) { let z = 0, mul = 1, b; do { b = u[p++]; z += (b & 127) * mul; mul *= 128; } while (b & 128); out[i] = (z % 2 ? -(z + 1) / 2 : z / 2) + (i >= st ? out[i - st] : 0); }
+      if (f) for (let i = 0; i < cnt; i++) out[i] /= 10;
+      return out;
+    }
+    return v;
+  };
+  for (const k in meta) meta[k] = dec(meta[k]);
+  return meta;
+}
+
+async function tileGet(k) {
+  if (TL.idx && TL.idx.fmt === 'bin1gz') {
+    const r = await fetch('world/t_' + k + '.bin?v=' + (TL.idx.ver || 0)); if (!r.ok) throw new Error('tile ' + r.status);
+    return tileUnpack(await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+  }
+  const r = await fetch('world/t_' + k + '.json'); return r.json();
+}
 async function tileLoad(k, far) {
   TL.busy.add(k);
-  try { const r = await fetch('world/t_' + k + '.json'); const d = await r.json(); TL.got.set(k, tileBuild(d, far)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [] }); console.warn('tile', k, e); }
+  try { const d = await tileGet(k); TL.got.set(k, tileBuild(d, far)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [] }); console.warn('tile', k, e); }
   TL.busy.delete(k);
 }
 function tileTick(dt, px, pz, py) {
   if (!TL.idx) return; for (const o of TL.got.values()) if (o.cars) tileCars(o, dt);
   TL.t -= dt; if (TL.t > 0 || (frame.ema || 16) > 45) return; TL.t = 0.5;
-  const T = TL.T, NEAR = 6500, mult = { short: 0.7, normal: 1, far: 1.5 }[SS('dist')] || 1, FAR = clamp(10000 + Math.max(0, py || 0) * 5, 10000, 20000) * mult;
+  const T = TL.T, NEAR = 6500, mult = { short: 0.7, normal: 1, far: 1.5 }[SS('saver') ? 'short' : SS('dist')] || 1, FAR = clamp(10000 + Math.max(0, py || 0) * 5, 10000, 20000) * mult;
   const ix0 = Math.floor(px / T), iz0 = Math.floor(pz / T), rg = Math.ceil(FAR / T) + 1, want = [];
   for (let a = -rg; a <= rg; a++) for (let b = -rg; b <= rg; b++) { const ix = ix0 + a, iz = iz0 + b, k = ix + '_' + iz; if (!TL.idx.tiles[k]) continue; const dd = Math.hypot((ix + 0.5) * T - px, (iz + 0.5) * T - pz); if (dd < FAR) want.push([dd, k, dd > NEAR]); }
   want.sort((a, b) => a[0] - b[0]);
@@ -2109,7 +2132,7 @@ function switchRegion(id) { if (!REGIONS[id] || id === RG.id) return; SV.region 
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(SV)); } catch (e) { } }
 let SV = loadSave(), G = null, mode = 'menu', tab = 'dispatch', sel = null, exam = null, camMode = 0, paused = false, mapOpen = false, lastTs = 0, menuT = 0;
 let AUTOQ = 1, apOpen = false;
-const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, trees: true, lamps: true };
+const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, trees: true, lamps: true };
 const SS = k => (SV.settings[k] === undefined ? SET_DEF[k] : SV.settings[k]);
 const freeCam = { yaw: 0, pit: 0.3, dist: 1, init: false, user: false, min: 0.2, max: 8, sgn: 1 };
 const keys = {}, ctl = { pit: 0, rol: 0, yaw: 0, thr: 0, brk: 1, trim: 0, flapCmd: 0, gearCmd: 1 };
@@ -2154,6 +2177,21 @@ document.addEventListener('click', e => {
   if (Math.max(...to.ends.map(x => x.len)) < A.minRw) { toast('The runway at ' + to.id + ' is too short for the ' + A.name, 3000); return; }
   planWx({ id: 'free' + SV.flights, type: 'free', label: 'Free flight', from: from.id, to: to.id, ac: FF.ac, payload: 0, pay: 0, km: d / 1000, wx: 'vfr', req: 'private', acReq: A.license, tooShort: false, fuel: A.fuelCap, limitMin: 0 });
 }, true);
+const DL = { run: false, txt: '' };
+function dlHTML() {
+  const has = TL.idx ? Object.keys(TL.idx.tiles).length : 0; if (!has) return '';
+  return `<div class="seg"><span>Download for offline (use Wi-Fi)</span><button data-act="dl" data-v="near">Around my airport</button><button data-act="dl" data-v="all">Whole play area</button></div><small id="dlInfo">${DL.txt || (has + ' map tiles in the play area. Downloaded tiles are kept on this phone and are not downloaded again.')}</small>`;
+}
+async function dlRun(scope) {
+  if (DL.run || !TL.idx) return; DL.run = true; const T = TL.T, ap = apOf(SV.at), list = [];
+  for (const k of Object.keys(TL.idx.tiles)) { const [ix, iz] = k.split('_').map(Number); if (scope === 'all' || Math.hypot((ix + 0.5) * T - ap.x, (iz + 0.5) * T - ap.z) < 15000) list.push(k); }
+  let n = 0, bytes = 0, fail = 0; const say2 = t => { DL.txt = t; const e = document.getElementById('dlInfo'); if (e) e.textContent = t; };
+  say2('Downloading 0 / ' + list.length);
+  const work = async () => { while (list.length) { const k = list.pop(); try { const r = await fetch('world/t_' + k + (TL.idx.fmt === 'bin1gz' ? '.bin?v=' + (TL.idx.ver || 0) : '.json')); if (!r.ok) throw 0; bytes += (await r.arrayBuffer()).byteLength; } catch (e) { fail++; } n++; if (n % 3 === 0 || !list.length) say2('Downloading ' + n + ' / ' + (n + list.length)); } };
+  await Promise.all([work(), work(), work()]);
+  say2('Done. ' + (n - fail) + ' tiles saved (' + (bytes / 1048576).toFixed(1) + ' MB)' + (fail ? ', ' + fail + ' failed, try again.' : '. You can fly this area without a connection.')); DL.run = false;
+}
+document.addEventListener('click', e => { const b = e.target && e.target.closest && e.target.closest('[data-act="dl"]'); if (!b) return; e.stopPropagation(); dlRun(b.dataset.v); }, true);
 function dispatchHTML() {
   const ap = apOf(SV.at), list = genContracts(SV);
   if (!sel || !list.find(c => c.id === sel)) { const f = list.find(c => !lockReason(SV, c)); sel = f ? f.id : list[0].id; }
@@ -2198,6 +2236,7 @@ function hangarHTML() {
     ${tg('hints', 'Procedure hints', 'Next-step prompts and checklist coaching. Turn off for +10% pay.')}
     ${tg('invert', 'Invert pitch keys', 'Up arrow pulls the nose up instead of pushing it down.')}
     ${tg('pixel', 'Low-poly pixel look', 'Renders at low resolution and scales up for a chunky, retro feel. Turn off for a sharp image.')}
+    ${tg('saver', 'Power Saver', 'Cooler and easier on the battery: lower resolution, 30 frames per second and a shorter draw distance. Best for long flights.')}
     ${tg('autoQ', 'Auto quality', 'Lowers the resolution when the frame rate drops and raises it again when it recovers. Keeps older iPhones smooth.')}
     ${tg('compact', 'Compact HUD', 'Hides the extra buttons and shows only the next checklist item and the latest radio call.')}
     ${tg('autoRud', 'Automatic rudder', 'Coordinates turns for you. The wheel steers the nose wheel on the ground and rolls the airplane in the air.')}
@@ -2208,6 +2247,9 @@ function hangarHTML() {
     ${sg('sens', 'Wheel sensitivity', [[0.7, 'Gentle'], [1, 'Normal'], [1.3, 'Sharp']])}
     ${sg('detail', 'Scenery detail (restart the app to apply)', [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']])}
     ${sg('dist', 'Draw distance (more can run hotter)', [['short', 'Short'], ['normal', 'Normal'], ['far', 'Far']])}
+    ${sg('res', 'Resolution', [[1, 'Full'], [0.8, 'Balanced'], [0.6, 'Low']])}
+    ${sg('fps', 'Frame rate', [[60, '60'], [30, '30']])}
+    ${dlHTML()}
     ${sg('pixH', 'Pixel size', [[900, 'Fine'], [640, 'Normal'], [420, 'Chunky']])}
     ${sg('fov', 'Field of view', [[50, 'Narrow'], [62, 'Normal'], [78, 'Wide']])}
     <div class="seg"><span>Time of day</span>${['real', 'day', 'dusk', 'night'].map(t => `<button class="${(SV.settings.tod || 'real') === t ? 'on' : ''}" data-act="tod" data-v="${t}">${t === 'real' ? 'Real time' : t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>
@@ -2975,10 +3017,11 @@ function updateCamera(dt) {
   }
   skyMesh.position.copy(camera.position); waterMesh.position.x = (TB.x0 + TB.x1) / 2; updateSprites();
 }
-function renderScale() { const dpr = window.devicePixelRatio || 1; return SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) * AUTOQ : Math.min(dpr, 2) * AUTOQ; }
+function renderScale() { const dpr = window.devicePixelRatio || 1, m = SS('saver') ? Math.min(SS('res'), 0.6) : SS('res'); return (SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) : Math.min(dpr, 2)) * AUTOQ * m; }
 function frame(ts) {
   requestAnimationFrame(frame);
-  { const raw = Math.min(120, ts - (frame.last || ts)); frame.last = ts; frame.ema = (frame.ema || 16) * 0.96 + raw * 0.04; if (SS('autoQ') && ts - (frame.adj || 0) > 2500 && !window._starting) { frame.adj = ts; if (frame.ema > 36 && AUTOQ > 0.55) AUTOQ = Math.max(0.55, AUTOQ * 0.88); else if (frame.ema < 19 && AUTOQ < 1) AUTOQ = Math.min(1, AUTOQ * 1.06); } }
+  { const cap = SS('saver') ? 30 : SS('fps'); frame.capK = cap < 60 ? 60 / cap : 1; if (cap < 60 && ts - (frame.capT || 0) < 1000 / cap - 5) return; frame.capT = ts; }
+  { const raw = Math.min(120, ts - (frame.last || ts)) / (frame.capK || 1); frame.last = ts; frame.ema = (frame.ema || 16) * 0.96 + raw * 0.04; if (SS('autoQ') && ts - (frame.adj || 0) > 2500 && !window._starting) { frame.adj = ts; if (frame.ema > 36 && AUTOQ > 0.55) AUTOQ = Math.max(0.55, AUTOQ * 0.88); else if (frame.ema < 19 && AUTOQ < 1) AUTOQ = Math.min(1, AUTOQ * 1.06); } }
   const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016); lastTs = ts;
   const w = innerWidth, h = innerHeight, rs = renderScale(); if (Math.abs(rs - (frame.rs || 0)) > 0.001 || frame.w !== w || frame.h !== h) { frame.rs = rs; frame.w = w; frame.h = h; renderer.setPixelRatio(1); renderer.setSize(Math.max(2, Math.floor(w * rs)), Math.max(2, Math.floor(h * rs)), false); camera.aspect = w / h; camera.updateProjectionMatrix(); $('gl').classList.toggle('pix', !!SV.settings.pixel); }
   if (SV.settings.tod === 'real' && ts - (window._todT || 0) > 30000) { window._todT = ts; const c = curTod(); if (c !== window._todC) { window._todC = c; setWeather(false); } }

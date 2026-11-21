@@ -97,7 +97,7 @@ h3{font:700 18px var(--disp);letter-spacing:.08em;text-transform:uppercase;color
 #topbar .chip{background:var(--amber);color:#1a1205;font:700 14px var(--disp);letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;white-space:nowrap}
 #topbar #tRoute{font:700 18px var(--disp);letter-spacing:.06em;white-space:nowrap}#topbar #tWind{font:500 11px var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}#topbar .grow{flex:1}
 #topbar button{background:#1c2b45;border:1px solid var(--line);padding:3px 9px;font:600 13px var(--disp);letter-spacing:.05em;text-transform:uppercase}
-#nextHint{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(8px,env(safe-area-inset-top,0px)) + 46px);display:flex;align-items:center;gap:10px;background:rgba(6,10,18,.8);border:1px solid var(--line);padding:5px 12px;font-size:13px;color:#e8eef7;max-width:min(560px,92vw)}
+#hintTxt{display:none}#nextHint{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(8px,env(safe-area-inset-top,0px)) + 46px);display:flex;align-items:center;gap:10px;background:rgba(6,10,18,.8);border:1px solid var(--line);padding:5px 12px;font-size:13px;color:#e8eef7;max-width:min(560px,92vw)}
 #wp{display:flex;align-items:center;gap:8px}#arrow{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:20px solid var(--mag);transition:transform .15s}#wpd{font:600 12px var(--mono);color:var(--mag)}
 #atc{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 112px);width:min(520px,92vw);display:grid;gap:3px;pointer-events:none}
 #atc .msg{background:rgba(6,10,18,.8);border-left:3px solid var(--cyan);padding:4px 9px;font:500 13px var(--mono)}#atc b{color:var(--cyan);font:600 11px var(--mono);margin-right:6px}
@@ -1652,8 +1652,15 @@ function animSurf(m, s) {
   sm(u.ail[0], -o.rol * 0.42); sm(u.ail[1], o.rol * 0.42);
   const fl = clamp(s.flaps, 0, 3) * 10 * Math.PI / 180; sm(u.flap[0], fl); sm(u.flap[1], fl);
   const st = -clamp(o.pit + ctl.trim * 0.3, -1, 1) * 0.3; sm(u.stab[0], st); sm(u.stab[1], st);
-  { const pl = u.pool; if (pl) { if (!pl.parent) scene.add(pl); const td = curTod(), on = !!G.lights && td !== 'day', f = s.f, hl = Math.hypot(f[0], f[2]) || 1, fx = f[0] / hl, fz = f[2] / hl, agl = Math.max(0, G.agl || 0), k = 1 + Math.min(agl, 300) / 70, x = s.p[0] + fx * 40 * k, z = s.p[2] + fz * 40 * k;
-    pl.visible = on && agl < 220; pl.position.set(x, surfH(x, z) + 0.35, z); pl.rotation.y = Math.atan2(-fx, -fz); pl.scale.set(k, 1, k); pl.material.opacity = (td === 'dusk' ? 0.5 : 0.85) * Math.max(0, 1 - agl / 220); } }
+  { const pl = u.pool; if (pl) { if (!pl.parent) scene.add(pl); const td = curTod(), on = !!G.lights && td !== 'day', f = s.f, uu = s.u, a = 4 * DEG, ca = Math.cos(a), sa = Math.sin(a);
+    const dx = f[0] * ca - uu[0] * sa, dy = f[1] * ca - uu[1] * sa, dz = f[2] * ca - uu[2] * sa; let hit = false;
+    if (on && dy < -0.01) { // the beam is a ray 4 degrees below the nose: the pool only exists where that ray meets the ground
+      let gy = surfH(s.p[0], s.p[2]), t = Math.max(8, (s.p[1] - gy) / -dy);
+      for (let n = 0; n < 3; n++) { gy = surfH(s.p[0] + dx * t, s.p[2] + dz * t); t = Math.max(8, (s.p[1] - gy) / -dy); }
+      if (t < 450) { hit = true; const hx = s.p[0] + dx * t, hz = s.p[2] + dz * t, hl = Math.hypot(dx, dz) || 1, W = clamp(t * 0.4, 14, 90);
+        pl.position.set(hx, surfH(hx, hz) + 0.35, hz); pl.rotation.y = Math.atan2(-dx / hl, -dz / hl); pl.scale.set(W / 34, 1, W * 2.2 / 80);
+        pl.material.opacity = (td === 'dusk' ? 0.5 : 0.9) * Math.pow(1 - t / 450, 1.3); } }
+    pl.visible = hit; } }
   sm(u.rudder, o.yaw * 0.45); if (u.nose) sm(u.nose, 0), u.nose.rotation.y = s.air ? 0 : -o.yaw * 0.5;
 }
 
@@ -1913,8 +1920,8 @@ function buildAirfieldLights() {
         for (let a = 30; a < 900; a += 30) for (const sd of [-1, 1]) { const p = endPt(e, a, sd * 5.5); lb.add(p[0], y, p[1], LC.white, 0.8); }
         for (let i = 1; i <= 24; i++) { const p = endPt(e, -i * 30, 0); lb.add(p[0], y + 0.8, p[1], LC.white, 1.0 + (i % 5 === 0 ? 0.4 : 0)); if (i === 10) for (let t = -15; t <= 15; t += 3) { const q = endPt(e, -300, t); lb.add(q[0], y + 0.8, q[1], LC.white, 0.9); } }
         for (let t = -hw - 4; t <= hw + 4; t += 3) { if (Math.abs(t) < 8) continue; const p = endPt(e, -1, t); lb.add(p[0], y, p[1], LC.green, 0.7); }
-        const pap = new LB(); for (let i = 0; i < 4; i++) { const p = endPt(e, 305, -(hw + 20 + i * 14)); pap.add(p[0], y + 1.2, p[1], i < 2 ? LC.red : LC.white, 1.0); }
-        const pm = mkPoints(pap, 7); pm.material.blending = THREE.NormalBlending; pm.material.transparent = false; pm.material.opacity = 1; L3.papi[ap.id + e.name] = { pts: pm, end: e };
+        const pap = new LB(); for (let i = 0; i < 4; i++) { const p = endPt(e, 305, -(hw + 20 + i * 14)); pap.add(p[0], y + 1.2, p[1], i < 2 ? LC.red : LC.white, 2.2); }
+        const pm = mkPoints(pap, 12); pm.material.blending = THREE.NormalBlending; pm.material.transparent = false; pm.material.opacity = 1; L3.papi[ap.id + e.name] = { pts: pm, end: e };
       }
       if (!ap.real) {
       const a = W(-hl - 90, tT), b = W(hl + 90, tT), l = rw.L + 180, n = Math.floor(l / 30);
@@ -2062,7 +2069,7 @@ function updatePapi(s, arr, ap) {
   const e = toEnd(arr, s.p[0], s.p[2]), d = 305 - e.along, col = P.pts.geometry.attributes.color; if (d < 30) return;
   const ang = Math.atan2(s.p[1] - ap.elevM - 1, d) / DEG, th = [3.5, 3.17, 2.83, 2.5];
   for (let i = 0; i < 4; i++) { const white = ang > th[i], c = white ? LC.white : LC.red; col.array[i * 3] = c[0]; col.array[i * 3 + 1] = c[1]; col.array[i * 3 + 2] = c[2]; }
-  col.needsUpdate = true; P.pts.material.size = clamp(2400 / Math.max(120, d), 5, 14);
+  col.needsUpdate = true; P.pts.material.size = clamp(14000 / Math.max(200, d), 10, 26);
 }
 
 /* ---- game.js ---- */
@@ -2598,11 +2605,11 @@ function apAction(v) {
       if (!apAvail()) { toast(G.phase === 'FINAL' || G.phase === 'DESCENT' && G.agl < 300 ? 'Autopilot is for cruise and descent above 1,000 ft AGL.' : 'Autopilot needs: airborne, above 1,000 ft AGL, flaps and gear up, and past the climb-out.', 3200); return; }
       ap.on = true; ap.bank = at.bank; ap.iv = 0; ap.it = G.s.thr; toast('Autopilot engaged');
     } else { ap.on = false; toast('Autopilot off'); }
-  } else if (v === 'dest') ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1);
-  else if (v === 'sync') { ap.hdg = at.hdg; ap.alt = Math.round(G.s.p[1] / FT / 100) * 100; ap.spd = Math.round(G.ias / 5) * 5; }
+  } else if (v === 'dest') { ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1); ap.direct = true; toast('Tracking direct to ' + G.plan.c.to); }
+  else if (v === 'sync') { ap.direct = false; ap.hdg = at.hdg; ap.alt = Math.round(G.s.p[1] / FT / 100) * 100; ap.spd = Math.round(G.ias / 5) * 5; }
   else if (v === 'spd') ap.spdOn = !ap.spdOn;
   else if (v === 'back') { apOpen = false; renderApPanel(); }
-  else { const m = /^(h|a|s)([+-]\d+)$/.exec(v); if (m) { const d = +m[2]; if (m[1] === 'h') ap.hdg = (ap.hdg + d + 360) % 360; else if (m[1] === 'a') ap.alt = clamp(ap.alt + d, 500, 25000); else ap.spd = clamp(ap.spd + d, 60, 280); } }
+  else { const m = /^(h|a|s)([+-]\d+)$/.exec(v); if (m) { const d = +m[2]; if (m[1] === 'h') { ap.hdg = (ap.hdg + d + 360) % 360; ap.direct = false; } else if (m[1] === 'a') ap.alt = clamp(ap.alt + d, 500, 25000); else ap.spd = clamp(ap.spd + d, 60, 280); } }
   updateApPanel();
 }
 function hudAction(v) {
@@ -2657,7 +2664,7 @@ function renderSide() {
   $('cfgBar').innerHTML = `<button data-act="hud" data-v="flap-" title="Flaps up (V)">&minus;</button><span>Flaps ${A.flapDeg[ctl.flapCmd]}&deg;</span><button data-act="hud" data-v="flap+" title="Flaps down (F)">+</button>
     ${A.retract ? `<button class="${ctl.gearCmd ? 'lit' : ''}" data-act="hud" data-v="gear" title="Gear (G)">Gear ${ctl.gearCmd ? 'DN' : 'UP'}</button>` : ''}
     <button class="${G.lights ? 'lit' : ''}" data-act="hud" data-v="lights" title="Lights (L)">Lights</button><button class="${G.parking ? 'warn' : ''}" data-act="hud" data-v="brake" title="Parking brake (B)">Brake</button>`;
-  $('hintTxt').textContent = G.set.hints ? (HINTS[G.phase] || '') : ''; $('nextHint').style.display = G.set.hints ? 'flex' : 'none';
+  $('hintTxt').textContent = ''; $('nextHint').style.display = (G.set.hints && G.phase !== 'COLD') ? 'flex' : 'none';
   $('tPhase').textContent = { COLD: 'Cold and dark', CLR: 'Ready to taxi', TAXI: 'Taxi', HOLD: 'Hold short', CLEARED: 'Cleared for takeoff', ROLL: 'Takeoff roll', CLIMB: 'Departure', ENROUTE: 'En route', DESCENT: 'Arrival', FINAL: 'Final approach', ROLLOUT: 'Rollout', TAXI_IN: 'Taxi to ramp' }[G.phase];
   $('tRoute').textContent = G.plan.c.from + ' > ' + G.plan.c.to; $('tWind').textContent = 'Wind ' + windText(G.wind) + '  RWY ' + (['TAXI_IN', 'ROLLOUT', 'FINAL', 'DESCENT'].includes(G.phase) ? G.plan.arr.name : G.plan.dep.name);
 }
@@ -2860,6 +2867,7 @@ function frame(ts) {
     G.at = attitude(G.s); const c = readControls(dt);
     let n = Math.round(dt * 120); n = clamp(n, 1, 6); const sdt = dt / n;
     for (let i = 0; i < n; i++) step(G.s, c, sdt, { wind: G.windV });
+    if (G.ap.on && G.ap.direct && ts - (frame.dr || 0) > 1000) { frame.dr = ts; G.ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1); }
     procUpdate(dt); placeModel(); updateHUD(); updateCamera(dt); if (mapOpen) drawMap();
     if (G.s.crashed && mode === 'fly') finishFlight(G.s.crashed); else if (ts - (frame.sv || 0) > 3000) { frame.sv = ts; saveFlight(); }
   } else if (mode === 'fly' && G) { placeModel(); updateCamera(0); }

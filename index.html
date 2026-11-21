@@ -170,6 +170,7 @@ body.compact #rMisc{font-size:10px}
 <script src="three.min.js"></script>
 <script src="kfrg.js"></script>
 <script src="world/airports.js"></script>
+<script src="world/terrain.js"></script>
 <script>
 'use strict';
 /* ---- core.js ---- */
@@ -523,7 +524,14 @@ function waterDist(x, z) {
   if (RG.id === 'nyc') { let b = 1e9; for (const pl of NYW) b = Math.min(b, lineDist(x, z, pl)); return b; }
   return Math.min(lineDist(x, z, SOUND), lineDist(x, z, LAKE));
 }
+let TERR = null;
+function terrH(x, z) {
+  if (!TERR) { const T = window.REAL_TERR, bin = atob(T.b), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); TERR = { T, u }; }
+  const T = TERR.T, u = TERR.u, fx = Math.min(T.nx - 1.001, Math.max(0, (x - T.x0) / T.d)), fz = Math.min(T.nz - 1.001, Math.max(0, (z - T.z0) / T.d)), i = Math.floor(fx), j = Math.floor(fz), ax = fx - i, az = fz - j, k = j * T.nx + i;
+  return (u[k] * (1 - ax) * (1 - az) + u[k + 1] * ax * (1 - az) + u[k + T.nx] * (1 - ax) * az + u[k + T.nx + 1] * ax * az) * T.s;
+}
 function nycH(x, z) {
+  if (window.REAL_TERR) { const h = terrH(x, z), wd = waterDist(x, z); return wd < 500 ? lerp(-30, h, sstep(-100, 500, wd)) : h; }
   const lat = LAT0 - z / KZ, lon = LON0 + x / KX;
   let h = 12 + 18 * fbm(x / 4200, z / 4200, 4) * (0.6 + 0.7 * fbm(x / 16000 + 3, z / 16000, 2));
   h += sstep(40.77, 40.91, lat) * sstep(-74.05, -73.85, lon) * (28 + 62 * fbm(x / 3600 + 8, z / 3600, 4));     // north shore moraine
@@ -2125,6 +2133,26 @@ function renderMenu() {
   $('mTabs').innerHTML = [['dispatch', 'Dispatch'], ['school', 'Flight school'], ['hangar', 'Hangar & controls']].map(t => `<button class="${tab === t[0] ? 'on' : ''}" data-act="tab" data-v="${t[0]}">${t[1]}</button>`).join('');
   $('mBody').innerHTML = tab === 'dispatch' ? dispatchHTML() : tab === 'school' ? schoolHTML() : hangarHTML();
 }
+const FF = { to: null, ac: 'wren' };
+function freeHTML() {
+  if (!hasLic(SV, 'private')) return '<div class="lead" style="margin-top:14px">Free flight unlocks when you earn your Private Pilot certificate.</div>';
+  const from = apOf(SV.at), others = AIRPORTS.filter(a => a !== from).sort((a, b) => dist2(from, a) - dist2(from, b));
+  if (!FF.to || !others.find(a => a.id === FF.to)) FF.to = others[0].id;
+  const acs = SV.owned.filter(id => AC[id] && hasLic(SV, AC[id].license)); if (!acs.includes(FF.ac)) FF.ac = acs[0] || 'wren';
+  const st = 'style="width:100%;padding:12px;margin:6px 0;background:#0c1422;color:#fff;border:1px solid var(--line);border-radius:8px;font-size:16px"';
+  return `<div class="card" style="margin-top:14px;padding:14px"><div class="jt"><span class="tag t-free">Free flight</span></div>
+    <p class="lead" style="margin:8px 0">Fly on your own. No pay, no fuel or upkeep bill, no repair bill. Time and landings still go in your logbook.</p>
+    <label>Fly to</label><select id="ffTo" ${st}>${others.map(a => `<option value="${a.id}" ${a.id === FF.to ? 'selected' : ''}>${a.id} ${a.city || a.name} (${(dist2(from, a) / 1852).toFixed(0)} nm)</option>`).join('')}</select>
+    <label>Aircraft</label><select id="ffAc" ${st}>${acs.map(id => `<option value="${id}" ${id === FF.ac ? 'selected' : ''}>${AC[id].name}</option>`).join('')}</select>
+    <div class="bar"><div class="sub">Live weather is used when it is available.</div><button class="go" id="ffGo">Free flight plan</button></div></div>`;
+}
+document.addEventListener('change', e => { if (e.target && e.target.id === 'ffTo') FF.to = e.target.value; if (e.target && e.target.id === 'ffAc') FF.ac = e.target.value; }, true);
+document.addEventListener('click', e => {
+  const b = e.target && e.target.closest && e.target.closest('#ffGo'); if (!b) return; e.stopPropagation();
+  const from = apOf(SV.at), to = apOf(FF.to), A = AC[FF.ac], d = dist2(from, to);
+  if (Math.max(...to.ends.map(x => x.len)) < A.minRw) { toast('The runway at ' + to.id + ' is too short for the ' + A.name, 3000); return; }
+  planWx({ id: 'free' + SV.flights, type: 'free', label: 'Free flight', from: from.id, to: to.id, ac: FF.ac, payload: 0, pay: 0, km: d / 1000, wx: 'vfr', req: 'private', acReq: A.license, tooShort: false, fuel: A.fuelCap, limitMin: 0 });
+}, true);
 function dispatchHTML() {
   const ap = apOf(SV.at), list = genContracts(SV);
   if (!sel || !list.find(c => c.id === sel)) { const f = list.find(c => !lockReason(SV, c)); sel = f ? f.id : list[0].id; }
@@ -2142,7 +2170,7 @@ function dispatchHTML() {
   return `<p class="lead">You are parked at <b>${ap.name}</b>. Taxi, takeoff and landing are always flown by hand. Once you are airborne and above 1,000 ft AGL you can hand the airplane to the autopilot from the autopilot camera. It flies in real time.</p>
     <div class="jobs">${cards}</div>
     <div class="bar"><div class="sub">${lk ? lk : 'A flight plan is made for you automatically. You review it before engine start.'}</div>
-    <button class="go" data-act="plan" ${lk ? 'disabled' : ''}>Create flight plan</button></div>`;
+    <button class="go" data-act="plan" ${lk ? 'disabled' : ''}>Create flight plan</button></div>` + freeHTML();
 }
 function schoolHTML() {
   return `<p class="lead">Each certificate needs logged time, landings, a written exam and a checkride. The checkride is a real flight with the examiner scoring your procedures. Stability assist is switched off for every checkride.</p><div class="lgrid">` +
@@ -2193,7 +2221,7 @@ document.addEventListener('click', e => {
   const a = t.dataset.act;
   if (a === 'tab') setTab(t.dataset.v);
   else if (a === 'pick') { sel = t.dataset.id; renderMenu(); }
-  else if (a === 'plan') { const c = genContracts(SV).find(x => x.id === sel); if (c && !lockReason(SV, c)) openPlan(c, null); }
+  else if (a === 'plan') { const c = genContracts(SV).find(x => x.id === sel); if (c && !lockReason(SV, c)) planWx(c); }
   else if (a === 'exam') openExam(t.dataset.id);
   else if (a === 'check') bookCheck(t.dataset.id);
   else if (a === 'buy') { const A = AC[t.dataset.id]; if (SV.money >= A.price) { SV.money -= A.price; SV.owned.push(A.id); persist(); renderMenu(); } }
@@ -2247,11 +2275,31 @@ function bookCheck(id) {
 
 /* ================= FLIGHT PLAN ================= */
 function bearingDeg(a, b) { return ((Math.atan2(b.x - a.x, -(b.z - a.z)) / DEG) + 360) % 360; }
+const WXC = {}; let WXNOW = null;
+async function fetchMetar(id) {
+  const k = WXC[id]; if (k && Date.now() - k.t < 600000) return k.v;
+  try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 3500);
+    const r = await fetch('https://aviationweather.gov/api/data/metar?ids=' + id + '&format=json', { signal: ctl.signal });
+    if (!r.ok) return null; const j = await r.json(); const m = j && j[0]; if (!m || m.wspd == null) return null;
+    WXC[id] = { t: Date.now(), v: m }; return m;
+  } catch (e) { return null; }
+}
+function liveWind(m, rng) {
+  const vrb = typeof m.wdir !== 'number', mag = vrb ? rng() * 360 : m.wdir, g = m.wgst ? (m.wgst - m.wspd) * 0.5 : 0;
+  let vis = parseFloat(m.visib); if (isNaN(vis)) vis = 10; let ceil = 99999; for (const c of (m.clouds || [])) if ((c.cover === 'BKN' || c.cover === 'OVC' || c.cover === 'VV') && c.base != null) ceil = Math.min(ceil, c.base);
+  const alt = m.altim ? (m.altim * 0.02953).toFixed(2) : null;
+  return { from: ((mag + MAGVAR) % 360 + 360) % 360, kts: Math.max(vrb ? 3 : 0, m.wspd + g), live: true, raw: m.rawOb || '', alt, low: vis < 3 || ceil < 1000 };
+}
+async function planWx(c) {
+  if (typeof toast === 'function') toast('Checking live weather at ' + c.from, 1800);
+  WXNOW = await fetchMetar(c.from); openPlan(c, null); WXNOW = null;
+}
 function makePlan(c, ck) {
   const ap0 = apOf(c.from), ap1 = apOf(c.to), A = AC[c.ac], rng = mulberry(SV.seed * 31 + SV.flights * 131 + c.id.length * 7 + c.from.charCodeAt(2));
-  const wind = makeWind(rng, c.wx === 'ifr'), dep = pickEnd(ap0, wind, c.ac), arr = pickEnd(ap1, wind, c.ac);
+  const wind = (!ck && WXNOW && WXNOW.icaoId === c.from) ? liveWind(WXNOW, rng) : makeWind(rng, c.wx === 'ifr'), dep = pickEnd(ap0, wind, c.ac), arr = pickEnd(ap1, wind, c.ac);
   const dist = dist2(ap0, ap1), tc = bearingDeg(ap0, ap1), mc = (tc - MAGVAR + 360) % 360;
-  const east = mc < 180, ifr = c.wx === 'ifr';
+  const east = mc < 180, ifr = c.wx === 'ifr' || !!(wind.live && wind.low);
   const base = dist < 25000 ? 2000 : c.ac === 'wren' ? (dist < 60000 ? 3000 : 4000) : c.ac === 'heron' ? 6000 : 9000;
   let alt = east ? (base % 2000 === 0 ? base - 1000 : base) : (base % 2000 === 0 ? base : base - 1000); if (alt < 1000) alt += 2000;
   alt += ifr ? 0 : 500; if (alt < 2500 && dist >= 25000) alt = 2500 + (ifr ? 0 : 0);
@@ -2269,7 +2317,7 @@ function openPlan(c, ck) {
     <div class="pgrid">
     <section style="grid-column:1/-1"><h4>Flight path</h4><canvas id="planMap" width="640" height="250" style="width:100%;display:block;border:1px solid var(--line);image-rendering:pixelated"></canvas></section>
     <section><h4>Route</h4>${row('Distance', (P.dist / NM).toFixed(0) + ' nm (' + (P.dist / 1000).toFixed(0) + ' km)')}${row('Course', String(Math.round(P.mc)).padStart(3, '0') + ' magnetic')}${row('Cruise altitude', P.alt.toLocaleString() + ' ft')}${c.limitMin ? row('Deadline', c.limitMin + ' min after engine start') : ''}${row('Time en route', Math.round(P.ete) + ' min')}${row('Aircraft', A.name)}</section>
-    <section><h4>Weather</h4>${row('Wind', windText(P.wind) + ' kt')}${row('Conditions', P.ifr ? 'Low visibility, instrument conditions' : 'Clear, visual')}${row('Altimeter', '29.92')}${row('Magnetic variation', '15 E')}</section>
+    <section><h4>Weather</h4>${row('Wind', windText(P.wind) + ' kt')}${row('Conditions', P.ifr ? 'Low visibility, instrument conditions' : 'Clear, visual')}${row('Altimeter', P.wind.alt || '29.92')}${P.wind.live ? row('Live weather', P.wind.raw) : ''}${row('Magnetic variation', '15 E')}</section>
     <section><h4>Departure ${c.from}</h4>${row('Runway', P.dep.name + ' (' + fmtHdg(P.dep.hdg) + ')')}${row('Length', Math.round(P.dep.len / FT).toLocaleString() + ' ft')}${row('Taxi', viaText(P.route.via, 'Alpha') + ' to hold short')}${row('Takeoff flaps', A.flapDeg[A.takeoffFlaps] + ' deg')}${row('Rotate', A.vr + ' kt')}</section>
     <section><h4>Arrival ${c.to}</h4>${row('Runway', P.arr.name + ' (' + fmtHdg(P.arr.hdg) + ')')}${row('Length', Math.round(P.arr.len / FT).toLocaleString() + ' ft')}${row('Landing flaps', A.flapDeg[A.landFlaps] + ' deg')}${row('Approach speed', A.vref + ' kt')}${row('Field elevation', apOf(c.to).elev + ' ft')}</section>
     <section><h4>Load and fuel</h4>${row('Payload', c.payload + ' kg')}${row('Fuel', c.fuel + ' kg')}${row('Endurance', Math.round(P.endur) + ' min')}${row('Takeoff weight', Math.round(P.wt) + ' kg')}</section>
@@ -2417,7 +2465,7 @@ function beginFlight() {
   buildRoute(G.route, apOf(P.c.from).elevM);
   $('plan').hidden = true; $('menu').hidden = true; $('pill').hidden = true; document.body.classList.remove('peek'); $('hud').hidden = false; mode = 'fly'; camMode = ({ free: 3, chase: 0, cockpit: 1 })[SS('cam')]; freeCam.init = false; apOpen = false; paused = false; mapOpen = false; $('mapwrap').hidden = true;
   buildHUD(); setPhase('COLD');
-  say('Cascade Ground', `${P.tail}, wind ${windText(P.wind)}, altimeter 29.92. Report when ready to taxi.`);
+  say('Cascade Ground', `${P.tail}, wind ${windText(P.wind)}, altimeter ${P.wind.alt || '29.92'}. Report when ready to taxi.`);
   if (P.c.limitMin && !P.resume) setTimeout(() => toast('Deadline: ' + P.c.limitMin + ' minutes from engine start for the full bonus.', 6000), 1500);
 }
 function buildRoute(pts, y) {
@@ -2819,11 +2867,11 @@ function finishFlight(crash) {
     if (G.c.limitMin) { const on = s.time <= G.c.limitMin * 60; pay = Math.round(pay * (on ? 1.5 : 0.6)); note2 += on ? '<div class="award">Delivered on time, bonus +50%</div>' : '<div class="award bad">Missed the ' + G.c.limitMin + ' minute deadline, pay cut 40%</div>'; }
     if (G.c.type === 'charter' && !G.autoLand && L.tdVs != null && Math.abs(L.tdVs) > 300) { pay = Math.round(pay * 0.5); note2 += '<div class="award bad">The passengers felt that landing. Pay halved.</div>'; }
   }
-  if (!G.ck && !crash) { const used = Math.max(0, (G.c.fuel || 0) - s.fuel); opCost = Math.round(used * (FUELP[A.id] || 1.5) + (s.time / 3600) * (MAINT[A.id] || 20)); }
+  if (!G.ck && !crash && G.c.type !== 'free') { const used = Math.max(0, (G.c.fuel || 0) - s.fuel); opCost = Math.round(used * (FUELP[A.id] || 1.5) + (s.time / 3600) * (MAINT[A.id] || 20)); }
   SV.money = Math.max(0, SV.money + pay - opCost); SV.minutes += s.time / 60; if (landed && !G.autoLand) SV.landings++; SV.flights++;
   if (!crash && !G.autoLand) SV.scores.push(sc.total);
   extra += note2 + awardAch({ landed: landed && !G.autoLand, crash, sc, L, set: G.set });
-  let repair = 0; if (crash) { repair = Math.min(SV.money, Math.round(A.price * 0.06 + 250)); SV.money -= repair; } else SV.at = G.c.to;
+  let repair = 0; if (crash) { repair = G.c.type === 'free' ? 0 : Math.min(SV.money, Math.round(A.price * 0.06 + 250)); SV.money -= repair; } else SV.at = G.c.to;
   persist();
   const d = $('debrief'); d.hidden = false; $('hud').hidden = true;
   d.innerHTML = `<div class="sheet wide"><div class="eh">${G.ck ? 'Checkride' : G.c.label} &middot; ${G.c.from} to ${G.c.to}</div>

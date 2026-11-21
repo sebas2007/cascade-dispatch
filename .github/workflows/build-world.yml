@@ -1,0 +1,39 @@
+name: Build world tiles
+# Downloads OpenStreetMap data for the region, cuts it into game tiles, and commits them to world/
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: Geofabrik extract (path after download.geofabrik.de/)
+        default: north-america/us/new-york
+      bbox:
+        description: "Area to keep: west,south,east,north"
+        default: "-74.10,40.55,-72.90,41.00"
+permissions:
+  contents: write
+jobs:
+  tiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y osmium-tool
+          pip install osmium numpy mapbox-earcut
+      - name: Download OpenStreetMap extract
+        run: curl -L --fail -o region.osm.pbf "https://download.geofabrik.de/${{ github.event.inputs.region }}-latest.osm.pbf"
+      - name: Cut out the play area
+        run: osmium extract --bbox ${{ github.event.inputs.bbox }} --strategy smart -o area.osm.pbf region.osm.pbf
+      - name: Make tiles
+        run: |
+          IFS=, read W S E N <<< "${{ github.event.inputs.bbox }}"
+          rm -rf world && python3 tools/tile_osm.py world area.osm.pbf --bbox $S $W $N $E
+          du -sh world; ls world | wc -l
+      - name: Commit tiles
+        run: |
+          git config user.name "world-bot"; git config user.email "bot@users.noreply.github.com"
+          git add -A world
+          git commit -m "Update world tiles" || echo "nothing to commit"
+          git push

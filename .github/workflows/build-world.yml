@@ -27,25 +27,19 @@ jobs:
           R="${{ github.event.inputs.region }}"
           ID="${R##*/}"
           UA="Mozilla/5.0 (X11; Linux x86_64) CascadeDispatch-tiler"
-          echo "== Looking up current link in Geofabrik index =="
-          curl -sSL -A "$UA" -o index.json "https://download.geofabrik.de/index-v1-nogeom.json" || true
-          head -c 300 index.json; echo
-          LOOKED=$(jq -r --arg id "$ID" '.features[] | select(.properties.id==$id) | .properties.urls.pbf' index.json 2>/dev/null | head -1)
+          curl -sSL -A "$UA" -o index.json "https://download.geofabrik.de/index-v1-nogeom.json"
+          echo "Index size: $(stat -c%s index.json) bytes"
+          echo "== PBF links in the index that mention '$ID' =="
+          grep -o "https://[^\"]*${ID}[^\"]*\.osm\.pbf" index.json | sort -u | tee found.txt
           URLS=()
-          [ -n "$LOOKED" ] && URLS+=("$LOOKED")
-          URLS+=("https://download.geofabrik.de/${R}/${ID}-latest.osm.pbf")
-          URLS+=("https://download.geofabrik.de/north-america/us/${ID}-latest.osm.pbf")
+          while read -r L; do URLS+=("$L"); done < <(grep -E "/${ID}-latest\.osm\.pbf$" found.txt)
+          while read -r L; do URLS+=("$L"); done < <(grep -v -E "/${ID}-latest\.osm\.pbf$" found.txt)
+          [ ${#URLS[@]} -eq 0 ] && { echo "No links found for $ID"; exit 1; }
           for U in "${URLS[@]}"; do
             echo "== Trying $U =="
-            curl -sSIL -A "$UA" "$U" | head -20 || true
-            for TRY in 1 2; do
-              rm -f region.osm.pbf
-              if curl -L --fail -A "$UA" -o region.osm.pbf "$U" && [ "$(stat -c%s region.osm.pbf)" -gt 5000000 ]; then
-                echo "Downloaded OK"; ls -lh region.osm.pbf; exit 0
-              fi
-              echo "--- response body ---"; cat region.osm.pbf 2>/dev/null | head -c 400; echo
-              sleep 10
-            done
+            if curl -L --fail -A "$UA" -o region.osm.pbf "$U" && [ "$(stat -c%s region.osm.pbf)" -gt 5000000 ]; then
+              echo "Downloaded OK"; ls -lh region.osm.pbf; exit 0
+            fi
           done
           echo "All download sources failed"; exit 1
       - name: Cut out the play area

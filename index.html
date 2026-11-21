@@ -357,6 +357,7 @@ function tileBuild(d, far) {
     if (!(d.trees && d.trees.length)) for (const r of d.rows) for (let i = 0; i + 3 < r.length; i += 2) { const dx = r[i + 2] - r[i], dz = r[i + 3] - r[i + 1], n = Math.floor(Math.hypot(dx, dz) / 8); for (let k = 0; k <= n; k++) if (keep(r[i], r[i + 1]) && !afClr(r[i], r[i + 1])) spots.push([r[i] + dx * k / Math.max(1, n), r[i + 1] + dz * k / Math.max(1, n), 0.5 + rng() * 0.4]); }
     if (!(d.trees && d.trees.length)) for (const b of blds) if (b.c === 0 && rng() < 0.55) { const c = cen(b.p), a = rng() * 6.283, r = 9 + rng() * 8; spots.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, 0.4 + rng() * 0.4]); }
     if (far) spots.length = 0;
+    if (SS('saver')) { const k = []; for (let q = 0; q < spots.length; q += 2) k.push(spots[q]); spots.length = 0; spots.push(...k); }
     while (spots.length > 3500) spots.splice((rng() * spots.length) | 0, 1);
     if (spots.length) {
       const cg = new THREE.ConeGeometry(3.6, 15, 5, 1, true); cg.translate(0, 7.5, 0); const tr = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ color: 0xffffff }), spots.length), m4 = new THREE.Matrix4(), cl = new THREE.Color(); let n = 0;
@@ -429,7 +430,7 @@ function tileTick(dt, px, pz, py) {
   if (!TL.idx) return; for (const o of TL.got.values()) if (o.cars) tileCars(o, dt);
   TL.t -= dt; if (TL.t > 0) return; TL.t = (frame.ema || 16) > 45 ? 2.5 : 0.5;
   for (const [k, o] of TL.got) if (o.retry && performance.now() > o.retry) TL.got.delete(k);
-  const T = TL.T, NEAR = 6500, mult = { short: 0.7, normal: 1, far: 1.5 }[SS('saver') ? 'short' : SS('dist')] || 1, FAR = clamp(10000 + Math.max(0, py || 0) * 5, 10000, 20000) * mult;
+  const T = TL.T, NEAR = (SS('saver') || cruiseSave()) ? 4800 : 6500, mult = { short: 0.7, normal: 1, far: 1.5 }[SS('saver') ? 'short' : SS('dist')] || 1, FAR = clamp(10000 + Math.max(0, py || 0) * 5, 10000, 20000) * mult;
   const ix0 = Math.floor(px / T), iz0 = Math.floor(pz / T), rg = Math.ceil(FAR / T) + 1, want = [];
   for (let a = -rg; a <= rg; a++) for (let b = -rg; b <= rg; b++) { const ix = ix0 + a, iz = iz0 + b, k = ix + '_' + iz; if (!TL.idx.tiles[k]) continue; const dd = Math.hypot((ix + 0.5) * T - px, (iz + 0.5) * T - pz); if (dd < FAR) want.push([dd, k, dd > NEAR]); }
   want.sort((a, b) => a[0] - b[0]);
@@ -2143,7 +2144,7 @@ function switchRegion(id) { if (!REGIONS[id] || id === RG.id) return; SV.region 
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(SV)); } catch (e) { } }
 let SV = loadSave(), G = null, mode = 'menu', tab = 'dispatch', sel = null, exam = null, camMode = 0, paused = false, mapOpen = false, lastTs = 0, menuT = 0;
 let AUTOQ = 1, apOpen = false;
-const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, trees: true, lamps: true };
+const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, trees: true, lamps: true };
 const SS = k => (SV.settings[k] === undefined ? SET_DEF[k] : SV.settings[k]);
 const freeCam = { yaw: 0, pit: 0.3, dist: 1, init: false, user: false, min: 0.2, max: 8, sgn: 1 };
 const keys = {}, ctl = { pit: 0, rol: 0, yaw: 0, thr: 0, brk: 1, trim: 0, flapCmd: 0, gearCmd: 1 };
@@ -2248,6 +2249,7 @@ function hangarHTML() {
     ${tg('invert', 'Invert pitch keys', 'Up arrow pulls the nose up instead of pushing it down.')}
     ${tg('pixel', 'Low-poly pixel look', 'Renders at low resolution and scales up for a chunky, retro feel. Turn off for a sharp image.')}
     ${tg('saver', 'Power Saver', 'Cooler and easier on the battery: lower resolution, 30 frames per second and a shorter draw distance. Best for long flights.')}
+    ${tg('cruiseSave', 'Cruise saver', 'While the autopilot flies in cruise, drops to 30 frames per second and lower resolution to keep the phone cool. Full quality returns for the descent and landing.')}
     ${tg('autoQ', 'Auto quality', 'Lowers the resolution when the frame rate drops and raises it again when it recovers. Keeps older iPhones smooth.')}
     ${tg('compact', 'Compact HUD', 'Hides the extra buttons and shows only the next checklist item and the latest radio call.')}
     ${tg('autoRud', 'Automatic rudder', 'Coordinates turns for you. The wheel steers the nose wheel on the ground and rolls the airplane in the air.')}
@@ -3047,10 +3049,11 @@ function updateCamera(dt) {
   }
   skyMesh.position.copy(camera.position); waterMesh.position.x = (TB.x0 + TB.x1) / 2; updateSprites();
 }
-function renderScale() { const dpr = window.devicePixelRatio || 1, m = SS('saver') ? Math.min(SS('res'), 0.6) : SS('res'); return (SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) : Math.min(dpr, 2)) * AUTOQ * m; }
+function cruiseSave() { return !!(SS('cruiseSave') && G && G.s && mode === 'fly' && !paused && G.ap && G.ap.on && G.s.air && G.agl > 900 && G.phase === 'ENROUTE'); }
+function renderScale() { const dpr = window.devicePixelRatio || 1, m = (SS('saver') ? Math.min(SS('res'), 0.6) : SS('res')) * (cruiseSave() ? 0.8 : 1); return (SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) : Math.min(dpr, 2)) * AUTOQ * m; }
 function frame(ts) {
   requestAnimationFrame(frame);
-  { const cap = SS('saver') ? 30 : SS('fps'); frame.capK = cap < 60 ? 60 / cap : 1; if (cap < 60 && ts - (frame.capT || 0) < 1000 / cap - 5) return; frame.capT = ts; }
+  { const cap = (SS('saver') || cruiseSave()) ? 30 : SS('fps'); frame.capK = cap < 60 ? 60 / cap : 1; if (cap < 60 && ts - (frame.capT || 0) < 1000 / cap - 5) return; frame.capT = ts; }
   { const raw = Math.min(120, ts - (frame.last || ts)) / (frame.capK || 1); frame.last = ts; frame.ema = (frame.ema || 16) * 0.96 + raw * 0.04; if (SS('autoQ') && ts - (frame.adj || 0) > 2500 && !window._starting) { frame.adj = ts; if (frame.ema > 36 && AUTOQ > 0.55) AUTOQ = Math.max(0.55, AUTOQ * 0.88); else if (frame.ema < 19 && AUTOQ < 1) AUTOQ = Math.min(1, AUTOQ * 1.06); } }
   const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016); lastTs = ts;
   const w = innerWidth, h = innerHeight, rs = renderScale(); if (Math.abs(rs - (frame.rs || 0)) > 0.001 || frame.w !== w || frame.h !== h) { frame.rs = rs; frame.w = w; frame.h = h; renderer.setPixelRatio(1); renderer.setSize(Math.max(2, Math.floor(w * rs)), Math.max(2, Math.floor(h * rs)), false); camera.aspect = w / h; camera.updateProjectionMatrix(); $('gl').classList.toggle('pix', !!SV.settings.pixel); }
@@ -3064,7 +3067,7 @@ function frame(ts) {
     let n = Math.round(dt * 120); n = clamp(n, 1, 6); const sdt = dt / n;
     for (let i = 0; i < n; i++) step(G.s, c, sdt, { wind: G.windV });
     if (G.ap.on && G.ap.direct && ts - (frame.dr || 0) > 1000) { frame.dr = ts; G.ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1); }
-    procUpdate(dt); placeModel(); updateHUD(); updateCamera(dt); if (mapOpen) drawMap();
+    procUpdate(dt); placeModel(); if (((frame.hn = (frame.hn || 0) + 1) & 1) === 0) updateHUD(); updateCamera(dt); if (mapOpen && (frame.hn % 3) === 0) drawMap();
     if (G.s.crashed && mode === 'fly') finishFlight(G.s.crashed); else if (ts - (frame.sv || 0) > 3000) { frame.sv = ts; saveFlight(); }
   } else if (mode === 'fly' && G) { placeModel(); updateCamera(0); }
   else { menuT += dt; const ap = apOf(SV.at), mc = menuCam; if (!mc.user) mc.yaw += dt * 0.07; const cp = Math.cos(mc.pit), tx = ap.x + mc.tx, tz = ap.z + mc.tz, ty = ap.elevM + 30, px = tx + Math.sin(mc.yaw) * cp * mc.dist, pz = tz + Math.cos(mc.yaw) * cp * mc.dist; camera.position.set(px, Math.max(ty + Math.sin(mc.pit) * mc.dist, surfH(px, pz) + 4), pz); camera.up.set(0, 1, 0); camera.lookAt(tx, ty, tz); skyMesh.position.copy(camera.position); updateSprites(); }

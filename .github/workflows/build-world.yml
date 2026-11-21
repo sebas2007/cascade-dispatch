@@ -25,19 +25,25 @@ jobs:
       - name: Download OpenStreetMap extract
         run: |
           R="${{ github.event.inputs.region }}"
+          ID="${R##*/}"
           UA="Mozilla/5.0 (X11; Linux x86_64) CascadeDispatch-tiler"
-          URLS=(
-            "https://download.geofabrik.de/${R}-latest.osm.pbf"
-            "https://download.openstreetmap.fr/extracts/${R}-latest.osm.pbf"
-          )
+          echo "== Looking up current link in Geofabrik index =="
+          curl -sSL -A "$UA" -o index.json "https://download.geofabrik.de/index-v1-nogeom.json" || true
+          head -c 300 index.json; echo
+          LOOKED=$(jq -r --arg id "$ID" '.features[] | select(.properties.id==$id) | .properties.urls.pbf' index.json 2>/dev/null | head -1)
+          URLS=()
+          [ -n "$LOOKED" ] && URLS+=("$LOOKED")
+          URLS+=("https://download.geofabrik.de/${R}-latest.osm.pbf")
           for U in "${URLS[@]}"; do
-            for TRY in 1 2 3; do
-              echo "Trying $U (attempt $TRY)"
+            echo "== Trying $U =="
+            curl -sSIL -A "$UA" "$U" | head -20 || true
+            for TRY in 1 2; do
               rm -f region.osm.pbf
               if curl -L --fail -A "$UA" -o region.osm.pbf "$U" && [ "$(stat -c%s region.osm.pbf)" -gt 5000000 ]; then
-                echo "Downloaded OK from $U"; ls -lh region.osm.pbf; exit 0
+                echo "Downloaded OK"; ls -lh region.osm.pbf; exit 0
               fi
-              sleep 15
+              echo "--- response body ---"; cat region.osm.pbf 2>/dev/null | head -c 400; echo
+              sleep 10
             done
           done
           echo "All download sources failed"; exit 1

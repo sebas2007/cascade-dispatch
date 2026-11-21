@@ -1,0 +1,36 @@
+name: Fetch OSM data
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download OpenStreetMap data
+        run: |
+          mkdir -p data
+          BBOX="40.69,-73.46,40.77,-73.36"
+          fetch() {
+            name="$1"; query="$2"
+            for server in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
+              for try in 1 2 3; do
+                if curl -sS -f -m 120 -A "cascade-dispatch/1.0" --data-urlencode "data=$query" "$server" -o "data/$name.json"; then
+                  n=$(python3 -c "import json;print(len(json.load(open('data/$name.json'))['elements']))" 2>/dev/null || echo 0)
+                  if [ "$n" -gt 0 ]; then echo "$name: $n elements from $server"; return 0; fi
+                fi
+                sleep 10
+              done
+            done
+            echo "FAILED: $name"; return 1
+          }
+          fetch kfrg_aeroway "[out:json][timeout:90];nwr[\"aeroway\"]($BBOX);out geom;"
+          fetch kfrg_roads "[out:json][timeout:90];way[\"highway\"]($BBOX);out geom;"
+      - name: Commit data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data
+          git commit -m "Add OSM data for KFRG" || echo "nothing to commit"
+          git push

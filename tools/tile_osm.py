@@ -266,3 +266,46 @@ with open(os.path.join(args.out, 'airports.js'), 'w') as f:
     f.write('window.REAL_APS=' + json.dumps(out, separators=(',', ':')) + ';')
 print('airports:', {k: (len(v['rw']), len(v['tw']), len(v['apr'])) for k, v in out.items()})
 print('wrote', len(tiles), 'tiles', dict(h.n))
+
+# ---- real terrain elevation (AWS open terrain tiles, "terrarium" format) -> world/terrain.js ----
+def make_terrain(outdir, fetch=None):
+    import base64, io, subprocess, urllib.request
+    try:
+        from PIL import Image
+    except Exception:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pillow'])
+        from PIL import Image
+    Z = 10; X0, X1, Z0, Z1, D = -66000.0, 64000.0, -56000.0, 44000.0, 300.0
+    nx, nz = int((X1 - X0) / D) + 1, int((Z1 - Z0) / D) + 1
+    gx, gz = np.meshgrid(X0 + np.arange(nx) * D, Z0 + np.arange(nz) * D)
+    lat = LAT0 - gz / KZ; lon = LON0 + gx / KX
+    n = 2 ** Z * 256
+    px = (lon + 180.0) / 360.0 * n
+    py = (1 - np.log(np.tan(np.radians(lat)) + 1 / np.cos(np.radians(lat))) / math.pi) / 2 * n
+    tx0, tx1, ty0, ty1 = int(px.min() // 256), int(px.max() // 256), int(py.min() // 256), int(py.max() // 256)
+    mos = np.zeros(((ty1 - ty0 + 1) * 256, (tx1 - tx0 + 1) * 256), dtype=np.float32)
+    def get(x, y):
+        url = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/%d/%d/%d.png' % (Z, x, y)
+        req = urllib.request.Request(url, headers={'User-Agent': 'CascadeDispatch-tiler'})
+        for _ in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r: return r.read()
+            except Exception as e: err = e
+        raise err
+    fetch = fetch or get
+    for ty in range(ty0, ty1 + 1):
+        for tx in range(tx0, tx1 + 1):
+            im = np.asarray(Image.open(io.BytesIO(fetch(tx, ty))).convert('RGB'), dtype=np.float32)
+            mos[(ty - ty0) * 256:(ty - ty0 + 1) * 256, (tx - tx0) * 256:(tx - tx0 + 1) * 256] = im[:, :, 0] * 256 + im[:, :, 1] + im[:, :, 2] / 256 - 32768
+    fx, fy = px - tx0 * 256 - 0.5, py - ty0 * 256 - 0.5
+    ix, iy = np.clip(np.floor(fx).astype(int), 0, mos.shape[1] - 2), np.clip(np.floor(fy).astype(int), 0, mos.shape[0] - 2)
+    ax, ay = np.clip(fx - ix, 0, 1), np.clip(fy - iy, 0, 1)
+    h = mos[iy, ix] * (1 - ax) * (1 - ay) + mos[iy, ix + 1] * ax * (1 - ay) + mos[iy + 1, ix] * (1 - ax) * ay + mos[iy + 1, ix + 1] * ax * ay
+    u8 = np.clip(np.round(np.maximum(h, 0) / 2.0), 0, 255).astype(np.uint8)
+    with open(os.path.join(outdir, 'terrain.js'), 'w') as f:
+        f.write('window.REAL_TERR=' + json.dumps({'x0': X0, 'z0': Z0, 'd': D, 'nx': nx, 'nz': nz, 's': 2, 'b': base64.b64encode(u8.tobytes()).decode()}, separators=(',', ':')) + ';')
+    print('terrain:', nx, 'x', nz, 'max', float(h.max()), 'm')
+
+if __name__ == '__main__' or True:
+    try: make_terrain(args.out)
+    except Exception as e: print('terrain skipped:', e)

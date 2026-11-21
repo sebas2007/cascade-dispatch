@@ -5,7 +5,7 @@ on:
     inputs:
       region:
         description: Geofabrik extract (path after download.geofabrik.de/)
-        default: north-america/us/new-york
+        default: us/new-york
       bbox:
         description: "Area to keep: west,south,east,north"
         default: "-74.10,40.55,-72.90,41.00"
@@ -33,7 +33,8 @@ jobs:
           LOOKED=$(jq -r --arg id "$ID" '.features[] | select(.properties.id==$id) | .properties.urls.pbf' index.json 2>/dev/null | head -1)
           URLS=()
           [ -n "$LOOKED" ] && URLS+=("$LOOKED")
-          URLS+=("https://download.geofabrik.de/${R}-latest.osm.pbf")
+          URLS+=("https://download.geofabrik.de/${R}/${ID}-latest.osm.pbf")
+          URLS+=("https://download.geofabrik.de/north-america/us/${ID}-latest.osm.pbf")
           for U in "${URLS[@]}"; do
             echo "== Trying $U =="
             curl -sSIL -A "$UA" "$U" | head -20 || true

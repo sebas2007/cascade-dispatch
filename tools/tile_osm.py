@@ -107,6 +107,23 @@ def bheight(t):
         except Exception: pass
     return HEIGHT.get(t.get('building'), 6)
 
+# ---- airports the game knows (KFRG uses the hand-built pack, so it is not listed) ----
+AIRPORTS = {  # icao: (lat, lon, search radius m)
+    'KJFK': (40.6398, -73.7789, 5200), 'KLGA': (40.7769, -73.8740, 3000), 'KISP': (40.7952, -73.1002, 3500),
+    'KTEB': (40.8501, -74.0608, 2500), 'KHPN': (41.0670, -73.7076, 2800), 'KFOK': (40.8437, -72.6318, 3500),
+    'KHWV': (40.8218, -72.8696, 2500), 'KBDR': (41.1635, -73.1262, 2500)}
+AP_XY = {k: (xz(v[0], v[1]), v[2]) for k, v in AIRPORTS.items()}
+ap_data = {k: {'rw': [], 'tw': [], 'apr': []} for k in AIRPORTS}
+def ap_of(x, z):
+    best, bd = None, 1e18
+    for k, (c, r) in AP_XY.items():
+        d = math.hypot(x - c[0], z - c[1])
+        if d < r and d < bd: best, bd = k, d
+    return best
+def fnum(v, d):
+    try: return float(str(v).split()[0])
+    except Exception: return d
+
 tiles = collections.defaultdict(lambda: {'roads': [], 'bld': [], 'land': [], 'rails': [], 'rows': [], 'trees': []})
 
 class H(osmium.SimpleHandler):
@@ -115,6 +132,15 @@ class H(osmium.SimpleHandler):
 
     def way(self, w):
         t = w.tags
+        aw = t.get('aeroway')
+        if aw in ('runway', 'taxiway'):
+            try: pts = [xz(n.lat, n.lon) for n in w.nodes if n.location.valid()]
+            except Exception: pts = []
+            if len(pts) >= 2:
+                k = ap_of(*pts[len(pts) // 2])
+                if k:
+                    if aw == 'runway': ap_data[k]['rw'].append({'ref': t.get('ref', ''), 'w': fnum(t.get('width'), 30), 'p': [pts[0], pts[-1]]})
+                    else: ap_data[k]['tw'].append([fnum(t.get('width'), 18), flat(dp(pts, 1.0))])
         hw = t.get('highway'); rail = t.get('railway'); tr = t.get('natural')
         if hw in RW or rail == 'rail' or tr == 'tree_row':
             try: pts = [(n.lat, n.lon) for n in w.nodes if n.location.valid()]
@@ -141,6 +167,20 @@ class H(osmium.SimpleHandler):
 
     def area(self, a):
         t = a.tags
+        if t.get('aeroway') == 'apron':
+            try: rings0 = list(a.outer_rings())
+            except Exception: rings0 = []
+            for r in rings0:
+                try: pp = [xz(n.lat, n.lon) for n in r]
+                except Exception: continue
+                if len(pp) < 4: continue
+                pp = dp(pp, 1.5)[:-1]
+                if len(pp) < 3: continue
+                k = ap_of(sum(q[0] for q in pp) / len(pp), sum(q[1] for q in pp) / len(pp))
+                if k and abs(area(pp)) > 400:
+                    if area(pp) < 0: pp = pp[::-1]
+                    ap_data[k]['apr'].append([flat(pp), tri(flat(pp))])
+            return
         is_b = 'building' in t or t.get('aeroway') in ('terminal', 'hangar')
         c = None
         if not is_b:
@@ -186,4 +226,43 @@ for (ix, iz), tl in tiles.items():
     with open(os.path.join(args.out, name), 'w') as f: json.dump({'v': 1, 'ix': ix, 'iz': iz, **tl}, f, separators=(',', ':'))
     index['tiles']['%d_%d' % (ix, iz)] = [len(tl['roads']), len(tl['bld']), len(tl['land'])]
 with open(os.path.join(args.out, 'index.json'), 'w') as f: json.dump(index, f, separators=(',', ':'))
+MAGVAR = -13.0
+def angd(a, b): return (a - b + 540) % 360 - 180
+def build_airport(k, d):
+    rws = []
+    for r in d['rw']:
+        p0, p1 = r['p']; L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+        if L < 300: continue
+        hdg = (math.degrees(math.atan2(p1[0] - p0[0], -(p1[1] - p0[1]))) + 360) % 360
+        parts = [q.strip() for q in r['ref'].split('/')] if r['ref'] else []
+        def num(q):
+            m = ''.join(c for c in q if c.isdigit()); return int(m) if m else None
+        n1 = num(parts[0]) if parts else None
+        if n1 is None:
+            n1 = round(((hdg - MAGVAR) % 360) / 10) % 36 or 36; a_name = str(n1); parts = [a_name]
+        if abs(angd(hdg, n1 * 10 + MAGVAR)) > 90: p0, p1 = p1, p0; hdg = (hdg + 180) % 360
+        a = parts[0]
+        if len(parts) > 1: b = parts[1]
+        else:
+            n2 = (n1 + 18 - 1) % 36 + 1; suf = {'L': 'R', 'R': 'L', 'C': 'C'}.get(a[-1:], ''); b = str(n2) + suf
+        rws.append({'a': a, 'b': b, 'w': round(r['w'] * 3.281), 'len': round(L * 3.281), 'p0': [round(p0[0], 1), round(p0[1], 1)], 'p1': [round(p1[0], 1), round(p1[1], 1)], 'hdg': round(hdg, 1)})
+    # lateral offset of the parallel taxiway for each runway (positive = to the right of the 'a' heading)
+    for r in rws:
+        h = math.radians(r['hdg']); ux, uz = math.sin(h), -math.cos(h); rx, rz = math.cos(h), math.sin(h)
+        cx, cz = (r['p0'][0] + r['p1'][0]) / 2, (r['p0'][1] + r['p1'][1]) / 2; half = r['len'] / 3.281 / 2
+        score = collections.defaultdict(float)
+        for wd, fl in d['tw']:
+            for i in range(0, len(fl) - 3, 2):
+                ax, az, bx, bz = fl[i], fl[i + 1], fl[i + 2], fl[i + 3]; sl = math.hypot(bx - ax, bz - az)
+                if sl < 20: continue
+                th = (math.degrees(math.atan2(bx - ax, -(bz - az))) + 360) % 360
+                if min(abs(angd(th, r['hdg'])), abs(angd(th, r['hdg'] + 180))) > 6: continue
+                mx, mz = (ax + bx) / 2 - cx, (az + bz) / 2 - cz; s_, t_ = mx * ux + mz * uz, mx * rx + mz * rz
+                if abs(s_) < half and 60 < abs(t_) < 500: score[round(t_ / 12) * 12] += sl
+        r['twl'] = max(score, key=score.get) if score else None
+    return {'rw': rws, 'tw': d['tw'], 'apr': d['apr']}
+out = {k: build_airport(k, d) for k, d in ap_data.items() if d['rw']}
+with open(os.path.join(args.out, 'airports.js'), 'w') as f:
+    f.write('window.REAL_APS=' + json.dumps(out, separators=(',', ':')) + ';')
+print('airports:', {k: (len(v['rw']), len(v['tw']), len(v['apr'])) for k, v in out.items()})
 print('wrote', len(tiles), 'tiles', dict(h.n))

@@ -637,7 +637,7 @@ function createAircraft(type, x, z, hdgTrue, payload, fuel) {
   const Fn = m0 * GRAV * (-xM) / (xN - xM), Fm = (m0 * GRAV - Fn) / 2;
   s.wheels = A.wheels.map(w => {
     const F = w[3] ? Fn : Fm, k = F / c0;
-    return { x: w[0], y: w[1], z: w[2], nose: !!w[3], k, c: 2 * 0.55 * Math.sqrt(k * F / GRAV) };
+    return { x: w[0], y: w[1], z: w[2], nose: !!w[3], k, c: 2 * (w[3] ? 0.55 : 0.4) * Math.sqrt(k * F / GRAV), cv: 0, cT: 0 };
   });
   s.p[1] = surfH(x, z) + c0 + 1.25 * (A.wheels[0][1] / -1.25) * 1; // rests on springs
   s.p[1] = surfH(x, z) - A.wheels[1][1] - c0;
@@ -702,6 +702,7 @@ function step(s, c, dt, env) {
   const wW = [s.pr, 0, 0];
   const omega = vadd(vadd(vmul(f, s.pr), vmul(right, s.qr)), vmul(up, -s.rr));
   const vyBefore = s.v[1];
+  for (const w of s.wheels) w.cT = 0;
   if (s.gear > 0.95) {
     for (const w of s.wheels) {
       const r = vadd(vadd(vmul(f, w.x), vmul(up, w.y)), vmul(right, w.z));
@@ -710,7 +711,7 @@ function step(s, c, dt, env) {
         const vp = vadd(s.v, cross(omega, r));
         let Fw = w.k * comp + w.c * (-vp[1]);
         if (comp > 0.4) Fw += w.k * 6 * (comp - 0.4);
-        Fw = Math.max(0, Fw); Fy += Fw; maxC = Math.max(maxC, comp);
+        Fw = Math.max(0, Fw); Fy += Fw; maxC = Math.max(maxC, comp); w.cT = comp;
         const tq = cross(r, [0, Fw, 0]);
         tauF += dot(tq, f); tauR += dot(tq, right);
         if (w.nose) noseC = true; else mainC = true;
@@ -719,10 +720,12 @@ function step(s, c, dt, env) {
     }
   }
   F[1] += Fy;
+  for (const w of s.wheels) w.cv += (w.cT - w.cv) * Math.min(1, dt * (w.cT > w.cv ? 45 : 9));
   const grounded = Fy > 0;
   if (grounded && !s.air === false) {
     s.touch = { vs: vyBefore / FT * 60, vsMs: vyBefore, ias: iasOf(s, wind), x: s.p[0], z: s.p[2], pitch: attitude(s).pitch, t: s.time };
     if (-vyBefore > A.crashVS) s.crashed = 'Hard landing: gear collapsed';
+    if (typeof G !== 'undefined' && G && G.s === s && !s.crashed) touchFeel(-vyBefore / FT * 60, s.time);
   }
   s.air = !grounded;
 
@@ -1687,17 +1690,17 @@ function buildArcher() {
   for (const sg of [1, -1]) { add(new THREE.BoxGeometry(0.13, 0.92, 0.022), dark, 0, sg * 0.5, 0, prop); add(new THREE.BoxGeometry(0.131, 0.12, 0.024), yel, 0, sg * 0.88, 0, prop); }
   const disc = new THREE.Mesh(new THREE.CircleGeometry(0.95, 28), new THREE.MeshBasicMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false })); disc.position.set(0, -0.27, -2.66); g.add(disc);
   // ---- fixed tricycle gear; the nose leg steers
-  const gear = new THREE.Group(); g.add(gear); let nose = null;
+  const gear = new THREE.Group(); g.add(gear); let nose = null; const wgs = [];
   for (const w of A.wheels) {
-    const wx = w[2], wz = -w[0], isN = !!w[3], R = isN ? 0.19 : 0.21, wy = -1.25 + R;
-    if (isN) { nose = new THREE.Group(); nose.position.set(0, -0.38, -1.3); gear.add(nose); const R2 = 0.19, ry = -1.25 + R2 + 0.38, rz = wz + 1.3, chrome = new THREE.MeshPhongMaterial({ color: 0xd4dae0, shininess: 90 }), rim = new THREE.MeshLambertMaterial({ color: 0xb8c0c8 });
+    const wx = w[2], wz = -w[0], isN = !!w[3], R = isN ? 0.19 : 0.21, wy = -1.25 + R; const wg = new THREE.Group(); gear.add(wg);
+    if (isN) { nose = new THREE.Group(); nose.position.set(0, -0.38, -1.3); gear.add(nose); wgs.push({ o: nose, y0: -0.38 }); const R2 = 0.19, ry = -1.25 + R2 + 0.38, rz = wz + 1.3, chrome = new THREE.MeshPhongMaterial({ color: 0xd4dae0, shininess: 90 }), rim = new THREE.MeshLambertMaterial({ color: 0xb8c0c8 });
       add(new THREE.CylinderGeometry(0.075, 0.075, 0.4, 8), chrome, 0, -0.19, rz - 0.06, nose);
       add(new THREE.CylinderGeometry(0.05, 0.05, 0.42, 8), metal, 0, -0.47, rz - 0.04, nose);
       for (const sx of [-0.1, 0.1]) add(new THREE.BoxGeometry(0.035, 0.34, 0.07), metal, sx, ry + 0.17, rz, nose);
       add(new THREE.BoxGeometry(0.1, 0.08, 0.1), dark, 0, -0.62, rz - 0.07, nose);
       const t = new THREE.CylinderGeometry(R2, R2, 0.15, 14); t.rotateZ(Math.PI / 2); add(t, tyre, 0, ry, rz, nose);
       add(new THREE.CylinderGeometry(R2 * 0.56, R2 * 0.56, 0.17, 10).rotateZ(Math.PI / 2), rim, 0, ry, rz, nose); }
-    else { const top = [wx * 0.62, -0.62, wz - 0.05]; seg(top, [wx, wy + 0.06, wz], 0.08, metal, gear); const t = new THREE.CylinderGeometry(R, R, 0.16, 12); t.rotateZ(Math.PI / 2); add(t, tyre, wx, wy, wz, gear); add(new THREE.CylinderGeometry(R * 0.5, R * 0.5, 0.2, 8).rotateZ(Math.PI / 2), metal, wx, wy, wz, gear); const fg = new THREE.SphereGeometry(1, 8, 6); fg.scale(0.06, 0.22, 0.3); add(fg, navy, wx + (wx > 0 ? 0.1 : -0.1), wy + 0.08, wz, gear); }
+    else { const top = [wx * 0.62, -0.62, wz - 0.05]; seg(top, [wx, wy + 0.06, wz], 0.08, metal, gear); const t = new THREE.CylinderGeometry(R, R, 0.16, 12); t.rotateZ(Math.PI / 2); add(t, tyre, wx, wy, wz, wg); add(new THREE.CylinderGeometry(R * 0.5, R * 0.5, 0.2, 8).rotateZ(Math.PI / 2), metal, wx, wy, wz, wg); const fg = new THREE.SphereGeometry(1, 8, 6); fg.scale(0.06, 0.22, 0.3); add(fg, navy, wx + (wx > 0 ? 0.1 : -0.1), wy + 0.08, wz, wg); wgs.push({ o: wg, y0: 0 }); }
   }
   const spot = new THREE.SpotLight(0xfff4dc, 0, 170, 0.3, 0.95, 1.6); spot.position.set(0, -0.35, -2.3); g.add(spot); const tg = new THREE.Object3D(); tg.position.set(0, -9, -80); g.add(tg); spot.target = tg;
   const pc = document.createElement('canvas'); pc.width = pc.height = 128; const pcx = pc.getContext('2d'), gr = pcx.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -1835,16 +1838,16 @@ function buildPlane(type) {
     const ll = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), new THREE.MeshBasicMaterial({ color: 0xfff6cc })); ll.position.set(-W.span * 0.3, W.y + W.dih * 0.3, W.z + W.sw * 0.3 - lerp(W.rc, W.tc, 0.3) / 2 - 0.02); g.add(ll); g.userData.landing = ll;
   }
   // landing gear
-  const gear = new THREE.Group(); g.add(gear); const R = P.wr;
+  const gear = new THREE.Group(); g.add(gear); const R = P.wr; const wgs = [];
   for (const w of A.wheels) {
-    const wx = w[2], wy = w[1] + R, wz = -w[0], top = (P.high ? -0.5 : -0.55), nose = !!w[3];
-    const tire = new THREE.CylinderGeometry(R, R, nose ? 0.14 : 0.2, 14); tire.rotateZ(Math.PI / 2); add(tire, dark, wx, wy, wz, gear);
-    add(new THREE.CylinderGeometry(R * 0.5, R * 0.5, nose ? 0.16 : 0.22, 8).rotateZ(Math.PI / 2), metal, wx, wy, wz, gear);
+    const wx = w[2], wy = w[1] + R, wz = -w[0], top = (P.high ? -0.5 : -0.55), nose = !!w[3]; const wg = new THREE.Group(); gear.add(wg); wgs.push({ o: wg, y0: 0 });
+    const tire = new THREE.CylinderGeometry(R, R, nose ? 0.14 : 0.2, 14); tire.rotateZ(Math.PI / 2); add(tire, dark, wx, wy, wz, wg);
+    add(new THREE.CylinderGeometry(R * 0.5, R * 0.5, nose ? 0.16 : 0.22, 8).rotateZ(Math.PI / 2), metal, wx, wy, wz, wg);
     const lx = nose ? 0 : wx * 0.45, len = Math.hypot(wx - lx, top - wy), strut = new THREE.Mesh(new THREE.BoxGeometry(0.075, len, 0.09), metal);
     strut.position.set((wx + lx) / 2, (top + wy) / 2, wz); strut.rotation.z = Math.atan2(wx - lx, top - wy); gear.add(strut);
-    if (!nose && !P.jet) { const pg = new THREE.SphereGeometry(1, 10, 8); pg.scale(0.17, R * 1.05, R * 2.1); add(pg, body, wx + (wx > 0 ? 0.04 : -0.04), wy + 0.02, wz + 0.05, gear); }
+    if (!nose && !P.jet) { const pg = new THREE.SphereGeometry(1, 10, 8); pg.scale(0.17, R * 1.05, R * 2.1); add(pg, body, wx + (wx > 0 ? 0.04 : -0.04), wy + 0.02, wz + 0.05, wg); }
   }
-  g.userData = Object.assign(g.userData, { prop, disc, gear, strobes }); g.matrixAutoUpdate = false; planeCache[type] = g; return g;
+  g.userData = Object.assign(g.userData, { prop, disc, gear, strobes, wgs }); g.matrixAutoUpdate = false; planeCache[type] = g; return g;
 }
 
 /* ---- lights3d.js ---- */
@@ -2149,7 +2152,7 @@ function switchRegion(id) { if (!REGIONS[id] || id === RG.id) return; SV.region 
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(SV)); } catch (e) { } }
 let SV = loadSave(), G = null, mode = 'menu', tab = 'dispatch', sel = null, exam = null, camMode = 0, paused = false, mapOpen = false, lastTs = 0, menuT = 0;
 let AUTOQ = 1, apOpen = false;
-const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, trees: true, lamps: true };
+const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, sfx: true, trees: true, lamps: true };
 const SS = k => (SV.settings[k] === undefined ? SET_DEF[k] : SV.settings[k]);
 const freeCam = { yaw: 0, pit: 0.3, dist: 1, init: false, user: false, min: 0.2, max: 8, sgn: 1 };
 const keys = {}, ctl = { pit: 0, rol: 0, yaw: 0, thr: 0, brk: 1, trim: 0, flapCmd: 0, gearCmd: 1 };
@@ -2181,7 +2184,7 @@ function freeHTML() {
   if (!FF.to || !others.find(a => a.id === FF.to)) FF.to = others[0].id;
   const acs = SV.owned.filter(id => AC[id] && hasLic(SV, AC[id].license)); if (!acs.includes(FF.ac)) FF.ac = acs[0] || 'wren';
   const st = 'style="width:100%;padding:12px;margin:6px 0;background:#0c1422;color:#fff;border:1px solid var(--line);border-radius:8px;font-size:16px"';
-  return `<div class="card" style="margin-top:14px;padding:14px"><div class="jt"><span class="tag t-free">Free flight</span></div>
+  return `<div class="card" id="ffCard" style="margin-top:14px;padding:14px"><div class="jt"><span class="tag t-free">Free flight</span></div>
     <p class="lead" style="margin:8px 0">Fly on your own. No pay, no fuel or upkeep bill, no repair bill. Time and landings still go in your logbook.</p>
     <label>Fly to</label><select id="ffTo" ${st}>${others.map(a => `<option value="${a.id}" ${a.id === FF.to ? 'selected' : ''}>${a.id} ${a.city || a.name} (${(dist2(from, a) / 1852).toFixed(0)} nm)</option>`).join('')}</select>
     <label>Aircraft</label><select id="ffAc" ${st}>${acs.map(id => `<option value="${id}" ${id === FF.ac ? 'selected' : ''}>${AC[id].name}</option>`).join('')}</select>
@@ -2255,6 +2258,7 @@ function hangarHTML() {
     ${tg('pixel', 'Low-poly pixel look', 'Renders at low resolution and scales up for a chunky, retro feel. Turn off for a sharp image.')}
     ${tg('saver', 'Power Saver', 'Cooler and easier on the battery: lower resolution, 30 frames per second and a shorter draw distance. Best for long flights.')}
     ${tg('cruiseSave', 'Cruise saver', 'While the autopilot flies in cruise, drops to 30 frames per second and lower resolution to keep the phone cool. Full quality returns for the descent and landing.')}
+    ${tg('sfx', 'Touchdown thump and sound', 'The camera jolts and you hear the tyres when the wheels touch. Also shows your landing rate.')}
     ${tg('autoQ', 'Auto quality', 'Lowers the resolution when the frame rate drops and raises it again when it recovers. Keeps older iPhones smooth.')}
     ${tg('compact', 'Compact HUD', 'Hides the extra buttons and shows only the next checklist item and the latest radio call.')}
     ${tg('autoRud', 'Automatic rudder', 'Coordinates turns for you. The wheel steers the nose wheel on the ground and rolls the airplane in the air.')}
@@ -3028,11 +3032,31 @@ function finishFlight(crash) {
 const camPos = new THREE.Vector3(), camTgt = new THREE.Vector3();
 function placeModel() {
   const s = G.s, m = G.model; animSurf(m, s); m.matrix.makeBasis(new THREE.Vector3(...s.r), new THREE.Vector3(...s.u), new THREE.Vector3(-s.f[0], -s.f[1], -s.f[2])); m.matrix.setPosition(s.p[0], s.p[1], s.p[2]); m.matrixWorldNeedsUpdate = true; m.updateMatrixWorld(true);
-  const fast = s.eng && s.thr > 0.22, ud = m.userData; ud.prop.rotation.z = s.spin; ud.prop.visible = !fast; if (ud.disc) ud.disc.visible = fast; ud.gear.visible = !G.A.retract || s.gear > 0.05; m.visible = camMode !== 1;
+  const fast = s.eng && s.thr > 0.22, ud = m.userData; if (ud.wgs && s.wheels) for (let q = 0; q < ud.wgs.length; q++) { const wq = s.wheels[q]; if (wq) ud.wgs[q].o.position.y = ud.wgs[q].y0 + Math.min(0.5, wq.cv); } ud.prop.rotation.z = s.spin; ud.prop.visible = !fast; if (ud.disc) ud.disc.visible = fast; ud.gear.visible = !G.A.retract || s.gear > 0.05; m.visible = camMode !== 1;
   if (ud.spot) { const on = !!G.lights && curTod() !== 'day'; ud.spot.intensity = on ? 2 : 0; }
   const blink = Math.floor(s.time * 1.8) % 2 === 0 && s.time % 1.8 < 0.2 + 0.9 * (Math.floor(s.time * 1.8) % 2 === 0 ? 1 : 0); if (ud.strobes) for (const o of ud.strobes) o.visible = !!G.lights && (Math.floor(s.time * 2.2) % 3 === 0 || (s.time * 2.2) % 3 < 1.2 && Math.floor(s.time * 8.8) % 2 === 0); if (ud.landing) ud.landing.visible = !!G.lights;
 }
+const SFX = { ctx: null };
+addEventListener('pointerdown', () => { if (SFX.ctx) { if (SFX.ctx.state === 'suspended') SFX.ctx.resume(); return; } try { SFX.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } }, { passive: true });
+function tdSound(k) {
+  const c = SFX.ctx; if (!c || c.state !== 'running') return;
+  const n = Math.floor(c.sampleRate * 0.35), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (c.sampleRate * 0.07));
+  const src = c.createBufferSource(); src.buffer = b; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260 + 500 * k; const g = c.createGain(); g.gain.value = 0.25 + 0.8 * k; src.connect(lp); lp.connect(g); g.connect(c.destination); src.start();
+  const o = c.createOscillator(), og = c.createGain(); o.frequency.setValueAtTime(95, c.currentTime); o.frequency.exponentialRampToValueAtTime(40, c.currentTime + 0.25); og.gain.setValueAtTime(0.3 + 0.6 * k, c.currentTime); og.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.3); o.connect(og); og.connect(c.destination); o.start(); o.stop(c.currentTime + 0.32);
+  const sq = c.createBufferSource(), n2 = Math.floor(c.sampleRate * 0.18), b2 = c.createBuffer(1, n2, c.sampleRate), d2 = b2.getChannelData(0); for (let i = 0; i < n2; i++) d2[i] = (Math.random() * 2 - 1) * Math.exp(-i / (c.sampleRate * 0.05)); sq.buffer = b2;
+  const hp = c.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 1800; const sg = c.createGain(); sg.gain.value = 0.1 + 0.35 * k; sq.connect(hp); hp.connect(sg); sg.connect(c.destination); sq.start();
+}
+function touchFeel(fpm, t) {
+  if (SS('sfx') === false || !G || mode !== 'fly' || fpm < 40) return; if (G._td != null && t - G._td < 1.2) return; G._td = t;
+  const k = Math.min(1, fpm / 600); G.cjv = (G.cjv || 0) - (0.6 + 3.2 * k); tdSound(k);
+  if (t - (G._tdMsg || -9) > 3) { G._tdMsg = t; toast((fpm < 120 ? 'Smooth touchdown' : fpm < 300 ? 'Touchdown' : fpm < 500 ? 'Firm touchdown' : 'Hard touchdown') + '  ' + Math.round(fpm) + ' fpm', 2200); }
+}
 function updateCamera(dt) {
+  updateCamera0(dt); if (!G || G.cj == null && !G.cjv) return; G.cj = G.cj || 0; G.cjv = G.cjv || 0;
+  const h = Math.min(dt, 0.05); G.cjv += (-95 * G.cj - 9 * G.cjv) * h; G.cj += G.cjv * h; if (Math.abs(G.cj) < 1e-4 && Math.abs(G.cjv) < 1e-3) { G.cj = 0; G.cjv = 0; }
+  camera.position.y += G.cj * (camMode === 1 ? 0.5 : 0.35);
+}
+function updateCamera0(dt) {
   const s = G.s, A = G.A, f = s.f, u = s.u, r = s.r, p = s.p, cm = camMode === 6 ? camAutoStep(dt) : camMode;
   if (cm === 1) {
     camera.position.set(p[0] + f[0] * 0.8 + u[0] * 0.62, p[1] + f[1] * 0.8 + u[1] * 0.62, p[2] + f[2] * 0.8 + u[2] * 0.62);
@@ -3096,7 +3120,31 @@ async function boot() {
 }
 
 function applySettings() { if (!SV.settings.todMig) { SV.settings.todMig = 1; SV.settings.tod = 'real'; persist(); } document.body.classList.toggle('compact', !!SS('compact')); for (const o of (window.SCEN_TREES || [])) o.visible = !!SS('trees'); if (G) renderSide(); }
-async function startGame(){ try { await boot(); applySettings(); $('pillAp').textContent = SV.at; $('pillName').textContent = apOf(SV.at).name; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); if (!(await maybeResume())) hideLoader(); } catch (e) { document.body.insertAdjacentHTML('beforeend', '<pre style="position:fixed;left:8px;top:8px;right:8px;z-index:99;background:#300;color:#fdd;padding:10px;white-space:pre-wrap">' + (e && e.stack || e) + '</pre>'); console.error(e); } }
+function peekSaved() {
+  let o = null; try { o = JSON.parse(localStorage.getItem(FKEY) || 'null'); } catch (e) { }
+  if (!o || o.v !== 1 || !o.c || !apOf(o.c.from) || !apOf(o.c.to) || !o.s || Date.now() - o.ts > 24 * 3600e3) return null; return o;
+}
+function startScreen() {
+  return new Promise(res => {
+    const o = peekSaved(), old = document.getElementById('startMenu'); if (old) old.remove();
+    const d = document.createElement('div'); d.id = 'startMenu';
+    d.style.cssText = 'position:fixed;inset:0;z-index:998;display:flex;align-items:center;justify-content:center;background:rgba(6,10,18,.78);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-family:system-ui,sans-serif;color:#e8eef7;padding:20px';
+    const ago = o ? Math.max(1, Math.round((Date.now() - o.ts) / 60000)) : 0, agoT = ago < 60 ? ago + ' min ago' : Math.round(ago / 60) + ' h ago';
+    const btn = (id, t, sub, pri, off) => `<button id="${id}" ${off ? 'disabled' : ''} style="display:block;width:100%;text-align:left;margin:0 0 10px;padding:14px 16px;border-radius:12px;border:1px solid ${pri ? '#f5a623' : '#2a3a52'};background:${pri ? '#f5a623' : '#101a2b'};color:${pri ? '#1a1205' : '#e8eef7'};font-size:17px;font-weight:700;opacity:${off ? 0.4 : 1}">${t}<div style="font-size:12.5px;font-weight:500;opacity:.8;margin-top:3px">${sub}</div></button>`;
+    d.innerHTML = `<div style="width:min(380px,100%)"><div style="font:12px ui-monospace,Menlo,monospace;letter-spacing:.3em;color:#f5a623;margin-bottom:6px">CASCADE DISPATCH</div><div style="font-size:26px;font-weight:800;margin-bottom:18px">Where to?</div>`
+      + btn('smResume', 'Resume flight', o ? o.c.from + ' to ' + o.c.to + ', saved ' + agoT : 'No saved flight', !!o, !o)
+      + btn('smFree', 'Free flight', hasLic(SV, 'private') ? 'Fly on your own, anywhere' : 'Unlocks with your Private licence', !o, false)
+      + btn('smSet', 'Settings', 'Controls, graphics, battery', false, false)
+      + `<div style="text-align:center;margin-top:6px"><button id="smCareer" style="background:none;border:0;color:#9fb0c8;font-size:14px;padding:8px;text-decoration:underline">Dispatch and career</button></div></div>`;
+    document.body.appendChild(d);
+    const go = f => { d.remove(); res(); f && f(); };
+    d.querySelector('#smResume').onclick = () => { if (!o) return; d.remove(); maybeResume().then(ok => { if (!ok) hideLoader(); res(); }); };
+    d.querySelector('#smFree').onclick = () => go(() => { setTab('dispatch'); setTimeout(() => { const c = document.getElementById('ffCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); else toast('Free flight unlocks when you earn your Private licence', 3500); }, 120); });
+    d.querySelector('#smSet').onclick = () => go(() => { setTab('hangar'); });
+    d.querySelector('#smCareer').onclick = () => go(() => { setTab('dispatch'); });
+  });
+}
+async function startGame(){ try { await boot(); applySettings(); $('pillAp').textContent = SV.at; $('pillName').textContent = apOf(SV.at).name; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); hideLoader(); await startScreen(); } catch (e) { document.body.insertAdjacentHTML('beforeend', '<pre style="position:fixed;left:8px;top:8px;right:8px;z-index:99;background:#300;color:#fdd;padding:10px;white-space:pre-wrap">' + (e && e.stack || e) + '</pre>'); console.error(e); } }
 if (window.THREE) startGame(); else document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;color:#e8eef7;font:16px sans-serif;text-align:center;padding:20px">The 3D engine could not load. Check your connection and reload.</div>');
 
 </script>

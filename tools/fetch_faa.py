@@ -121,7 +121,10 @@ def main():
         names = {k: k for k in files}
     else:
         cyc, xml = find_cycle(); names = apd_files(xml); print('cycle', cyc, 'airports with diagrams', len(names))
-        fetch = lambda k: get(f'https://aeronav.faa.gov/d-tpp/{cyc}/{names[k]}')
+        def fetch(k):
+            b = get(f'https://aeronav.faa.gov/d-tpp/{cyc}/{names[k]}')
+            os.makedirs(os.path.join(ROOT, 'data', 'faa'), exist_ok=True); open(os.path.join(ROOT, 'data', 'faa', k + '.pdf'), 'wb').write(b)  # kept so alignment can be debugged
+            return b
     for k in want:
         if k not in real or k not in names: report[k] = 'no data'; continue
         try:

@@ -25,6 +25,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add world/faa.js world/faa_report.json
+          git add world/faa.js world/faa_report.json data/faa
           git commit -m "Update FAA airport data" || echo "nothing to commit"
           git push

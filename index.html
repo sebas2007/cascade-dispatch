@@ -630,6 +630,15 @@ const AC = {
     wheels: [[2.8, -1.7, 0, true], [-0.6, -1.7, -1.5], [-0.6, -1.7, 1.5]], vr: 105, vref: 110, vy: 160, cruise: 270, takeoffFlaps: 1, landFlaps: 3, minRw: 1500, climbAlt: 12000 }
 };
 
+AC.wren.light = true;
+AC.skylark = Object.assign({}, AC.wren, { id: 'skylark', name: 'Skylark 180', cls: 'Light single piston', price: 9500, license: 'private', blurb: 'High-wing four-seater with a stronger engine. Roomier and a little faster than the Archer.',
+  empty: 780, fuelCap: 150, payloadMax: 340, P: 120e3, Tstat: 2800, ffMax: 0.0098, cruise: 112, vr: 55, vref: 64, vy: 74, climbAlt: 4500 });
+AC.meridian = Object.assign({}, AC.wren, { id: 'meridian', name: 'Meridian SR', cls: 'Fast composite single', price: 42000, license: 'commercial', blurb: 'Sleek low-wing cross-country machine. Fast, slippery and unforgiving if you let the speed build.',
+  empty: 1050, fuelCap: 200, payloadMax: 380, S: 13.6, span: 11.7, CL0: 0.3, CLa: 4.6, as: 14 * DEG, CD0: 0.026, k: 0.05, P: 235e3, Tstat: 3400, ffMax: 0.0165, ffIdle: 0.002, Ix: 1450, Iy: 2050, Vref: 40,
+  wheels: [[1.2, -1.25, 0, true], [-0.4, -1.25, -1.4], [-0.4, -1.25, 1.4]], vr: 70, vref: 80, vy: 96, cruise: 165, minRw: 900, climbAlt: 9000 });
+AC.falcon = Object.assign({}, AC.wren, { id: 'falcon', name: 'Falcon Z', cls: 'Aerobatic single', price: 26000, license: 'private', blurb: 'Symmetrical wing, huge control authority. Fly it in Free flight and try rolls and loops. Flight assist switches off by itself.',
+  empty: 620, fuelCap: 100, payloadMax: 100, S: 10.4, span: 8.2, CL0: 0, CLa: 4.4, as: 17 * DEG, dCLflap: 0.08, CD0: 0.028, k: 0.06, P: 235e3, Tstat: 3000, ffMax: 0.0165, ffIdle: 0.002, Ix: 800, Iy: 1000, pmax: 3.4, ks: 9, kd: 4.6, Vref: 38,
+  wheels: [[0.9, -1.15, 0, true], [-0.3, -1.15, -1.1], [-0.3, -1.15, 1.1]], vr: 58, vref: 70, vy: 90, cruise: 135, minRw: 450, climbAlt: 6000 });
 function airDensity(h) { const t = Math.max(0, 1 - 2.2558e-5 * Math.max(h, 0)); return 1.225 * Math.pow(t, 4.2559); }
 
 function createAircraft(type, x, z, hdgTrue, payload, fuel) {
@@ -988,11 +997,11 @@ function genContracts(sv) {
     const payload = type === 'lesson' ? 0 : Math.round((A.payloadMax * (0.3 + 0.7 * rng())) / 10) * 10 * (type === 'ferry' ? 0.3 : 1);
     const ifr = type === 'ifr';
     const mult = acId === 'wren' ? 1 : acId === 'heron' ? 1.4 : 2.2;
-    let pay = type === 'lesson' ? 0 : Math.round((80 + km * (12 + payload * 0.045)) * mult * (type === 'ferry' ? 0.5 : 1) * (ifr ? 1.5 : 1) * ({ medevac: 1.7, express: 1.35, charter: 1.5 }[type] || 1) / 5) * 5;
-    const reqLic = type === 'lesson' ? 'student' : type === 'ferry' ? 'private' : type === 'ifr' ? 'instrument' : 'commercial';
-    const labels = { lesson: 'Lesson', ferry: 'Sightseeing ferry', cargo: 'Cargo', pax: 'Passengers', ifr: 'IFR cargo', medevac: 'Medical flight', express: 'Timed delivery', charter: 'VIP charter' };
+    let pay = type === 'lesson' ? 0 : Math.round((80 + km * (12 + payload * 0.045)) * mult * (type === 'ferry' ? 0.5 : 1) * (ifr ? 1.5 : 1) * ({ medevac: 1.7, express: 1.35, charter: 1.5, mail: 1.3, tour: 1.2, banner: 1.3 }[type] || 1) / 5) * 5;
+    const reqLic = type === 'lesson' ? 'student' : (type === 'ferry' || type === 'tour' || type === 'banner') ? 'private' : type === 'ifr' ? 'instrument' : 'commercial';
+    const labels = { lesson: 'Lesson', ferry: 'Sightseeing ferry', cargo: 'Cargo', pax: 'Passengers', ifr: 'IFR cargo', medevac: 'Medical flight', express: 'Timed delivery', charter: 'VIP charter', tour: 'Landmark tour', banner: 'Banner flight', mail: 'Mail run' };
     return { id: 'c' + sv.flights + '_' + i, type, label: labels[type], from: from.id, to: to.id, ac: acId, payload: Math.round(payload), pay, km, wx: ifr ? 'ifr' : 'vfr',
-      req: reqLic, acReq: AC[acId].license, tooShort: maxLen < A.minRw, fuel: fuelFor(A, d), limitMin: (type === 'medevac' || type === 'express') ? Math.round((d / (A.cruise * KT * 0.93) / 60 + 9) * (type === 'medevac' ? 1.2 : 1.35)) : 0 };
+      req: reqLic, acReq: AC[acId].license, tooShort: maxLen < A.minRw, fuel: fuelFor(A, d), limitMin: (type === 'medevac' || type === 'express' || type === 'mail') ? Math.round((d / (A.cruise * KT * 0.93) / 60 + 9) * (type === 'medevac' ? 1.2 : 1.35)) : 0 };
   };
   const near = others.slice().sort((a, b) => dist2(from, a) - dist2(from, b));
   let i = 0;
@@ -1006,8 +1015,77 @@ function genContracts(sv) {
   out.push(mk('cargo', 'heron', near[near.length - 1], i++));
   out.push(mk('pax', 'kestrel', others[Math.floor(rng() * others.length)], i++), mk('charter', 'heron', others[Math.floor(rng() * others.length)], i++));
   out.push(mk('ifr', 'kestrel', near[near.length - 1], i++));
+  out.push(mk('mail', 'wren', others.slice().sort((a, b) => dist2(from, b) - dist2(from, a))[0], i++));
+  if (RG.id === 'nyc') {
+    const LM = { sol: ['Statue of Liberty', 40.6892, -74.0445], esb: ['Empire State Building', 40.7484, -73.9857], ver: ['Verrazzano Bridge', 40.6066, -74.0447], con: ['Coney Island', 40.5742, -73.978], cit: ['Citi Field', 40.7571, -73.8458], jb: ['Jones Beach Tower', 40.5953, -73.5058], fi: ['Fire Island Lighthouse', 40.6322, -73.2192], thr: ['Throgs Neck Bridge', 40.8007, -73.7931] };
+    const TOURS = [['con', 'ver', 'sol'], ['ver', 'sol', 'esb', 'cit'], ['thr', 'cit', 'esb', 'sol']], pick = ks => ks.map(k => ({ n: LM[k][0], lat: LM[k][1], lon: LM[k][2] }));
+    const nearEnd = w => { const xz = llxz(w.lat, w.lon); return others.slice().sort((a, b) => Math.hypot(a.x - xz[0], a.z - xz[1]) - Math.hypot(b.x - xz[0], b.z - xz[1]))[0]; };
+    const firstD = ks => { const xz = llxz(LM[ks[0]][1], LM[ks[0]][2]); return Math.hypot(from.x - xz[0], from.z - xz[1]); };
+    const ts = TOURS.slice().sort((a, b) => firstD(a) - firstD(b))[0], wp = pick(ts), tc = mk('tour', 'wren', nearEnd(wp[wp.length - 1]), i++);
+    tc.wps = wp; tc.alt = [600, 3500]; tc.pay += 120 * wp.length; out.push(tc);
+    const bw = pick(['jb', 'fi']), bc = mk('banner', 'wren', nearEnd(bw[bw.length - 1]), i++); bc.wps = bw; bc.alt = [300, 1300]; bc.payload = 0; bc.pay += 160; out.push(bc);
+  }
   return out;
 }
+function aeroTick(dt) {
+  const s = G.s, c = G.c; if (!c || c.type !== 'free') return;
+  if (G.A.id === 'falcon' && G.set.stab) G.set.stab = false;
+  const a = G.aero || (G.aero = { r: 0, p: 0, rolls: 0, loops: 0, rq: 0, pq: 0, pts: 0 });
+  if (!s.air || G.agl < 120) { a.r = a.p = 0; return; }
+  a.r += s.pr * dt; a.p += s.qr * dt;
+  if (Math.abs(s.pr) < 0.26) { a.rq += dt; if (a.rq > 1) a.r = 0; } else a.rq = 0;
+  if (Math.abs(s.qr) < 0.14) { a.pq += dt; if (a.pq > 1.2) a.p = 0; } else a.pq = 0;
+  if (Math.abs(a.r) > 5.8) { a.r = 0; a.rolls++; a.pts += 100; toast('Roll! +100', 1800); }
+  if (Math.abs(a.p) > 5.8) { a.p = 0; a.loops++; a.pts += 150; toast('Loop! +150', 1800); }
+}
+function aeroSummary() { const a = G.aero; return a && (a.rolls || a.loops) ? `<div class="award">Aerobatics: ${a.rolls} roll${a.rolls === 1 ? '' : 's'}, ${a.loops} loop${a.loops === 1 ? '' : 's'}. ${a.pts} points</div>` : ''; }
+const SND = { eng: null, wind: null };
+function sndInit() {
+  const c = SFX.ctx; if (!c || c.state !== 'running' || SND.eng) return;
+  const mk = (type, f) => { const o = c.createOscillator(); o.type = type; o.frequency.value = f; return o; };
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; const g = c.createGain(); g.gain.value = 0; lp.connect(g); g.connect(c.destination);
+  const o1 = mk('sawtooth', 40), o2 = mk('square', 20); const g2 = c.createGain(); g2.gain.value = 0.5; o1.connect(lp); o2.connect(g2); g2.connect(lp); o1.start(); o2.start();
+  const n = c.sampleRate * 2, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const ns = c.createBufferSource(); ns.buffer = b; ns.loop = true; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.5; const wg = c.createGain(); wg.gain.value = 0; ns.connect(bp); bp.connect(wg); wg.connect(c.destination); ns.start();
+  SND.eng = { o1, o2, lp, g }; SND.wind = { bp, g: wg };
+}
+function audioTick(dt) {
+  if (SS('sfx') === false) { if (SND.eng) { SND.eng.g.gain.value = 0; SND.wind.g.gain.value = 0; } return; }
+  sndInit(); if (!SND.eng || !G || !G.s) return; const s = G.s, A = G.A, t = SFX.ctx.currentTime;
+  const on = s.eng !== false && !s.crashed && G.phase !== 'COLD'; const thr = on ? clamp(s.thr == null ? ctl.thr : s.thr, 0, 1) : 0, jet = A.id === 'kestrel';
+  const rpm = on ? (jet ? 55 + 90 * thr : 26 + 34 * thr) : 0;
+  SND.eng.o1.frequency.setTargetAtTime(Math.max(1, rpm), t, 0.1); SND.eng.o2.frequency.setTargetAtTime(Math.max(1, rpm / 2), t, 0.1);
+  SND.eng.lp.frequency.setTargetAtTime(jet ? 900 : 380 + 500 * thr, t, 0.2);
+  SND.eng.g.gain.setTargetAtTime(on ? (jet ? 0.05 : 0.06) + 0.06 * thr : 0, t, 0.2);
+  const sp = Math.hypot(s.v[0], s.v[1], s.v[2]); SND.wind.g.gain.setTargetAtTime(s.air ? Math.min(0.1, sp / 900) : Math.min(0.03, sp / 2500), t, 0.3); SND.wind.bp.frequency.setTargetAtTime(400 + sp * 6, t, 0.3);
+}
+setInterval(() => { try { if (SND.eng && (mode !== 'fly' || !G || paused)) { const t = SFX.ctx.currentTime; SND.eng.g.gain.setTargetAtTime(0, t, 0.1); SND.wind.g.gain.setTargetAtTime(0, t, 0.1); } } catch (e) { } }, 400);
+function trafficTick(dt) {
+  if (!G || !G.s || typeof L3 === 'undefined' || !L3 || !L3.traffic) return; G.trT = (G.trT || 0) + dt; if (G.trT < 4) return; G.trT = 0;
+  const s = G.s; if (!s.air) return; G.trSaid = G.trSaid || new Map(); const now = performance.now(); let best = null;
+  const fl = Math.hypot(s.f[0], s.f[2]) || 1, fx = s.f[0] / fl, fz = s.f[2] / fl;
+  for (const tr of L3.traffic) { if (!tr.g || !tr.g.visible && tr.g.visible !== undefined && false) continue; const p = tr.g.position, dx = p.x - s.p[0], dz = p.z - s.p[2], d = Math.hypot(dx, dz), dh = (p.y - s.p[1]) / FT;
+    if (d > 5500 || d < 150 || Math.abs(dh) > 450) continue; const last = G.trSaid.get(tr); if (last && now - last < 70000) continue; if (!best || d < best.d) best = { tr, d, dx, dz, dh }; }
+  if (!best) return; G.trSaid.set(best.tr, now);
+  const ang = Math.atan2(-fz * best.dx + fx * best.dz, fx * best.dx + fz * best.dz) / DEG; let cl = Math.round(ang / 30); if (cl <= 0) cl += 12; if (cl > 12) cl -= 12;
+  const mi = (best.d / 1852).toFixed(1), rel = Math.abs(best.dh) < 150 ? 'same altitude' : best.dh > 0 ? Math.round(best.dh / 100) * 100 + ' feet above' : Math.round(-best.dh / 100) * 100 + ' feet below';
+  say('Cascade Approach', `${G.plan.tail || P.tail}, traffic ${cl} o'clock, ${mi} miles, ${rel}.`);
+}
+function wpTick(dt) {
+  const c = G.c; if (!c || !c.wps) return;
+  if (!G.wps) G.wps = c.wps.map(w => Object.assign({ xz: llxz(w.lat, w.lon), hit: false, warn: false }, w));
+  const s = G.s, w = G.wps.find(q => !q.hit); G.wpNext = w || null;
+  if (w && s.air) {
+    const d = Math.hypot(s.p[0] - w.xz[0], s.p[2] - w.xz[1]), altFt = s.p[1] / FT;
+    if (d < 1600) { if (altFt >= c.alt[0] && altFt <= c.alt[1]) { w.hit = true; toast(w.n + ' visited', 2500); say('Cascade Approach', G.plan.tail + ', ' + w.n + ' in sight. ' + (G.wps.every(q => q.hit) ? 'That is the last one. Continue to ' + c.to + '.' : 'Next, ' + G.wps.find(q => !q.hit).n + '.')); } else if (!w.warn) { w.warn = true; toast((altFt < c.alt[0] ? 'Too low over ' + w.n + '. Stay above ' : 'Too high over ' + w.n + '. Stay below ') + (altFt < c.alt[0] ? c.alt[0] : c.alt[1]).toLocaleString() + ' ft.', 3500); } } else if (d > 2400) w.warn = false;
+  }
+  G.wt = (G.wt || 0) + dt; if (G.wt < 0.5) return; G.wt = 0;
+  let e = document.getElementById('wpHud'); if (!e) { e = document.createElement('div'); e.id = 'wpHud'; e.style.cssText = 'position:fixed;top:calc(54px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:30;background:rgba(8,14,26,.72);color:#e8eef7;font:600 13px system-ui;padding:5px 12px;border-radius:14px;pointer-events:none;white-space:nowrap'; document.body.appendChild(e); }
+  e.hidden = mode !== 'fly' || paused;
+  if (w) { const dx = w.xz[0] - s.p[0], dz = w.xz[1] - s.p[2], rel = ((Math.atan2(dx, -dz) / DEG - G.at.hdg) % 360 + 540) % 360 - 180; e.textContent = 'Next: ' + w.n + '  ' + (Math.hypot(dx, dz) / 1852).toFixed(1) + ' nm  ' + (Math.abs(rel) < 8 ? 'ahead' : rel > 0 ? 'right ' + Math.round(rel) + '\u00b0' : 'left ' + Math.round(-rel) + '\u00b0') + '  \u00b7  ' + c.alt[0] + ' to ' + c.alt[1] + ' ft'; }
+  else e.textContent = 'All landmarks visited. Land at ' + c.to;
+}
+
 function lockReason(sv, c) {
   if (!hasLic(sv, c.req)) return 'Requires ' + LICENSES[c.req].name;
   const need = AC[c.ac].license;
@@ -1596,6 +1674,15 @@ function finGeo(rc, tc, h, sw, th) {
   return hexGeo([[a, 0, -rc / 2], [a, 0, rc / 2], [a, h, tc / 2 + sw], [a, h, -tc / 2 + sw], [b, 0, -rc / 2], [b, 0, rc / 2], [b, h, tc / 2 + sw], [b, h, -tc / 2 + sw]]);
 }
 const PLANE_SPEC = {
+  skylark: { prof: [[0, -2.62], [.34, -2.55], [.5, -2.3], [.57, -1.9], [.62, -1.2], [.66, -.4], [.66, .5], [.58, 1.4], [.42, 2.6], [.25, 3.8], [.13, 4.6]], sx: .95, sy: 1.04,
+    wing: { y: .66, z: -.2, rc: 1.7, tc: 1.15, span: 5.6, sw: .05, t: [.15, .09], dih: .04 }, high: true, fin: { rc: 1.5, tc: .7, h: 1.6, sw: .8, z: 3.75, y: .3 }, stab: { rc: 1., tc: .6, span: 1.8, sw: .22, z: 4.15, y: .12 },
+    prop: 2, pr: 1.0, wr: .3, body: 0xf1f3f5, acc: 0x2a8f4a, acc2: 0x1b3d2a },
+  meridian: { prof: [[0, -2.62], [.3, -2.55], [.5, -2.3], [.6, -1.9], [.66, -1.2], [.7, -.4], [.68, .5], [.58, 1.5], [.4, 2.8], [.24, 4.0], [.12, 4.8]], sx: .92, sy: 1.0,
+    wing: { y: -.4, z: -.1, rc: 1.5, tc: .8, span: 5.9, sw: .08, t: [.14, .08], dih: .06 }, high: false, fin: { rc: 1.6, tc: .7, h: 1.7, sw: 1.0, z: 3.9, y: .3 }, stab: { rc: 1.0, tc: .55, span: 1.9, sw: .3, z: 4.3, y: .15 },
+    prop: 3, pr: 1.0, wr: .3, body: 0xdfe6ee, acc: 0xc9a227, acc2: 0x23262e },
+  falcon: { prof: [[0, -2.1], [.3, -2.05], [.44, -1.8], [.5, -1.4], [.52, -.8], [.52, .1], [.46, 1.0], [.34, 2.0], [.2, 2.9], [.1, 3.5]], sx: .9, sy: 1.0,
+    wing: { y: -.3, z: -.1, rc: 1.6, tc: 1.0, span: 4.1, sw: .02, t: [.14, .1], dih: 0 }, high: false, fin: { rc: 1.3, tc: .6, h: 1.4, sw: .6, z: 3.0, y: .2 }, stab: { rc: .9, tc: .5, span: 1.7, sw: .2, z: 3.3, y: .1 },
+    prop: 2, pr: .9, wr: .28, body: 0xffd23c, acc: 0xd8342c, acc2: 0x1a1a1a },
   wren: { prof: [[0, -2.62], [.34, -2.55], [.5, -2.3], [.57, -1.9], [.62, -1.2], [.66, -.4], [.66, .5], [.58, 1.4], [.42, 2.6], [.25, 3.8], [.13, 4.6]], sx: .95, sy: 1.04,
     wing: { y: .66, z: -.2, rc: 1.7, tc: 1.15, span: 5.5, sw: .05, t: [.15, .09], dih: .1 }, high: true, fin: { rc: 1.5, tc: .7, h: 1.6, sw: .8, z: 3.75, y: .3 }, stab: { rc: 1., tc: .6, span: 1.8, sw: .22, z: 4.15, y: .12 },
     prop: 2, pr: 1.0, wr: .3, body: 0xf1f3f5, acc: 0xd8342c, acc2: 0x1d3a70 },
@@ -2177,8 +2264,8 @@ function renderMenu() {
     <div class="stats"><div><span>Balance</span><b>${money(SV.money)}</b></div><div><span>Location</span><b>${ap.id}</b></div>
     <div><span>Logged</span><b>${(SV.minutes / 60).toFixed(1)} h</b></div><div><span>Landings</span><b>${SV.landings}</b></div><div><span>Rank</span><b>${rankOf(SV)}</b></div></div>
     <div class="lics">${LIC_ORDER.map(l => `<span class="lic ${hasLic(SV, l) ? 'on' : ''}" title="${LICENSES[l].name}">${LICENSES[l].short}</span>`).join('')}</div>`;
-  $('mTabs').innerHTML = [['dispatch', 'Dispatch'], ['school', 'Flight school'], ['hangar', 'Hangar & controls']].map(t => `<button class="${tab === t[0] ? 'on' : ''}" data-act="tab" data-v="${t[0]}">${t[1]}</button>`).join('');
-  $('mBody').innerHTML = tab === 'dispatch' ? dispatchHTML() : tab === 'school' ? schoolHTML() : hangarHTML();
+  $('mTabs').innerHTML = [['dispatch', 'Dispatch'], ['free', 'Free flight'], ['log', 'Logbook'], ['school', 'Flight school'], ['hangar', 'Hangar & controls']].map(t => `<button class="${tab === t[0] ? 'on' : ''}" data-act="tab" data-v="${t[0]}">${t[1]}</button>`).join('');
+  $('mBody').innerHTML = tab === 'dispatch' ? dispatchHTML() : tab === 'free' ? freeHTML().replace('margin-top:14px', 'margin-top:0') : tab === 'log' ? logHTML() : tab === 'school' ? schoolHTML() : hangarHTML();
 }
 const FF = { to: null, ac: 'wren' };
 function freeHTML() {
@@ -2225,14 +2312,14 @@ function dispatchHTML() {
     return `<button class="card job ${sel === c.id ? 'sel' : ''} ${lk ? 'locked' : ''}" data-act="pick" data-id="${c.id}">
       <div class="jt"><span class="tag t-${c.type}">${c.label}</span>${c.wx === 'ifr' ? '<span class="tag t-ifr">Low visibility</span>' : ''}</div>
       <div class="route">${c.from}<i>to</i>${c.to}</div>
-      <div class="meta">${(c.km / 1.852).toFixed(0)} nm &middot; ${A.name} &middot; ${c.payload} kg load</div>
+      <div class="meta">${(c.km / 1.852).toFixed(0)} nm &middot; ${A.name} &middot; ${c.payload} kg load${c.wps ? ' &middot; ' + c.wps.map(w => w.n).join(', ') : ''}</div>
       <div class="pay">${pay}</div>${lk ? `<div class="lock">${lk}</div>` : ''}</button>`;
   }).join('');
   const lk = lockReason(SV, cur);
   return `<p class="lead">You are parked at <b>${ap.name}</b>. Taxi, takeoff and landing are always flown by hand. Once you are airborne and above 1,000 ft AGL you can hand the airplane to the autopilot from the autopilot camera. It flies in real time.</p>
-    <div class="jobs">${cards}</div>
+    ${dailyHTML()}<div class="jobs">${cards}</div>
     <div class="bar"><div class="sub">${lk ? lk : 'A flight plan is made for you automatically. You review it before engine start.'}</div>
-    <button class="go" data-act="plan" ${lk ? 'disabled' : ''}>Create flight plan</button></div>` + freeHTML();
+    <button class="go" data-act="plan" ${lk ? 'disabled' : ''}>Create flight plan</button></div>`;
 }
 function schoolHTML() {
   return `<p class="lead">Each certificate needs logged time, landings, a written exam and a checkride. The checkride is a real flight with the examiner scoring your procedures. Stability assist is switched off for every checkride.</p><div class="lgrid">` +
@@ -2252,7 +2339,7 @@ function hangarHTML() {
     const own = SV.owned.includes(A.id), lic = hasLic(SV, A.license);
     return `<div class="card ac"><div class="lh"><b>${A.name}</b><em>${A.cls}</em></div><p>${A.blurb}</p>
       <div class="spec">Cruise ${A.cruise} kt &middot; Vr ${A.vr} kt &middot; Vref ${A.vref} kt &middot; Payload ${A.payloadMax} kg &middot; Needs ${LICENSES[A.license].name}</div>
-      ${own ? `<div class="own">Owned${lic ? '' : ' (licence needed to fly)'}</div>` : `<button class="go" data-act="buy" data-id="${A.id}" ${SV.money >= A.price ? '' : 'disabled'}>Buy for ${money(A.price)}</button>`}</div>`;
+      ${own ? `<div class="own">Owned${lic ? '' : ' (licence needed to fly)'}</div><div class="spec">Condition ${Math.max(0, Math.round(100 - wearH(A.id)))}% &middot; ${wearH(A.id).toFixed(1)} h since service</div>${wearH(A.id) > 1 ? `<button data-act="svc" data-id="${A.id}" ${SV.money >= svcCost(A.id) ? '' : 'disabled'}>Service for ${money(svcCost(A.id))}</button>` : ''}` : `<button class="go" data-act="buy" data-id="${A.id}" ${SV.money >= A.price ? '' : 'disabled'}>Buy for ${money(A.price)}</button>`}</div>`;
   }).join('')}${badgesHTML()}</div><div><h3>Controls and assists</h3>
     ${tg('stab', 'Flight assist', 'Levels the wings and helps with rotation, steering on the runway and the landing flare. Turn off for +25% pay. Always off in checkrides.')}
     ${tg('guide', 'Taxi guidance line', 'Yellow route on the ground and arrow. Turn off for +10% pay.')}
@@ -2293,6 +2380,8 @@ document.addEventListener('click', e => {
   else if (a === 'plan') { const c = genContracts(SV).find(x => x.id === sel); if (c && !lockReason(SV, c)) planWx(c); }
   else if (a === 'exam') openExam(t.dataset.id);
   else if (a === 'check') bookCheck(t.dataset.id);
+  else if (a === 'svc') { const id = t.dataset.id, c = svcCost(id); if (SV.money >= c) { SV.money -= c; SV.wear = SV.wear || {}; SV.wear[id] = 0; persist(); toast('Serviced. Upkeep is back to normal.', 2500); renderMenu(); } }
+  else if (a === 'replay') startReplay();
   else if (a === 'buy') { const A = AC[t.dataset.id]; if (SV.money >= A.price) { SV.money -= A.price; SV.owned.push(A.id); persist(); renderMenu(); } }
   else if (a === 'reset') { if (SV._confirm) { SV = newSave(); persist(); sel = null; } else { SV._confirm = true; } renderMenu(); setTimeout(() => { if (SV._confirm) { delete SV._confirm; if (mode === 'menu' && tab === 'hangar') renderMenu(); } }, 4000); }
   else if (a === 'setv') { const v = t.dataset.v; SV.settings[t.dataset.k] = isNaN(+v) ? v : +v; persist(); applySettings(); renderMenu(); }
@@ -2369,7 +2458,7 @@ function makePlan(c, ck) {
   const wind = (!ck && WXNOW && WXNOW.icaoId === c.from) ? liveWind(WXNOW, rng) : makeWind(rng, c.wx === 'ifr'), dep = pickEnd(ap0, wind, c.ac), arr = pickEnd(ap1, wind, c.ac);
   const dist = dist2(ap0, ap1), tc = bearingDeg(ap0, ap1), mc = (tc - MAGVAR + 360) % 360;
   const east = mc < 180, ifr = c.wx === 'ifr' || !!(wind.live && wind.low);
-  const base = dist < 25000 ? 2000 : c.ac === 'wren' ? (dist < 60000 ? 3000 : 4000) : c.ac === 'heron' ? 6000 : 9000;
+  const base = dist < 25000 ? 2000 : AC[c.ac].light ? (dist < 60000 ? 3000 : 4000) : c.ac === 'heron' ? 6000 : 9000;
   let alt = east ? (base % 2000 === 0 ? base - 1000 : base) : (base % 2000 === 0 ? base : base - 1000); if (alt < 1000) alt += 2000;
   alt += ifr ? 0 : 500; if (alt < 2500 && dist >= 25000) alt = 2500 + (ifr ? 0 : 0);
   const ete = dist / (A.cruise * KT * 0.93) / 60 + 9, burn = A.ffMax * 0.72, endur = c.fuel / burn / 60;
@@ -2446,7 +2535,7 @@ async function startFlightLoader() {
 
 /* ---- persistent flight: save, resume after closing the app, and catch-up while away ---- */
 const FKEY = 'cascade-dispatch-flight-v1', AWAY_CAP = 6 * 3600;
-const FUELP = { wren: 2.0, heron: 1.0, kestrel: 0.8 }, MAINT = { wren: 18, heron: 65, kestrel: 240 };
+const FUELP = { wren: 2.0, skylark: 2.0, meridian: 1.8, falcon: 2.2, heron: 1.0, kestrel: 0.8 }, MAINT = { wren: 18, skylark: 22, meridian: 70, falcon: 45, heron: 65, kestrel: 240 };
 function clearSavedFlight() { try { localStorage.removeItem(FKEY); } catch (e) { } }
 function saveFlight() {
   try {
@@ -2529,6 +2618,7 @@ function landingGradeHTML(L, crash) {
 }
 /* ================= FLIGHT ================= */
 function clearFlight() {
+  { const e = document.getElementById('wpHud'); if (e) e.remove(); const r = document.getElementById('rpBar'); if (r) r.remove(); }
   if (G && G.model) { scene.remove(G.model); if (G.model.userData.pool) scene.remove(G.model.userData.pool); }
   if (G && G.routeGrp) scene.remove(G.routeGrp);
   beacon.visible = false; G = null; setWeather(false); $('mapwrap').hidden = true; mapOpen = false;
@@ -2544,7 +2634,7 @@ function beginFlight() {
   G = { plan: P, c: P.c, ck: P.ck, s, A, ap, wind: P.wind, windV: windVec(P.wind), phase: 'COLD', cl: [false, false, false, false, false], cleared: false, landClr: false,
     set: useSettings, lights: false, parking: true, atc: [], t0: 0, tdDone: false, reached: false, apCt: 0, altT: 0, camT: 0, descSaid: false, finalSaid: false, apMsgT: 0,
     log: { maxTaxi: 0, startup: false, incursion: false, noClr: false, toFlaps: false, toLights: false, liftIas: null, cleanUp: false, speedBust: false, altN: 0, altOk: 0, appCfg: false, stable: null, stableNote: '', tdAlong: null, tdLat: null, tdVs: null, vacated: false, parked: false },
-    route: P.route.pts, routeSide: 'out', model: null, routeGrp: null, dDesc: A.id === 'wren' ? 17000 : A.id === 'heron' ? 24000 : 40000, dFin: A.id === 'wren' ? 8500 : A.id === 'heron' ? 11000 : 16000, flapsPrev: 0 };
+    route: P.route.pts, routeSide: 'out', model: null, routeGrp: null, dDesc: A.light ? 17000 : A.id === 'heron' ? 24000 : 40000, dFin: A.light ? 8500 : A.id === 'heron' ? 11000 : 16000, flapsPrev: 0 };
   s.eng = false; ctl.pit = ctl.rol = ctl.yaw = 0; ctl.thr = 0; ctl.brk = 1; ctl.flapCmd = 0; ctl.gearCmd = 1; ctl.trim = 0;
   G.model = buildPlane(P.c.ac); scene.add(G.model);
   setWeather(P.ifr); setSockWind(P.wind);
@@ -2632,7 +2722,7 @@ function radioPress() {
 function procUpdate(dt) {
   const s = G.s, A = G.A, P = G.plan, L = G.log, at = attitude(s), ias = iasOf(s, G.windV), gs = at.gs;
   const agl = s.p[1] - surfH(s.p[0], s.p[2]), altFt = s.p[1] / FT, dep = P.dep, arr = P.arr;
-  G.agl = agl; G.ias = ias; G.at = at;
+  G.agl = agl; G.ias = ias; G.at = at; wpTick(dt);
   if (s.touch && !G.tdDone && agl > 150) s.touch = null; // a bounce right after liftoff must not count as the landing
   if (!s.air && ['CLR', 'TAXI', 'HOLD', 'TAXI_IN', 'CLEARED'].includes(G.phase) && (G.phase !== 'CLEARED' || ctl.thr < 0.4)) L.maxTaxi = Math.max(L.maxTaxi, gs);
   if (s.air && !L.speedBust) { const lim = A.id === 'kestrel' ? (altFt < 10000 ? 250 : 330) : A.cruise * 1.35; if (ias > lim) { L.speedBust = true; say('Cascade Departure', `${P.tail}, check your speed.`); } }
@@ -2667,7 +2757,7 @@ function procUpdate(dt) {
       }
       const d1 = Math.hypot(s.p[0] - P.ap1.x, s.p[2] - P.ap1.z);
       if (G.phase === 'ENROUTE' && d1 < G.dDesc) {
-        say('Cascade Approach', `${P.tail}, ${P.c.to} approach. Expect runway ${arr.name}. Descend and maintain ${(P.ap1.elev + (A.id === 'wren' ? 2000 : A.id === 'heron' ? 2500 : 3000)).toLocaleString()} feet. Wind ${windText(P.wind)}.`);
+        say('Cascade Approach', `${P.tail}, ${P.c.to} approach. Expect runway ${arr.name}. Descend and maintain ${(P.ap1.elev + (A.light ? 2000 : A.id === 'heron' ? 2500 : 3000)).toLocaleString()} feet. Wind ${windText(P.wind)}.`);
         setPhase('DESCENT');
       }
       if (d1 < G.dFin) {
@@ -2703,13 +2793,25 @@ function procUpdate(dt) {
     case 'ROLLOUT': {
       const sa = toRw(arr.rw, s.p[0], s.p[2]);
       if (G.cutT != null) {
-        G.cutT += dt; G.parking = true; ctl.thr = 0;
-        if (G.cutT > 3.6) { G.cutT = null; G.parking = false; const e = document.getElementById('cutCard'); if (e) e.remove(); L.parked = true; finishFlight(null); }
+        G.cutT += dt; G.parking = true; ctl.thr = 0; s.v = [0, 0, 0];
+        const cp = G.cutPath;
+        if (cp && !G.cutSkip) {
+          G.cutD += 11 * dt; const d = Math.min(G.cutD, cp.len); let k = 1; while (k < cp.pts.length - 1 && cp.cum[k] < d) k++;
+          const a = cp.pts[k - 1], b = cp.pts[k], seg = (cp.cum[k] - cp.cum[k - 1]) || 1, u = clamp((d - cp.cum[k - 1]) / seg, 0, 1);
+          s.p[0] = a[0] + (b[0] - a[0]) * u; s.p[2] = a[1] + (b[1] - a[1]) * u;
+          let tx = b[0] - a[0], tz = b[1] - a[1]; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+          const kk = 1 - Math.exp(-dt * 3); let fx = s.f[0] + (tx - s.f[0]) * kk, fz = s.f[2] + (tz - s.f[2]) * kk; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
+          s.f = [fx, 0, fz]; s.u = [0, 1, 0]; s.r = [-fz, 0, fx]; s.vr = 0;
+        }
+        if ((cp && !G.cutSkip && G.cutD >= cp.len) || (!cp && G.cutT > 3.6) || G.cutSkip || G.cutT > 150) {
+          G.cutPath = null; G.cutSkip = false; G.cutT = null; G.parking = false; const e = document.getElementById('cutCard'); if (e) e.remove(); L.parked = true; finishFlight(null); }
       } else if (gs < 30 && Math.abs(sa[1]) > arr.rw.W / 2 + 38) {
         L.vacated = true; G.cutT = 0; say('Cascade Tower', `${P.tail}, contact ground, good day.`);
+        let cpts = null; try { cpts = arrRoute(P.ap1, arr, s.p[0], s.p[2]); } catch (er) { }
+        if (cpts && !cpts.pts && cpts.length >= 2) { const cum = [0]; for (let i = 1; i < cpts.length; i++) cum.push(cum[i - 1] + Math.hypot(cpts[i][0] - cpts[i - 1][0], cpts[i][1] - cpts[i - 1][1])); G.cutPath = { pts: cpts, cum, len: cum[cum.length - 1] }; G.cutD = 0; camMode = 0; }
         const e = document.createElement('div'); e.id = 'cutCard';
-        e.style.cssText = 'position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font:600 18px system-ui;opacity:0;transition:opacity 1s;pointer-events:none';
-        e.textContent = 'Taxiing to the ramp...'; document.body.appendChild(e); requestAnimationFrame(() => requestAnimationFrame(() => { e.style.opacity = '0.92'; }));
+        e.style.cssText = 'position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);transform:translateX(-50%);z-index:60;background:rgba(0,0,0,.6);color:#fff;font:600 14px system-ui;padding:10px 18px;border-radius:20px';
+        e.textContent = G.cutPath ? 'Taxiing to the ramp  -  tap to skip' : 'Taxiing to the ramp...'; e.onclick = () => { G.cutSkip = true; }; document.body.appendChild(e);
       } else if (gs < 28 && !G.exitSaid) { G.exitSaid = true; say('Cascade Tower', `${P.tail}, exit the runway past the hold short line.`); }
       break;
     }
@@ -2837,7 +2939,7 @@ function apAction(v) {
   } else if (v === 'appr') {
     if (!(G.s.air && G.agl > 250 && ['DESCENT', 'FINAL'].includes(G.phase))) { toast('Approach mode works once Approach has you descending for ' + G.plan.arr.name, 3500); return; }
     const ap0 = G.ap; ap0.appr = true; ap0.vorOn = false; ap0.direct = false; ap0.xi = 0; ap0.loc = false; ap0.gs = false; ap0.ah = null; ap0.hiW = false; if (!ap0.on) { ap0.on = true; ap0.bank = at.bank; ap0.iv = 0; ap0.it = G.s.thr; } toast('Approach mode: tracking runway ' + G.plan.arr.name + '. You set flaps and gear, and land it yourself.', 4500);
-  } else if (v === 'dest') { ap.appr = false; ap.vorOn = false; ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1); ap.direct = true; toast('Tracking direct to ' + G.plan.c.to); }
+  } else if (v === 'dest') { ap.appr = false; ap.vorOn = false; ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.wpNext ? { x: G.wpNext.xz[0], z: G.wpNext.xz[1] } : G.plan.ap1); ap.direct = true; toast('Tracking direct to ' + (G.wpNext ? G.wpNext.n : G.plan.c.to)); }
   else if (v === 'sync') { ap.appr = false; ap.vorOn = false; ap.direct = false; ap.hdg = at.hdg; ap.alt = Math.round(G.s.p[1] / FT / 100) * 100; ap.spd = Math.round(G.ias / 5) * 5; }
   else if (v === 'spd') ap.spdOn = !ap.spdOn;
   else if (v === 'back') { apOpen = false; renderApPanel(); }
@@ -3084,6 +3186,75 @@ function awardAch(ctx) {
   return html;
 }
 function badgesHTML() { SV.ach = SV.ach || []; return `<h3 style="margin-top:18px">Pilot badges</h3><div style="display:grid;gap:6px">${BADGES.map(b => `<div class="card" style="padding:8px 10px;opacity:${SV.ach.includes(b[0]) ? 1 : 0.45}"><b>${SV.ach.includes(b[0]) ? '&#9733; ' : '&#9734; '}${b[1]}</b><div style="font-size:12px;color:var(--dim)">${b[2]}</div></div>`).join('')}</div>`; }
+const hashS = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+const fuelMul = id => 0.82 + 0.4 * hashS('fuel' + id);
+const wearH = id => (SV.wear && SV.wear[id]) || 0;
+const wearMul = id => 1 + clamp((wearH(id) - 40) / 100, 0, 0.8);
+const svcCost = id => Math.round(60 + AC[id].price * 0.012 + wearH(id) * 14);
+const DAILY = [
+  ['soft', 'Touch down softer than 200 fpm', o => o.landed && o.L.tdVs != null && Math.abs(o.L.tdVs) <= 200],
+  ['line', 'Touch down within 5 m of the centreline', o => o.landed && o.L.tdLat != null && Math.abs(o.L.tdLat) <= 5],
+  ['score', 'Score 85 or more on a flight', o => !o.crash && o.sc.total >= 85],
+  ['hands', 'Land with Flight assist turned off', o => o.landed && !G.set.stab],
+  ['far', 'Fly a leg of 30 nm or more and land', o => o.landed && G.c.km / 1.852 >= 30],
+  ['zone', 'Touch down 150 to 600 m past the threshold', o => o.landed && o.L.tdAlong != null && o.L.tdAlong >= 150 && o.L.tdAlong <= 600],
+  ['two', 'Complete two flights today', o => !o.crash && SV.daily.n >= 2],
+  ['night', 'Land at night', o => o.landed && curTod() === 'night']];
+function dailyToday() { const n = new Date(), d = n.getFullYear() + '-' + (n.getMonth() + 1) + '-' + n.getDate(); if (!SV.daily || SV.daily.d !== d) SV.daily = { d, i: Math.floor(hashS('daily' + d) * DAILY.length), done: false, n: 0 }; return SV.daily; }
+function dailyHTML() {
+  const d = dailyToday(), f = fuelMul(SV.at), pc = Math.round((f - 1) * 100);
+  return `<div class="card" style="padding:10px 12px;margin-bottom:10px"><div class="jt"><span class="tag t-free">Daily challenge</span> ${d.done ? '<b style="color:#6fd38a">Done</b>' : '<b>$400</b>'}</div><div class="meta">${DAILY[d.i][1]}</div><div class="meta" style="opacity:.7">Fuel here costs ${pc === 0 ? 'the standard price' : Math.abs(pc) + '% ' + (pc < 0 ? 'less' : 'more') + ' than usual'}.</div></div>`;
+}
+function postFlight(o) {
+  let h = ''; const L = o.L, A = o.A;
+  SV.wear = SV.wear || {}; SV.wear[A.id] = +(wearH(A.id) + o.s.time / 3600 + (o.landed && L.tdVs != null && Math.abs(L.tdVs) > 300 ? 1.2 : 0)).toFixed(2);
+  if (wearH(A.id) >= 100) h += '<div class="award bad">Service is overdue on the ' + A.name + '. Upkeep costs more until you service it in the Hangar.</div>';
+  SV.log = SV.log || []; SV.log.unshift({ t: Date.now(), from: G.c.from, to: G.c.to, ac: A.id, type: G.c.type, label: G.c.label || '', sc: o.sc.total, vs: L.tdVs == null ? null : Math.round(Math.abs(L.tdVs)), pay: o.pay, net: o.pay - o.opCost, min: Math.round(o.s.time / 60), crash: o.crash || '', trk: (G.trk || []).slice() }); if (SV.log.length > 50) SV.log.length = 50;
+  const d = dailyToday(); if (!o.crash) d.n++;
+  if (!d.done && DAILY[d.i][2]({ landed: o.landed && !G.autoLand, crash: o.crash, sc: o.sc, L })) { d.done = true; SV.money += 400; h += '<div class="award">Daily challenge complete: +$400</div>'; }
+  if (typeof aeroSummary === 'function') h += aeroSummary();
+  return h;
+}
+function trkSvg(t) {
+  if (!t || t.length < 2) return ''; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const q of t) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]); }
+  const w = 260, hh = 96, pad = 8, sc = Math.min((w - 2 * pad) / Math.max(1, x1 - x0), (hh - 2 * pad) / Math.max(1, z1 - z0)), ox = (w - (x1 - x0) * sc) / 2, oz = (hh - (z1 - z0) * sc) / 2;
+  return `<svg viewBox="0 0 ${w} ${hh}" style="width:100%;height:96px;background:#0b1424;border-radius:6px"><polyline points="${t.map(q => ((q[0] - x0) * sc + ox).toFixed(1) + ',' + ((q[1] - z0) * sc + oz).toFixed(1)).join(' ')}" fill="none" stroke="#4fb3ff" stroke-width="2" stroke-linejoin="round"/></svg>`;
+}
+function logHTML() {
+  const L = SV.log || []; if (!L.length) return '<p class="lead">Every flight you finish is logged here with the route you flew.</p>';
+  const vs = L.filter(e => e.vs != null && !e.crash).map(e => e.vs), best = vs.length ? Math.min(...vs) : null;
+  return `<p class="lead">${SV.flights} flights &middot; ${(SV.minutes / 60).toFixed(1)} h${best != null ? ' &middot; softest landing ' + best + ' fpm' : ''}</p><div class="jobs">` + L.map(e => `<div class="card" style="padding:10px;cursor:default"><div class="jt"><b>${e.from} to ${e.to}</b><small style="margin-left:8px;opacity:.7">${new Date(e.t).toLocaleDateString()}</small></div>${trkSvg(e.trk)}<div class="meta">${e.label || ''} &middot; ${AC[e.ac] ? AC[e.ac].name : e.ac} &middot; ${e.min} min &middot; score ${e.sc}${e.vs != null ? ' &middot; ' + e.vs + ' fpm' : ''}${e.crash ? ' &middot; ' + e.crash : ''}</div><div class="pay">${e.net >= 0 ? '+' : '-'}${money(Math.abs(e.net))}</div></div>`).join('') + '</div>';
+}
+function recTick(dt) {
+  const s = G.s; G.rt = (G.rt || 0) + dt; G.tt = (G.tt || 0) + dt;
+  if (G.tt > 8) { G.tt = 0; (G.trk = G.trk || []).push([Math.round(s.p[0] / 10), Math.round(s.p[2] / 10)]); if (G.trk.length > 110) G.trk = G.trk.filter((q, i) => i % 2 === 0); }
+  if (G.tdDone && G.recTd == null) G.recTd = s.time;
+  if (G.rt >= 1 / 15) { G.rt = 0; if (G.recTd == null || s.time - G.recTd < 14) { const R = (G.rec = G.rec || []); R.push({ t: s.time, p: s.p.slice(), f: s.f.slice(), u: s.u.slice(), r: s.r.slice(), fl: s.flaps, th: s.thr, sp: s.spin, cv: s.wheels.map(w => w.cv) }); if (R.length > 750) R.shift(); } }
+  if (typeof aeroTick === 'function') aeroTick(dt);
+}
+function startReplay() {
+  const R = G && G.rec; if (!R || R.length < 20) { toast('No replay for this flight', 2000); return; }
+  $('debrief').hidden = true; mode = 'replay'; const t0 = R[0].t; G.rp = { tm: G.recTd != null ? Math.max(t0, G.recTd - 16) : t0, t0 };
+  let b = document.getElementById('rpBar'); if (b) b.remove(); b = document.createElement('div'); b.id = 'rpBar'; b.style.cssText = 'position:fixed;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:70';
+  b.innerHTML = '<button class="go">Close replay</button>'; b.firstChild.onclick = () => { b.remove(); mode = 'debrief'; $('debrief').hidden = false; }; document.body.appendChild(b);
+}
+function replayStep(dt) {
+  const rp = G.rp, R = G.rec, last = R[R.length - 1].t; let sp = 1; if (G.recTd != null && Math.abs(rp.tm - G.recTd) < 2.2) sp = 0.45;
+  rp.tm += dt * sp; if (rp.tm > last + 1) rp.tm = G.recTd != null ? Math.max(rp.t0, G.recTd - 16) : rp.t0;
+  let lo = 0, hi = R.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (R[m].t <= rp.tm) lo = m; else hi = m - 1; }
+  const a = R[lo], b = R[Math.min(lo + 1, R.length - 1)], k = b.t > a.t ? clamp((rp.tm - a.t) / (b.t - a.t), 0, 1) : 0, L3v = (x, y) => [lerp(x[0], y[0], k), lerp(x[1], y[1], k), lerp(x[2], y[2], k)];
+  const real = G.s, fk = Object.create(real); fk.p = L3v(a.p, b.p); fk.f = vnorm(L3v(a.f, b.f)); fk.u = vnorm(L3v(a.u, b.u)); fk.r = vnorm(L3v(a.r, b.r)); fk.flaps = a.fl; fk.thr = a.th; fk.spin = a.sp; fk.wheels = a.cv.map((c, i) => ({ cv: lerp(c, b.cv[i], k) }));
+  G.s = fk; try { placeModel(); } finally { G.s = real; }
+  const p = fk.p, td = G.recTd; let cx, cy, cz;
+  if (td != null && rp.tm > td - 3.5 && rp.tm < td + 2.4) {
+    if (!rp.side) { let q = R[0]; for (const e of R) if (e.t <= td) q = e; const rr = q.r; rp.side = [q.p[0] + rr[0] * 55, q.p[2] + rr[2] * 55]; }
+    cx = rp.side[0]; cz = rp.side[1]; cy = surfH(cx, cz) + 2.6; camera.fov = 38;
+  } else {
+    const back = td != null && rp.tm >= td + 2.4 ? 17 : 26, up = td != null && rp.tm >= td + 2.4 ? 3.5 : 8; camera.fov = 58;
+    cx = p[0] - fk.f[0] * back + fk.r[0] * 5; cz = p[2] - fk.f[2] * back + fk.r[2] * 5; cy = Math.max(p[1] + up, surfH(cx, cz) + 2);
+  }
+  camera.updateProjectionMatrix(); camera.position.set(cx, cy, cz); camera.lookAt(p[0], p[1] + 0.8, p[2]);
+}
 function finishFlight(crash) {
   if (mode !== 'fly') return; mode = 'debrief'; const L = G.log, A = G.A, P = G.plan, s = G.s;
   const sc = scoreFlight(L, A); let pay = 0, extra = '', fails = [], passed = false;
@@ -3096,10 +3267,12 @@ function finishFlight(crash) {
     if (G.c.limitMin) { const on = s.time <= G.c.limitMin * 60; pay = Math.round(pay * (on ? 1.5 : 0.6)); note2 += on ? '<div class="award">Delivered on time, bonus +50%</div>' : '<div class="award bad">Missed the ' + G.c.limitMin + ' minute deadline, pay cut 40%</div>'; }
     if (G.c.type === 'charter' && !G.autoLand && L.tdVs != null && Math.abs(L.tdVs) > 300) { pay = Math.round(pay * 0.5); note2 += '<div class="award bad">The passengers felt that landing. Pay halved.</div>'; }
   }
-  if (!G.ck && !crash && G.c.type !== 'free') { const used = Math.max(0, (G.c.fuel || 0) - s.fuel); opCost = Math.round(used * (FUELP[A.id] || 1.5) + (s.time / 3600) * (MAINT[A.id] || 20)); }
+  if (G.wps && !crash && !G.ck) { const n = G.wps.filter(q => q.hit).length, f = n / G.wps.length; pay = Math.round(pay * (0.3 + 0.7 * f)); note2 += `<div class="award${f < 1 ? ' bad' : ''}">${n} of ${G.wps.length} landmarks visited</div>`; }
+  if (!G.ck && !crash && G.c.type !== 'free') { const used = Math.max(0, (G.c.fuel || 0) - s.fuel); opCost = Math.round(used * (FUELP[A.id] || 1.5) * fuelMul(G.c.from) + (s.time / 3600) * (MAINT[A.id] || 20) * wearMul(A.id)); }
   SV.money = Math.max(0, SV.money + pay - opCost); SV.minutes += s.time / 60; if (landed && !G.autoLand) SV.landings++; SV.flights++;
   if (!crash && !G.autoLand) SV.scores.push(sc.total);
   extra += note2 + awardAch({ landed: landed && !G.autoLand, crash, sc, L, set: G.set });
+  extra += postFlight({ crash, sc, pay, opCost, landed, L, s, A });
   let repair = 0; if (crash) { repair = G.c.type === 'free' ? 0 : Math.min(SV.money, Math.round(A.price * 0.06 + 250)); SV.money -= repair; } else SV.at = G.c.to;
   persist();
   const d = $('debrief'); d.hidden = false; $('hud').hidden = true;
@@ -3110,7 +3283,7 @@ function finishFlight(crash) {
     ${fails.length ? `<ul class="fails">${fails.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
     ${landingGradeHTML(L, crash)}
     <div class="items">${sc.items.map(i => `<div class="it ${i.got >= i.max ? 'full' : i.got === 0 ? 'zero' : ''}"><span>${i.label}</span><em>${i.note}</em><b>${i.got}/${i.max}</b></div>`).join('')}</div>
-    <button class="go" data-act="debriefok">Back to dispatch</button></div>`;
+    <button class="go" data-act="debriefok">Back to dispatch</button>${G.rec && G.rec.length > 30 ? ' <button data-act="replay" style="margin-left:8px;padding:12px 16px">Watch replay</button>' : ''}</div>`;
 }
 
 /* ================= LOOP ================= */
@@ -3147,11 +3320,11 @@ function updateCamera0(dt) {
     camera.position.set(p[0] + f[0] * 0.8 + u[0] * 0.62, p[1] + f[1] * 0.8 + u[1] * 0.62, p[2] + f[2] * 0.8 + u[2] * 0.62);
     camera.up.set(u[0], u[1], u[2]); camera.lookAt(camera.position.x + f[0] * 50 - u[0] * 1.2, camera.position.y + f[1] * 50 - u[1] * 1.2, camera.position.z + f[2] * 50 - u[2] * 1.2);
   } else if (cm === 0) {
-    const d = A.id === 'wren' ? 15 : A.id === 'heron' ? 21 : 26, h = A.id === 'wren' ? 4.2 : 5.5;
+    const d = A.light ? 15 : A.id === 'heron' ? 21 : 26, h = A.light ? 4.2 : 5.5;
     camera.position.set(p[0] - f[0] * d + u[0] * h, p[1] - f[1] * d + u[1] * h, p[2] - f[2] * d + u[2] * h);
     camera.up.set(0, 1, 0); camera.up.lerp(new THREE.Vector3(u[0], u[1], u[2]), 0.5).normalize(); camera.lookAt(p[0] + f[0] * 16, p[1] + f[1] * 16 + 0.6, p[2] + f[2] * 16);
   } else if (cm === 3) {
-    const fc = freeCam, R = (A.id === 'wren' ? 15 : A.id === 'heron' ? 20 : 25) * fc.dist, hd = Math.atan2(f[0], -f[2]);
+    const fc = freeCam, R = (A.light ? 15 : A.id === 'heron' ? 20 : 25) * fc.dist, hd = Math.atan2(f[0], -f[2]);
     if (!fc.init || fc.h === undefined) fc.h = hd; let dh = hd - fc.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); fc.h += dh * (1 - Math.exp(-dt * 1.6));
     const yw = fc.h + Math.PI + fc.yaw, ch = Math.cos(fc.pit), wx = p[0] + Math.sin(yw) * ch * R, wz = p[2] - Math.cos(yw) * ch * R, wy = Math.max(p[1] + 1.2 + Math.sin(fc.pit) * R, surfH(wx, wz) + 1.6);
     if (!fc.init) { camera.position.set(wx, wy, wz); fc.init = true; } else { const k = 1 - Math.exp(-dt * 9); camera.position.x += (wx - camera.position.x) * k; camera.position.y += (wy - camera.position.y) * k; camera.position.z += (wz - camera.position.z) * k; }
@@ -3163,7 +3336,7 @@ function updateCamera0(dt) {
     else { cp = W(-semi * 0.5, 0.42, 0.35); tg = A.prop ? W(0, -0.2, -A.nose) : W(-1.0, 0.2, A.tail * 0.6); }
     camera.position.set(cp[0], cp[1], cp[2]); camera.up.set(u[0], u[1], u[2]); camera.lookAt(tg[0], tg[1], tg[2]);
   } else {
-    apCam.yaw += dt * 0.05; const R = (A.id === 'wren' ? 26 : 38) * apCam.dist, ch = Math.cos(apCam.pit), yw = apCam.yaw;
+    apCam.yaw += dt * 0.05; const R = (A.light ? 26 : 38) * apCam.dist, ch = Math.cos(apCam.pit), yw = apCam.yaw;
     camera.position.set(p[0] + Math.sin(yw) * ch * R, p[1] + Math.sin(apCam.pit) * R, p[2] + Math.cos(yw) * ch * R); camera.up.set(0, 1, 0); camera.lookAt(p[0], p[1], p[2]);
   }
   skyMesh.position.copy(camera.position); waterMesh.position.x = (TB.x0 + TB.x1) / 2; updateSprites();
@@ -3189,10 +3362,11 @@ function frame(ts) {
     G.at = attitude(G.s); const c = readControls(dt);
     let n = Math.round(dt * 120); n = clamp(n, 1, 6); const sdt = dt / n;
     for (let i = 0; i < n; i++) step(G.s, c, sdt, { wind: G.windV });
-    if (G.ap.on && G.ap.direct && ts - (frame.dr || 0) > 1000) { frame.dr = ts; G.ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1); }
-    procUpdate(dt); placeModel(); if (((frame.hn = (frame.hn || 0) + 1) & 1) === 0) updateHUD(); updateCamera(dt); if (mapOpen && (frame.hn % 3) === 0) drawMap();
+    if (G.ap.on && G.ap.direct && ts - (frame.dr || 0) > 1000) { frame.dr = ts; G.ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.wpNext ? { x: G.wpNext.xz[0], z: G.wpNext.xz[1] } : G.plan.ap1); }
+    procUpdate(dt); recTick(dt); try { audioTick(dt); trafficTick(dt); } catch (e) { } placeModel(); if (((frame.hn = (frame.hn || 0) + 1) & 1) === 0) updateHUD(); updateCamera(dt); if (mapOpen && (frame.hn % 3) === 0) drawMap();
     if (G.s.crashed && mode === 'fly') finishFlight(G.s.crashed); else if (ts - (frame.sv || 0) > 3000) { frame.sv = ts; saveFlight(); }
   } else if (mode === 'fly' && G) { placeModel(); updateCamera(0); }
+  else if (mode === 'replay' && G) { replayStep(dt); }
   else { menuT += dt; const ap = apOf(SV.at), mc = menuCam; if (!mc.user) mc.yaw += dt * 0.07; const cp = Math.cos(mc.pit), tx = ap.x + mc.tx, tz = ap.z + mc.tz, ty = ap.elevM + 30, px = tx + Math.sin(mc.yaw) * cp * mc.dist, pz = tz + Math.cos(mc.yaw) * cp * mc.dist; camera.position.set(px, Math.max(ty + Math.sin(mc.pit) * mc.dist, surfH(px, pz) + 4), pz); camera.up.set(0, 1, 0); camera.lookAt(tx, ty, tz); skyMesh.position.copy(camera.position); updateSprites(); }
   renderer.render(scene, camera);
 }
@@ -3228,7 +3402,7 @@ function startScreen() {
     document.body.appendChild(d);
     const go = f => { d.remove(); res(); f && f(); };
     d.querySelector('#smResume').onclick = () => { if (!o) return; d.remove(); maybeResume().then(ok => { if (!ok) hideLoader(); res(); }); };
-    d.querySelector('#smFree').onclick = () => go(() => { setTab('dispatch'); setTimeout(() => { const c = document.getElementById('ffCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); else toast('Free flight unlocks when you earn your Private licence', 3500); }, 120); });
+    d.querySelector('#smFree').onclick = () => go(() => { setTab('free'); });
     d.querySelector('#smSet').onclick = () => go(() => { setTab('hangar'); });
     d.querySelector('#smCareer').onclick = () => go(() => { setTab('dispatch'); });
   });

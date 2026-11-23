@@ -1,0 +1,30 @@
+name: Fetch FAA airport diagrams
+on:
+  workflow_dispatch:
+    inputs:
+      airports:
+        description: "Airport codes, comma separated (blank = every airport in world/airports.js)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "0 6 1 * *"   # monthly, the FAA publishes new diagrams every 28 days
+permissions:
+  contents: write
+jobs:
+  faa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pymupdf numpy
+      - name: Download diagrams and build world/faa.js
+        run: python3 tools/fetch_faa.py --airports "${{ github.event.inputs.airports }}"
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add world/faa.js world/faa_report.json
+          git commit -m "Update FAA airport data" || echo "nothing to commit"
+          git push

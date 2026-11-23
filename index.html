@@ -2180,6 +2180,7 @@ function curTod() {
   return el > 4 ? 'day' : el > -7 ? 'dusk' : 'night';
 }
 function setTimeOfDay(tod) {
+  L3.lastTod = tod; if (frame.hiOn === false) return;
   const on = tod !== 'day'; L3.night = on; for (const g of L3.groups) { if (g.userData.car) { g.visible = true; carStyle(g, on); continue; } g.visible = on; if (g.material.transparent) g.material.opacity = tod === 'dusk' ? 0.8 : 1; }
   for (const k in L3.papi) L3.papi[k].pts.visible = true; for (const b of L3.beacons) b.visible = on;
 }
@@ -3346,17 +3347,26 @@ function nearApt() {
   if (typeof mode === 'undefined' || mode !== 'fly' || !G || !G.s || !G.plan) return false; const s = G.s, P = G.plan, lim = G._nearAp ? 11000 : 9000;
   for (const a of [apOf(P.c.from), apOf(P.c.to)]) if (a && Math.hypot(s.p[0] - a.x, s.p[2] - a.z) < lim) { G._nearAp = true; return true; } G._nearAp = false; return false;
 }
-function renderScale() { const dpr = window.devicePixelRatio || 1; let m0 = SS('saver') ? Math.min(SS('res'), 0.6) : SS('res'); if (m0 < 1 && nearApt()) m0 = 1; const m = m0 * (cruiseSave() ? 0.8 : 1); return (SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) : Math.min(dpr, 2)) * AUTOQ * m; }
+function renderScale() { const dpr = window.devicePixelRatio || 1; let m0 = SS('saver') ? Math.min(SS('res'), 0.6) : SS('res'); if (m0 < 1 && nearApt()) m0 = 1; const m = m0 * (cruiseSave() ? 0.8 : 1); return (SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) : Math.min(dpr, 1.75)) * AUTOQ * m; }
+function lowAct() {
+  if (document.hidden) return 1; if (mode === 'menu') return 30; if (mode !== 'fly' || !G || !G.s) return 0; if (paused) return 20;
+  const s = G.s; if (!s.air && ['COLD', 'CLR', 'TAXI', 'HOLD'].includes(G.phase)) return 30; if (s.air && G.phase === 'ENROUTE' && G.agl > 900) return 30; return 0;
+}
+function hiDetail(on) {
+  if (frame.hiOn === on) return; frame.hiOn = on;
+  if (!on) { for (const g of L3.groups) g.visible = false; for (const b of L3.beacons) b.visible = false; } else if (typeof setTimeOfDay === 'function') setTimeOfDay(L3.lastTod || 'day');
+}
 function frame(ts) {
   requestAnimationFrame(frame);
-  { const cap = (SS('saver') || cruiseSave()) ? 30 : SS('fps'); frame.capK = cap < 60 ? 60 / cap : 1; if (cap < 60 && ts - (frame.capT || 0) < 1000 / cap - 5) return; frame.capT = ts; }
+  { const la = lowAct(); if (la === 1) return; const cap = (SS('saver') || cruiseSave()) ? 30 : (la && SS('fps') > la ? la : SS('fps')); frame.capK = cap < 60 ? 60 / cap : 1; if (cap < 60 && ts - (frame.capT || 0) < 1000 / cap - 5) return; frame.capT = ts; }
   { const raw = Math.min(120, ts - (frame.last || ts)) / (frame.capK || 1); frame.last = ts; frame.ema = (frame.ema || 16) * 0.96 + raw * 0.04; if (SS('autoQ') && ts - (frame.adj || 0) > 2500 && !window._starting) { frame.adj = ts; if (frame.ema > 36 && AUTOQ > 0.55) AUTOQ = Math.max(0.55, AUTOQ * 0.88); else if (frame.ema < 19 && AUTOQ < 1) AUTOQ = Math.min(1, AUTOQ * 1.06); } }
   const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016); lastTs = ts;
   const w = innerWidth, h = innerHeight, rs = renderScale(); if (Math.abs(rs - (frame.rs || 0)) > 0.001 || frame.w !== w || frame.h !== h) { frame.rs = rs; frame.w = w; frame.h = h; renderer.setPixelRatio(1); renderer.setSize(Math.max(2, Math.floor(w * rs)), Math.max(2, Math.floor(h * rs)), false); camera.aspect = w / h; camera.updateProjectionMatrix(); $('gl').classList.toggle('pix', !!SV.settings.pixel); }
   if (SV.settings.tod === 'real' && ts - (window._todT || 0) > 30000) { window._todT = ts; const c = curTod(); if (c !== window._todC) { window._todC = c; setWeather(false); } }
   tileTick(dt, camera.position.x, camera.position.z, camera.position.y);
   { const fv = SS('fov'); if (camera.fov !== fv) { camera.fov = fv; camera.updateProjectionMatrix(); } }
-  updateLights(dt, ts / 1000); if (G && G.s && G.plan && G.plan.arr && mode === 'fly') updatePapi(G.s, G.plan.arr, G.plan.ap1); const nb = $('nearby'); if (nb && mode === 'menu') nb.textContent = nearbyTraffic(camera.position.x, camera.position.z, 30000) + ' flying nearby';
+  { const hi = camera.position.y < 2600 || mode !== 'fly'; if (frame.hiOn === undefined) frame.hiOn = true; hiDetail(hi); }
+  if (frame.hiOn) updateLights(dt, ts / 1000); if (G && G.s && G.plan && G.plan.arr && mode === 'fly') updatePapi(G.s, G.plan.arr, G.plan.ap1); const nb = $('nearby'); if (nb && mode === 'menu') nb.textContent = nearbyTraffic(camera.position.x, camera.position.z, 30000) + ' flying nearby';
   if (mode === 'fly' && G && !paused) {
     const t = G.s.time; const gust = 1 + 0.12 * Math.sin(t * 0.7) + 0.08 * Math.sin(t * 1.9 + 1), wv = windVec(G.wind); G.windV = [wv[0] * gust, 0, wv[2] * gust];
     G.at = attitude(G.s); const c = readControls(dt);

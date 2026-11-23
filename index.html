@@ -1015,24 +1015,21 @@ const assistBonus = st => 1 + (st.stab ? 0 : 0.25) + (st.guide ? 0 : 0.1) + (st.
 /* ---------- procedure scoring ---------- */
 function scoreFlight(L, A, mode) {
   const it = [];
-  const add = (id, label, max, frac, note) => it.push({ id, label, max, got: Math.round(max * clamp(frac, 0, 1)), note: note || '' });
+  const add = (id, label, max, frac, note) => it.push({ id, label, max, fr: clamp(frac, 0, 1), got: 0, note: note || '' });
   add('start', 'Startup checklist completed', 6, L.startup ? 1 : 0);
-  add('taxi', 'Taxi speed within 20 kt', 4, L.maxTaxi <= 22 ? 1 : L.maxTaxi <= 30 ? 0.5 : 0, L.maxTaxi ? Math.round(L.maxTaxi) + ' kt max' : '');
   add('hold', 'Held short and received takeoff clearance', 12, L.incursion ? 0 : L.noClr ? 0.3 : 1, L.incursion ? 'Runway incursion' : L.noClr ? 'Rolled without clearance' : '');
   add('cfg', 'Takeoff flaps and lights', 8, (L.toFlaps ? 0.6 : 0) + (L.toLights ? 0.4 : 0));
   add('rot', 'Rotated near Vr', 6, L.liftIas == null ? 0 : (L.liftIas >= A.vr - 6 && L.liftIas <= A.vr + 20) ? 1 : L.liftIas > A.vr + 20 ? 0.4 : 0.3, L.liftIas != null ? Math.round(L.liftIas) + ' kt liftoff' : '');
   add('clb', 'Climb configuration cleaned up', 6, L.cleanUp ? 1 : 0);
   add('lim', 'Stayed inside speed limits', 4, L.speedBust ? 0 : 1);
-  add('crz', 'Held assigned altitude', 8, L.altN ? L.altOk / L.altN : 0, L.altN ? Math.round(100 * L.altOk / L.altN) + '% within 300 ft' : 'never reached cruise');
-  add('app', 'Landing configuration by 4 nm', 8, L.appCfg ? 1 : 0);
   add('stb', 'Stabilized at 500 ft AGL', 12, L.stable == null ? 0 : L.stable, L.stableNote || '');
-  add('clr', 'Landing clearance before touchdown', 4, L.landClr ? 1 : 0);
   add('tdz', 'Touchdown in the touchdown zone', 6, L.tdAlong == null ? 0 : (L.tdAlong >= 100 && L.tdAlong <= 900) ? 1 : (L.tdAlong > 0 && L.tdAlong <= 1300) ? 0.5 : 0, L.tdAlong != null ? Math.round(L.tdAlong) + ' m past threshold' : '');
   add('ctr', 'Touchdown on the centreline', 4, L.tdLat == null ? 0 : Math.abs(L.tdLat) <= 6 ? 1 : Math.abs(L.tdLat) <= 12 ? 0.5 : 0, L.tdLat != null ? Math.abs(Math.round(L.tdLat)) + ' m off' : '');
   const vs = L.tdVs == null ? null : Math.abs(L.tdVs);
   add('vs', 'Smooth landing', 8, vs == null ? 0 : vs <= 250 ? 1 : vs <= 400 ? 0.75 : vs <= 600 ? 0.4 : 0, vs != null ? Math.round(vs) + ' fpm' : '');
   add('out', 'Vacated the runway cleanly', 2, L.vacated ? 1 : 0);
   add('prk', 'Parked and set the brake', 2, L.parked ? 1 : 0);
+  const raw = it.reduce((a, b) => a + b.max, 0); let sm = 0; for (const x of it) { x.max = Math.round(x.max * 100 / raw); sm += x.max; } it.reduce((a, b) => b.max > a.max ? b : a).max += 100 - sm; for (const x of it) x.got = Math.round(x.max * x.fr);
   return { items: it, total: it.reduce((a, b) => a + b.got, 0) };
 }
 function checkridePass(ck, total, L, crashed) {

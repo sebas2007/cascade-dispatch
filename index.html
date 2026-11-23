@@ -418,10 +418,16 @@ function tileUnpack(buf) {
   return meta;
 }
 
+TL.raw = new Map(); TL.rawB = 0;
+async function tileRaw(k, keep) {
+  let b = TL.raw.get(k); if (b) return b;
+  const r = await fetch('world/t_' + k + '.bin?v=' + (TL.idx.ver || 0)); if (!r.ok) throw new Error('tile ' + r.status); b = await r.arrayBuffer();
+  if (keep && TL.rawB < 90e6) { TL.raw.set(k, b); TL.rawB += b.byteLength; } return b;
+}
 async function tileGet(k) {
   if (TL.idx && TL.idx.fmt === 'bin1gz') {
-    const r = await fetch('world/t_' + k + '.bin?v=' + (TL.idx.ver || 0)); if (!r.ok) throw new Error('tile ' + r.status);
-    return tileUnpack(await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+    const b = await tileRaw(k, false);
+    return tileUnpack(await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
   }
   const r = await fetch('world/t_' + k + '.json'); return r.json();
 }
@@ -1018,7 +1024,7 @@ function scoreFlight(L, A, mode) {
   const add = (id, label, max, frac, note) => it.push({ id, label, max, fr: clamp(frac, 0, 1), got: 0, note: note || '' });
   add('start', 'Startup checklist completed', 6, L.startup ? 1 : 0);
   add('hold', 'Held short and received takeoff clearance', 12, L.incursion ? 0 : L.noClr ? 0.3 : 1, L.incursion ? 'Runway incursion' : L.noClr ? 'Rolled without clearance' : '');
-  add('cfg', 'Takeoff flaps and lights', 8, (L.toFlaps ? 0.6 : 0) + (L.toLights ? 0.4 : 0));
+  add('cfg', 'Lights on for takeoff', 8, L.toLights ? 1 : 0);
   add('rot', 'Rotated near Vr', 6, L.liftIas == null ? 0 : (L.liftIas >= A.vr - 6 && L.liftIas <= A.vr + 20) ? 1 : L.liftIas > A.vr + 20 ? 0.4 : 0.3, L.liftIas != null ? Math.round(L.liftIas) + ' kt liftoff' : '');
   add('clb', 'Climb configuration cleaned up', 6, L.cleanUp ? 1 : 0);
   add('lim', 'Stayed inside speed limits', 4, L.speedBust ? 0 : 1);
@@ -1045,7 +1051,7 @@ function checkridePass(ck, total, L, crashed) {
 
 /* ---- ap.js ---- */
 /* ===== Autopilot: heading, altitude and speed hold. Real time only; manual below 1,000 ft AGL. ===== */
-function apNew() { return { appr: false, xi: 0, on: false, hdg: 0, alt: 3000, spd: 100, iv: 0, it: 0.5, spdOn: true, bank: 0 }; }
+function apNew() { return { loc: false, gs: false, ah: null, vsR: 0, vorOn: false, vi: 0, obs: 0, appr: false, xi: 0, on: false, hdg: 0, alt: 3000, spd: 100, iv: 0, it: 0.5, spdOn: true, bank: 0 }; }
 function apStep(ap, s, wind, dt) {
   const A = s.ac, at = attitude(s), alt = s.p[1] / FT, ias = iasOf(s, wind);
   const va = [s.v[0] - wind[0], s.v[1], s.v[2] - wind[2]], V = Math.max(20, vlen(va));
@@ -1056,7 +1062,7 @@ function apStep(ap, s, wind, dt) {
   const rol = clamp((ap.bank - at.bank) * 0.035, -1, 1);
   // vertical: feed-forward angle of attack for the load factor, feedback on flight-path angle
   const lim = A.id === 'kestrel' ? 2200 : A.id === 'heron' ? 1400 : 750, limD = A.id === 'kestrel' ? 2600 : A.id === 'heron' ? 1700 : 1000;
-  const vsT = clamp((ap.alt - alt) * 4, -limD, lim);
+  const rt = ap.vsR && !ap.appr ? ap.vsR : 0, vsT = clamp((ap.alt - alt) * 4, -(rt ? Math.min(limD, rt) : limD), rt ? Math.min(lim, rt) : lim);
   const gT = Math.asin(clamp(vsT * FT / 60 / V, -0.25, 0.25));
   const gam = Math.asin(clamp(s.v[1] / V, -0.5, 0.5));
   const rho = airDensity(s.p[1]), q = 0.5 * rho * V * V, W = mass(s) * GRAV;
@@ -2149,7 +2155,7 @@ function switchRegion(id) { if (!REGIONS[id] || id === RG.id) return; SV.region 
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(SV)); } catch (e) { } }
 let SV = loadSave(), G = null, mode = 'menu', tab = 'dispatch', sel = null, exam = null, camMode = 0, paused = false, mapOpen = false, lastTs = 0, menuT = 0;
 let AUTOQ = 1, apOpen = false;
-const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, sfx: true, trees: true, lamps: true };
+const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, sfx: true, routeDl: true, trees: true, lamps: true };
 const SS = k => (SV.settings[k] === undefined ? SET_DEF[k] : SV.settings[k]);
 const freeCam = { yaw: 0, pit: 0.3, dist: 1, init: false, user: false, min: 0.2, max: 8, sgn: 1 };
 const keys = {}, ctl = { pit: 0, rol: 0, yaw: 0, thr: 0, brk: 1, trim: 0, flapCmd: 0, gearCmd: 1 };
@@ -2256,6 +2262,7 @@ function hangarHTML() {
     ${tg('saver', 'Power Saver', 'Cooler and easier on the battery: lower resolution, 30 frames per second and a shorter draw distance. Best for long flights.')}
     ${tg('cruiseSave', 'Cruise saver', 'While the autopilot flies in cruise, drops to 30 frames per second and lower resolution to keep the phone cool. Full quality returns for the descent and landing.')}
     ${tg('sfx', 'Touchdown thump and sound', 'The camera jolts and you hear the tyres when the wheels touch. Also shows your landing rate.')}
+    ${tg('routeDl', 'Download the route before flight', 'Fetches the map for your whole route while the flight loads, so cruising needs little network and less work. Tiles outside it still load as you fly.')}
     ${tg('autoQ', 'Auto quality', 'Lowers the resolution when the frame rate drops and raises it again when it recovers. Keeps older iPhones smooth.')}
     ${tg('compact', 'Compact HUD', 'Hides the extra buttons and shows only the next checklist item and the latest radio call.')}
     ${tg('autoRud', 'Automatic rudder', 'Coordinates turns for you. The wheel steers the nose wheel on the ground and rolls the airplane in the air.')}
@@ -2407,6 +2414,19 @@ function drawPlanMap(P) {
   for (const [o, col, lab] of [[a, '#5de08a', P.c.from], [b, '#ff6b6b', P.c.to]]) { const px = X(o.x), pz = Z(o.z); c.fillStyle = '#0a1220'; c.beginPath(); c.arc(px, pz, 8, 0, 6.2832); c.fill(); c.fillStyle = col; c.beginPath(); c.arc(px, pz, 5, 0, 6.2832); c.fill(); c.fillStyle = '#fff'; c.font = '700 13px ui-monospace,Menlo,monospace'; c.strokeStyle = '#0a1220'; c.lineWidth = 4; const tx = px + (px > W - 70 ? -52 : 12); c.strokeText(lab, tx, pz - 12); c.fillText(lab, tx, pz - 12); }
   { const nm = Math.max(5, Math.round(w / NM / 5 / 5) * 5), len = nm * NM / w * W; c.fillStyle = '#fff'; c.fillRect(14, H - 20, len, 3); c.fillRect(14, H - 24, 2, 11); c.fillRect(14 + len, H - 24, 2, 11); c.font = '600 11px ui-monospace,Menlo,monospace'; c.strokeStyle = '#0a1220'; c.lineWidth = 3; c.strokeText(nm + ' nm', 22 + len, H - 18); c.fillText(nm + ' nm', 22 + len, H - 18); c.strokeText('N', W - 18, 16); c.fillText('N', W - 18, 16); c.fillRect(W - 14, 24, 2, 12); }
 }
+async function routeDownload(onProg) {
+  if (!SS('routeDl') || !TL.idx || TL.idx.fmt !== 'bin1gz' || !G || !G.s || !G.plan) return;
+  const T = TL.T, a = [G.s.p[0], G.s.p[2]], d = apOf(G.plan.c.to), b = [d.x, d.z], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, list = [];
+  const x0 = Math.floor(Math.min(a[0], b[0]) / T) - 2, x1 = Math.floor(Math.max(a[0], b[0]) / T) + 2, z0 = Math.floor(Math.min(a[1], b[1]) / T) - 2, z1 = Math.floor(Math.max(a[1], b[1]) / T) + 2;
+  for (let ix = x0; ix <= x1; ix++) for (let iz = z0; iz <= z1; iz++) {
+    const k = ix + '_' + iz; if (!TL.idx.tiles[k]) continue; const cx = (ix + 0.5) * T, cz = (iz + 0.5) * T, u = clamp(((cx - a[0]) * dx + (cz - a[1]) * dz) / L2, 0, 1), dd = Math.hypot(cx - (a[0] + dx * u), cz - (a[1] + dz * u));
+    if (dd < 6000 || Math.hypot(cx - b[0], cz - b[1]) < 9000 || Math.hypot(cx - a[0], cz - a[1]) < 9000) list.push([u, k]);
+  }
+  list.sort((p, q) => p[0] - q[0]); const ks = list.slice(0, 140).map(q => q[1]); let n = 0, fail = 0; onProg(0, ks.length);
+  const work = async () => { while (ks.length) { const k = ks.shift(); try { await tileRaw(k, true); } catch (e) { fail++; } n++; onProg(n, n + ks.length); } };
+  await Promise.all([work(), work(), work()]);
+  if (fail > 2 && typeof toast === 'function') toast('Some of the route could not be downloaded. It will load as you fly.', 4000);
+}
 async function startFlightLoader() {
   if (window._starting) return; window._starting = true;
   { const o0 = document.getElementById('loader'); if (o0) o0.remove(); }
@@ -2415,6 +2435,10 @@ async function startFlightLoader() {
   document.body.appendChild(d);
   await bootStep('Rolling the airplane out', 0.2); await bootStep('Loading the route and radio plan', 0.5); await bootStep('Setting up the cockpit', 0.8);
   try { if (window._resumeData) resumeApply(); else beginFlight(); } catch (e) { console.error(e); toast('Could not start the flight: ' + e.message, 5000); }
+  try { if (G && G.s && SS('routeDl') && TL.idx) {
+    const ld = document.getElementById('loader'); if (ld) ld.insertAdjacentHTML('beforeend', '<div style="width:min(300px,76vw);height:8px;border:2px solid #2a3a55;padding:2px"><div id="rtBar" style="height:100%;width:0;background:#4fb3ff;transition:width .2s"></div></div><div id="rtTxt" style="font-size:12px;color:#8fa3c0;min-height:16px">Downloading the route</div>');
+    await routeDownload((n, t) => { const bb = document.getElementById('rtBar'), tt = document.getElementById('rtTxt'); if (bb) bb.style.width = (t ? Math.round(100 * n / t) : 100) + '%'; if (tt) tt.textContent = 'Downloading the route: ' + n + ' of ' + t + ' map tiles'; });
+  } } catch (e) { console.warn(e); }
   try { if (G && G.s) { await bootStep('Loading the map around you', 0.9); await tilePreload(G.s.p[0], G.s.p[2]); } } catch (e) { }
   await bootStep('Compiling graphics', 0.95); try { renderer.render(scene, camera); } catch (e) { }
   await bootStep('Ready', 1); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); hideLoader(); window._starting = false;
@@ -2566,7 +2590,7 @@ const HINTS = {
   COLD: 'Click the checklist items in order, or press E.',
   CLR: 'Press R to call for taxi clearance.',
   TAXI: 'Press B to release the brake, hold W for a little power, and follow the yellow line.',
-  HOLD: 'Hold short. Press F once for takeoff flaps and L for lights, then press R.',
+  HOLD: 'Hold short. Press L for lights, then press R.',
   CLEARED: 'Cleared. Taxi onto the runway and line up, then hold W (or Shift) for full power.',
   ROLL: 'Stay straight with A and D. At rotate speed, pull back with the down arrow.',
   CLIMB: 'Gear up (G) if you have it. Flaps up (V) by 1,000 ft.',
@@ -2660,11 +2684,11 @@ function procUpdate(dt) {
       }
       if (!G.stableDone && agl < 152 && dthr < 4800 && !s.touch) {
         G.stableDone = true; const fails = [], hd = Math.abs(((arr.hdg - at.hdg + 540) % 360) - 180);
-        if (!(ias >= A.vref - 6 && ias <= A.vref + 14)) fails.push('speed ' + Math.round(ias) + ' kt');
-        if (at.vs < -900) fails.push('sink ' + Math.round(-at.vs) + ' fpm');
-        if (Math.abs(e.lat) > 14) fails.push('off the centreline');
-        if (hd > 10) fails.push('heading off');
-        if (!((!A.retract || ctl.gearCmd === 1) && ctl.flapCmd >= A.landFlaps - 0.5)) fails.push('not configured');
+        if (!(ias >= A.vref - 8 && ias <= A.vref + 24)) fails.push('speed ' + Math.round(ias) + ' kt');
+        if (at.vs < -1000) fails.push('sink ' + Math.round(-at.vs) + ' fpm');
+        if (Math.abs(e.lat) > 30) fails.push('off the centreline');
+        if (hd > 22) fails.push('heading off');
+        if (!((!A.retract || ctl.gearCmd === 1) && ctl.flapCmd >= 1)) fails.push('not configured');
         L.stable = (5 - fails.length) / 5; L.stableNote = fails.length ? 'Unstable: ' + fails.join(', ') : 'Stabilized';
         say('Cascade Tower', fails.length ? 'Unstable approach. Consider a go-around.' : 'Stabilized.');
       }
@@ -2728,7 +2752,7 @@ function readControls(dt) {
   ctl.brk = G.parking ? 1 : (keys[' '] ? 1 : 0);
   const out = { pit: ctl.pit, rol: ctl.rol, yaw: ctl.yaw, thr: ctl.thr, brk: ctl.brk, flapCmd: ctl.flapCmd, gearCmd: ctl.gearCmd, trim: ctl.trim };
   if (G.ap.on) {
-    if (G.ap.appr && G.phase !== 'ROLLOUT') apApproach(G.ap, s, dt);
+    if (G.ap.appr && G.phase !== 'ROLLOUT') apApproach(G.ap, s, dt); else if (G.ap.vorOn) apVor(G.ap, s, dt);
     const o = apStep(G.ap, s, G.windV, dt); out.pit = o.pit; out.rol = o.rol; if (G.ap.spdOn) { out.thr = o.thr; ctl.thr = o.thr; }
   } else if (G.set.stab && s.air && Math.abs(tr) < 0.05 && Math.abs(G.at.bank) < 42) out.rol = clamp(-G.at.bank * 0.05, -0.5, 0.5);
   if (G.set.stab && !G.ap.on) assistTakeoffLanding(out, tp, ty);
@@ -2750,15 +2774,46 @@ function assistTakeoffLanding(out, tp, ty) {
   }
 }
 function apAvail() { const s = G.s; return s.air && G.agl > 250 && ['ENROUTE', 'DESCENT', 'FINAL'].includes(G.phase); }
+const NAVAIDS = RG.id === 'nyc' ? [
+  { id: 'DPK', name: 'Deer Park', f: '117.7', lat: 40.79177, lon: -73.30368 }, { id: 'JFK', name: 'Kennedy', f: '115.9', lat: 40.6329, lon: -73.7714 },
+  { id: 'CCC', name: 'Calverton', f: '117.2', lat: 40.929, lon: -72.795 }, { id: 'HTO', name: 'Hampton', f: '113.6', lat: 40.914, lon: -72.314 },
+  { id: 'BDR', name: 'Bridgeport', f: '108.8', lat: 41.1607, lon: -73.1245 }, { id: 'CMK', name: 'Carmel', f: '116.6', lat: 41.28, lon: -73.581 }, { id: 'TEB', name: 'Teterboro', f: '108.4', lat: 40.849, lon: -74.062 }] : [];
+function vorInfo(ap, s) {
+  const n = NAVAIDS[ap.vi || 0]; if (!n) return null; const st = llxz(n.lat, n.lon), r = [s.p[0] - st[0], s.p[2] - st[1]], d = Math.hypot(r[0], r[1]);
+  const crs = ((ap.obs + MAGVAR) % 360 + 360) % 360 * DEG, u = [Math.sin(crs), -Math.cos(crs)], along = r[0] * u[0] + r[1] * u[1], cross = r[0] * -u[1] + r[1] * u[0];
+  const brg = bearingDeg({ x: st[0], z: st[1] }, { x: s.p[0], z: s.p[2] });
+  return { n, st, d, along, cross, crs: crs / DEG, radial: Math.round(magHdg(brg)) || 360, to: along < 0 };
+}
+function apVor(ap, s, dt) {
+  const v = vorInfo(ap, s); if (!v) { ap.vorOn = false; return; }
+  if (v.d < 700) return;
+  ap.xi = clamp((ap.xi || 0) + v.cross * dt * 0.0002, -12, 12);
+  const ang = clamp(Math.atan2(v.cross, Math.max(1500, Math.abs(v.along) * 0.4)) / DEG * 0.9, -30, 30);
+  ap.hdg = ((v.crs - ang - ap.xi) % 360 + 360) % 360; ap.ann = 'VOR ' + v.n.id;
+}
+function vorText(ap, s) {
+  const v = vorInfo(ap, s); if (!v) return 'No VOR in this region'; const x = v.cross / 1852;
+  return v.n.id + ' ' + v.n.f + '  R-' + String(v.radial).padStart(3, '0') + '  ' + (v.d / 1852).toFixed(1) + ' nm  ' + (v.to ? 'TO' : 'FROM') + '  CRS ' + String(Math.round(ap.obs) || 360).padStart(3, '0') + '  off ' + Math.abs(x).toFixed(1) + ' nm ' + (Math.abs(x) < 0.05 ? '' : x > 0 ? 'right' : 'left');
+}
 function apApproach(ap, s, dt) {
   const arr = G.plan.arr, A = G.A, P0 = endPt(arr, 0, 0), P1 = endPt(arr, -6000, 0), u = [(P0[0] - P1[0]) / 6000, (P0[1] - P1[1]) / 6000];
   const crs = bearingDeg({ x: P1[0], z: P1[1] }, { x: P0[0], z: P0[1] }), rx = s.p[0] - P0[0], rz = s.p[2] - P0[1];
-  const along = rx * u[0] + rz * u[1], cross = rx * -u[1] + rz * u[0], dist = -along;
-  if (dist < 2200 && dist > -300 && Math.abs(cross) > 900) { ap.hdg = bearingDeg({ x: s.p[0], z: s.p[2] }, { x: P1[0], z: P1[1] }); }
-  else if (dist < 600) { ap.hdg = crs; ap.xi = 0; }
+  const along = rx * u[0] + rz * u[1], cross = rx * -u[1] + rz * u[0], dist = -along, el = apOf(G.plan.c.to).elev, altFt = s.p[1] / FT;
+  const wide = Math.max(350, dist * 0.12), loc0 = ap.loc;
+  ap.loc = dist > -200 && Math.abs(cross) < (ap.loc ? wide * 1.8 : wide);
+  if (ap.loc && !loc0) toast('Localizer captured', 2200);
+  if (!ap.loc && (dist < -300 || (dist < 2200 && Math.abs(cross) > 900))) ap.hdg = bearingDeg({ x: s.p[0], z: s.p[2] }, { x: P1[0], z: P1[1] });
+  else if (ap.loc && dist < 600) { ap.hdg = crs; ap.xi = 0; }
   else { ap.xi = clamp(ap.xi + cross * dt * 0.0012, -12, 12); ap.hdg = ((crs - clamp(cross * 0.075, -30, 30) - ap.xi) % 360 + 360) % 360; }
-  const el = apOf(G.plan.c.to).elev, path = el + 50 + Math.max(0, dist) * Math.tan(3 * DEG) / FT, altFt = s.p[1] / FT, gsm = Math.hypot(s.v[0], s.v[2]), lead = gsm * Math.tan(3 * DEG) * 60 / FT / 4;
-  if (altFt > path + 20) { ap.ah = null; ap.alt = Math.max(el + 250, path - lead); } else { if (ap.ah == null) ap.ah = altFt; ap.alt = ap.ah; }
+  const path = el + 50 + Math.max(0, dist) * Math.tan(3 * DEG) / FT, gsm = Math.hypot(s.v[0], s.v[2]), lead = gsm * Math.tan(3 * DEG) * 60 / FT / 4;
+  const gs0 = ap.gs;
+  if (!ap.loc || dist > 22000 || dist < 100) ap.gs = false;
+  else if (!ap.gs) { ap.gs = altFt >= path - 50 && altFt <= path + 350; if (!ap.gs && altFt > path + 350 && !ap.hiW) { ap.hiW = true; toast('Above the glidepath. Descend with the altitude or V/S controls to capture it.', 4500); } }
+  else if (Math.abs(altFt - path) > 450) ap.gs = false;
+  if (ap.gs && !gs0) toast('Glideslope captured', 2200);
+  if (ap.gs) { ap.ah = null; ap.alt = Math.max(el + 250, path - lead); }
+  else { if (ap.ah == null) ap.ah = Math.round(altFt / 50) * 50; ap.alt = ap.ah; }
+  ap.ann = ap.gs ? 'LOC / GS' : ap.loc ? 'LOC / GS ARM' : 'LOC ARM';
   ap.spdOn = true; ap.spd = A.vref + (dist > 5000 ? 18 : 8);
 }
 function apAction(v) {
@@ -2767,15 +2822,26 @@ function apAction(v) {
     if (!ap.on) {
       if (!apAvail()) { toast(G.phase === 'FINAL' || G.phase === 'DESCENT' && G.agl < 300 ? 'Autopilot is for cruise and descent above 1,000 ft AGL.' : 'Autopilot needs: airborne, above 1,000 ft AGL, flaps and gear up, and past the climb-out.', 3200); return; }
       ap.on = true; ap.bank = at.bank; ap.iv = 0; ap.it = G.s.thr; toast('Autopilot engaged');
-    } else { ap.on = false; ap.appr = false; toast('Autopilot off'); }
+    } else { ap.on = false; ap.appr = false; ap.vorOn = false; toast('Autopilot off'); }
+  } else if (v === 'vor') {
+    if (!NAVAIDS.length) { toast('No VOR data for this region', 2500); return; }
+    const L = NAVAIDS.map((n, i) => ({ i, d: Math.hypot(llxz(n.lat, n.lon)[0] - G.s.p[0], llxz(n.lat, n.lon)[1] - G.s.p[2]) })).sort((a, b) => a.d - b.d), k = L.findIndex(q => q.i === (ap.vi || 0));
+    ap.vi = L[(k + 1) % L.length].i; ap.xi = 0; const vi = vorInfo(ap, G.s); ap.obs = Math.round(magHdg(bearingDeg(G.s.p && { x: G.s.p[0], z: G.s.p[2] }, { x: vi.st[0], z: vi.st[1] }))) % 360;
+  } else if (v === 'vorD') {
+    const vi = vorInfo(ap, G.s); if (vi) { ap.obs = Math.round(magHdg(bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, { x: vi.st[0], z: vi.st[1] }))) % 360; ap.xi = 0; toast('Course set direct to ' + vi.n.id, 2200); }
+  } else if (v === 'vorT') {
+    if (ap.vorOn) { ap.vorOn = false; toast('VOR tracking off'); }
+    else { if (!NAVAIDS.length) { toast('No VOR data for this region', 2500); return; } if (!ap.on) { if (!apAvail()) { toast('Autopilot is not available right now', 2500); return; } ap.on = true; ap.bank = at.bank; ap.iv = 0; ap.it = G.s.thr; } ap.vorOn = true; ap.appr = false; ap.direct = false; ap.xi = 0; toast('Tracking the VOR course', 2500); }
+  } else if (/^ob[+-]\d+$/.test(v)) { ap.obs = ((ap.obs || 0) + +v.slice(2) + 360) % 360; ap.xi = 0;
+  } else if (/^vs[+-]\d+$/.test(v)) { ap.vsR = clamp((ap.vsR || 0) + +v.slice(2), 0, 2000); if (ap.vsR && ap.vsR < 200) ap.vsR = 200;
   } else if (v === 'appr') {
     if (!(G.s.air && G.agl > 250 && ['DESCENT', 'FINAL'].includes(G.phase))) { toast('Approach mode works once Approach has you descending for ' + G.plan.arr.name, 3500); return; }
-    const ap0 = G.ap; ap0.appr = true; ap0.direct = false; ap0.xi = 0; if (!ap0.on) { ap0.on = true; ap0.bank = at.bank; ap0.iv = 0; ap0.it = G.s.thr; } toast('Approach mode: tracking runway ' + G.plan.arr.name + '. You set flaps and gear, and land it yourself.', 4500);
-  } else if (v === 'dest') { ap.appr = false; ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1); ap.direct = true; toast('Tracking direct to ' + G.plan.c.to); }
-  else if (v === 'sync') { ap.appr = false; ap.direct = false; ap.hdg = at.hdg; ap.alt = Math.round(G.s.p[1] / FT / 100) * 100; ap.spd = Math.round(G.ias / 5) * 5; }
+    const ap0 = G.ap; ap0.appr = true; ap0.vorOn = false; ap0.direct = false; ap0.xi = 0; ap0.loc = false; ap0.gs = false; ap0.ah = null; ap0.hiW = false; if (!ap0.on) { ap0.on = true; ap0.bank = at.bank; ap0.iv = 0; ap0.it = G.s.thr; } toast('Approach mode: tracking runway ' + G.plan.arr.name + '. You set flaps and gear, and land it yourself.', 4500);
+  } else if (v === 'dest') { ap.appr = false; ap.vorOn = false; ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.plan.ap1); ap.direct = true; toast('Tracking direct to ' + G.plan.c.to); }
+  else if (v === 'sync') { ap.appr = false; ap.vorOn = false; ap.direct = false; ap.hdg = at.hdg; ap.alt = Math.round(G.s.p[1] / FT / 100) * 100; ap.spd = Math.round(G.ias / 5) * 5; }
   else if (v === 'spd') ap.spdOn = !ap.spdOn;
   else if (v === 'back') { apOpen = false; renderApPanel(); }
-  else { const m = /^(h|a|s)([+-]\d+)$/.exec(v); if (m) { const d = +m[2]; ap.appr = false; if (m[1] === 'h') { ap.hdg = (ap.hdg + d + 360) % 360; ap.direct = false; } else if (m[1] === 'a') ap.alt = clamp(ap.alt + d, 500, 25000); else ap.spd = clamp(ap.spd + d, 60, 280); } }
+  else { const m = /^(h|a|s)([+-]\d+)$/.exec(v); if (m) { const d = +m[2]; ap.appr = false; if (m[1] === 'h') ap.vorOn = false; if (m[1] === 'h') { ap.hdg = (ap.hdg + d + 360) % 360; ap.direct = false; } else if (m[1] === 'a') ap.alt = clamp(ap.alt + d, 500, 25000); else ap.spd = clamp(ap.spd + d, 60, 280); } }
   updateApPanel();
 }
 function hudAction(v) {
@@ -2864,15 +2930,19 @@ function renderApPanel() {
     <div class="apcols">${col('HDG', 'apH', [['h-10', '-10'], ['h+10', '+10'], ['h-1', '-1'], ['h+1', '+1']])}${col('ALT', 'apA', [['a-1000', '-1000'], ['a+1000', '+1000'], ['a-100', '-100'], ['a+100', '+100']])}${col('SPD', 'apS', [['s-10', '-10'], ['s+10', '+10'], ['s-5', '-5'], ['s+5', '+5']])}</div>
     <button class="go apE" data-act="ap" data-v="on" id="apE"></button>
     <div class="apb">${b('dest', 'Direct ' + G.plan.c.to)}${b('sync', 'Match current')}<button data-act="ap" data-v="spd" id="apT"></button></div>
-    <div class="apb">${b('appr', 'Approach: track runway ' + G.plan.arr.name)}</div>`;
+    <div class="apb">${b('appr', 'Approach: track runway ' + G.plan.arr.name)}</div>
+    <div class="apb">${b('vs-100', 'V/S rate -')}<b id="apV" style="align-self:center;min-width:80px;text-align:center"></b>${b('vs+100', 'V/S rate +')}</div>
+    <div class="apb"><button data-act="ap" data-v="vor" id="apVs"></button>${b('vorD', 'Course direct')}<button data-act="ap" data-v="vorT" id="apVT"></button></div>
+    <div class="apb">${b('ob-10', 'CRS -10')}${b('ob-1', '-1')}${b('ob+1', '+1')}${b('ob+10', '+10')}</div><p class="apn" id="apVor"></p>`;
   updateApPanel();
 }
 function updateApPanel() {
   if (!G) return; const ap = G.ap, bt = $('apBtn'); if (bt) bt.classList.toggle('on', !!ap.on);
   if (!apOpen || !$('apState')) return; const ok = apAvail();
-  const st = $('apState'); st.textContent = ap.on ? (ap.appr ? 'APPR' : ap.direct ? 'NAV' : 'HDG') + ' / ' + (Math.abs(ap.alt - G.s.p[1] / FT) < 80 ? 'ALT' : ap.alt > G.s.p[1] / FT ? 'CLIMB' : 'DESC') : ok ? 'READY' : 'NOT AVAILABLE'; st.className = 'state' + (ap.on ? ' on' : '');
+  const st = $('apState'); st.textContent = ap.on ? (ap.appr ? ap.ann || 'APPR' : ap.vorOn ? 'VOR ' + (NAVAIDS[ap.vi || 0] || { id: '' }).id : ap.direct ? 'NAV' : 'HDG') + ' / ' + (Math.abs(ap.alt - G.s.p[1] / FT) < 80 ? 'ALT' : ap.alt > G.s.p[1] / FT ? 'CLIMB' : 'DESC') : ok ? 'READY' : 'NOT AVAILABLE'; st.className = 'state' + (ap.on ? ' on' : '');
   $('apH').textContent = fmtHdg(ap.hdg); $('apA').textContent = Math.round(ap.alt).toLocaleString(); $('apS').textContent = ap.spd;
   $('apT').textContent = 'Autothrottle ' + (ap.spdOn ? 'on' : 'off'); $('apE').textContent = ap.on ? 'Disengage autopilot' : 'Engage autopilot';
+  if ($('apV')) { $('apV').textContent = ap.vsR ? ap.vsR + ' fpm' : 'auto'; $('apVs').textContent = 'VOR: ' + (NAVAIDS[ap.vi || 0] ? NAVAIDS[ap.vi || 0].id : 'none'); $('apVT').textContent = ap.vorOn ? 'Stop VOR track' : 'Track VOR'; $('apVor').textContent = vorText(ap, G.s); }
 }
 function updateHUD() {
   const s = G.s, at = G.at; if (!at) return;
@@ -3099,7 +3169,11 @@ function updateCamera0(dt) {
   skyMesh.position.copy(camera.position); waterMesh.position.x = (TB.x0 + TB.x1) / 2; updateSprites();
 }
 function cruiseSave() { return !!(SS('cruiseSave') && G && G.s && mode === 'fly' && !paused && G.ap && G.ap.on && G.s.air && G.agl > 900 && G.phase === 'ENROUTE'); }
-function renderScale() { const dpr = window.devicePixelRatio || 1, m = (SS('saver') ? Math.min(SS('res'), 0.6) : SS('res')) * (cruiseSave() ? 0.8 : 1); return (SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) : Math.min(dpr, 2)) * AUTOQ * m; }
+function nearApt() {
+  if (typeof mode === 'undefined' || mode !== 'fly' || !G || !G.s || !G.plan) return false; const s = G.s, P = G.plan, lim = G._nearAp ? 11000 : 9000;
+  for (const a of [apOf(P.c.from), apOf(P.c.to)]) if (a && Math.hypot(s.p[0] - a.x, s.p[2] - a.z) < lim) { G._nearAp = true; return true; } G._nearAp = false; return false;
+}
+function renderScale() { const dpr = window.devicePixelRatio || 1; let m0 = SS('saver') ? Math.min(SS('res'), 0.6) : SS('res'); if (m0 < 1 && nearApt()) m0 = 1; const m = m0 * (cruiseSave() ? 0.8 : 1); return (SV.settings.pixel ? Math.min(1, SS('pixH') / innerHeight) : Math.min(dpr, 2)) * AUTOQ * m; }
 function frame(ts) {
   requestAnimationFrame(frame);
   { const cap = (SS('saver') || cruiseSave()) ? 30 : SS('fps'); frame.capK = cap < 60 ? 60 / cap : 1; if (cap < 60 && ts - (frame.capT || 0) < 1000 / cap - 5) return; frame.capT = ts; }

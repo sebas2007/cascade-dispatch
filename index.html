@@ -171,6 +171,7 @@ body.compact #rMisc{font-size:10px}
 <script src="three.min.js"></script>
 <script src="kfrg.js"></script>
 <script src="world/airports.js"></script>
+<script src="world/faa.js" onerror="void 0"></script>
 <script src="world/terrain.js"></script>
 <script>
 'use strict';
@@ -466,11 +467,21 @@ if (REAL) (function () {
 })();
 
 /* ---- real airport layouts from OpenStreetMap (world/airports.js, built by the pipeline) ---- */
+function mergeRw(list) { // OSM sometimes splits one runway into pieces: join collinear neighbours
+  let R = list.map(r => Object.assign({}, r)), again = true;
+  while (again) { again = false;
+    for (let i = 0; i < R.length && !again; i++) for (let j = i + 1; j < R.length && !again; j++) {
+      const a = R[i], b = R[j], dh = Math.abs(((a.hdg - b.hdg + 540) % 360) - 180); if (dh > 1.5 || a.a !== b.a) continue;
+      const d1 = Math.hypot(a.p1[0] - b.p0[0], a.p1[1] - b.p0[1]), d2 = Math.hypot(b.p1[0] - a.p0[0], b.p1[1] - a.p0[1]); if (d1 > 80 && d2 > 80) continue;
+      const p0 = d1 <= d2 ? a.p0 : b.p0, p1 = d1 <= d2 ? b.p1 : a.p1; R[i] = Object.assign({}, a, { p0, p1, len: Math.round(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) / FT), w: Math.max(a.w, b.w) }); R.splice(j, 1); again = true;
+    } }
+  return R;
+}
 (function () {
   const D = window.REAL_APS || {};
   for (const ap of ALL_AP) {
     const d = D[ap.id]; if (!d || !d.rw || !d.rw.length || ap.real) continue;
-    const R = d.rw.slice().sort((a, b) => b.len - a.len).slice(0, 6), r0 = R[0];
+    const R = mergeRw(d.rw).sort((a, b) => b.len - a.len).slice(0, 6), r0 = R[0];
     const cen = r => [(r.p0[0] + r.p1[0]) / 2, (r.p0[1] + r.p1[1]) / 2], c0 = cen(r0), h0 = r0.hdg;
     ap.lat = LAT0 - c0[1] / KZ; ap.lon = LON0 + c0[0] / KX; ap.hdg0 = h0;
     const hh = h0 * DEG, ux = Math.sin(hh), uz = -Math.cos(hh), rx = Math.cos(hh), rz = Math.sin(hh);
@@ -496,7 +507,7 @@ function buildOsmExtras(ap, g) {
   for (const w of (d.tw || [])) { const fl = w[1]; for (let i = 0; i + 3 < fl.length; i += 2) tileFlat(p2, n2, c3, i2, [0.78, 0.66, 0.16], fl[i], fl[i + 1], fl[i + 2], fl[i + 3], 0.25, 0.21); }
   if (i2.length) { const m = tileMesh(p2, n2, c3, i2, 4); m.renderOrder = 4; g.add(m); }
 }
-function initWorld() {
+function initWorld0() {
   for (const ap of AIRPORTS) {
     const p = llxz(ap.lat, ap.lon); ap.x = p[0]; ap.z = p[1]; ap.elevM = ap.elev * FT;
     const h = ap.hdg0 * DEG; ap.ux = Math.sin(h); ap.uz = -Math.cos(h); ap.rx = Math.cos(h); ap.rz = Math.sin(h);
@@ -951,8 +962,81 @@ function realArrRoute(ap, end, x, z) {
   const path = realPathTo(D, i).reverse(), pts = [[x, z]].concat(path.map(j => REAL.gn[j].slice()));
   pts.via = realVia(path); return pts;
 }
+function initWorld() { initWorld0(); for (const ap of AIRPORTS) if (ap.osm && !ap.real) { try { tgSetup(ap); } catch (e) { console.warn('taxi graph', ap.id, e); } } }
+function tgBuild(ap) {
+  const d = ap.osm; if (!d || !d.tw || !d.tw.length) return null;
+  const N = [], grid = new Map(), cell = 7, segs = [], ends = [], key = (i, j) => i + ',' + j;
+  const node = (x, z) => { const i = Math.floor(x / cell), j = Math.floor(z / cell); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const arr = grid.get(key(i + a, j + b)); if (arr) for (const n of arr) if (Math.hypot(N[n][0] - x, N[n][1] - z) < 7) return n; } const id = N.length; N.push([x, z]); const k = key(i, j); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(id); return id; };
+  for (const w of d.tw) { const f = w[1]; let prev = -1; for (let i = 0; i + 1 < f.length; i += 2) { const n = node(f[i], f[i + 1]); if (prev >= 0 && prev !== n) segs.push([prev, n]); prev = n; if (i === 0 || i + 3 >= f.length) ends.push(n); } }
+  for (const e of ends) { // T-junctions: a way that ends beside another way joins it
+    const P = N[e]; let best = null, bd = 16;
+    for (let si = 0; si < segs.length; si++) { const [a, b] = segs[si]; if (a === e || b === e) continue; const A = N[a], B = N[b], dx = B[0] - A[0], dz = B[1] - A[1], L2 = dx * dx + dz * dz; if (L2 < 1) continue; const t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dz) / L2; if (t < 0.03 || t > 0.97) continue; const px = A[0] + dx * t, pz = A[1] + dz * t, dd = Math.hypot(P[0] - px, P[1] - pz); if (dd < bd) { bd = dd; best = { si, px, pz }; } }
+    if (best) { const [a, b] = segs[best.si], m = node(best.px, best.pz); if (m !== a && m !== b) { segs[best.si] = [a, m]; segs.push([m, b]); } if (m !== e) segs.push([e, m]); }
+  }
+  const adj = Array.from({ length: N.length }, () => []); const seen = new Set();
+  for (const [a, b] of segs) { if (a === b) continue; const k = a < b ? a + '_' + b : b + '_' + a; if (seen.has(k)) continue; seen.add(k); const l = Math.hypot(N[a][0] - N[b][0], N[a][1] - N[b][1]); adj[a].push([b, l]); adj[b].push([a, l]); }
+  return { N, adj, segs };
+}
+function tgDijkstra(tg, src) {
+  const n = tg.N.length, dist = new Float64Array(n).fill(1e12), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n); dist[src] = 0;
+  for (;;) { let u = -1, b = 1e11; for (let i = 0; i < n; i++) if (!done[i] && dist[i] < b) { b = dist[i]; u = i; } if (u < 0) break; done[u] = 1; for (const [v, d] of tg.adj[u]) if (dist[u] + d < dist[v]) { dist[v] = dist[u] + d; prev[v] = u; } }
+  return { dist, prev };
+}
+const tgPath = (D, t) => { const p = []; for (let u = t; u >= 0; u = D.prev[u]) p.push(u); return p.reverse(); };
+function tgNearest(tg, x, z, D, maxd) { let b = -1, bd = maxd || 1e9; for (let i = 0; i < tg.N.length; i++) { if (D && D.dist[i] > 1e11) continue; const d = Math.hypot(tg.N[i][0] - x, tg.N[i][1] - z); if (d < bd) { bd = d; b = i; } } return b; }
+function tgHold(tg, rw, end, D) {
+  const sd = end.sd; let best = null;
+  const score = (i, lo, hi) => { const g = tg.N[i], st = toRw(rw, g[0], g[1]), lat = Math.abs(st[1]), along = (st[0] - end.thrS) * sd; if (lat < rw.W / 2 + lo || lat > rw.W / 2 + hi) return null; return { st, sc: Math.abs(along - 20) + lat * 0.3 + D.dist[i] * 0.0004, along }; };
+  for (let i = 0; i < tg.N.length; i++) { if (D.dist[i] > 1e11) continue; const r = score(i, 10, 110); if (!r || r.along < -80 || r.along > 420) continue; if (!best || r.sc < best.sc) best = { h: i, sc: r.sc, st: r.st }; }
+  if (!best) for (let i = 0; i < tg.N.length; i++) { if (D.dist[i] > 1e11) continue; const r = score(i, 10, 200); if (r && (!best || r.sc < best.sc)) best = { h: i, sc: r.sc, st: r.st }; }
+  if (!best) { const t = endPt(end, 0, 0), i = tgNearest(tg, t[0], t[1], D); if (i >= 0) best = { h: i, sc: 0, st: toRw(rw, tg.N[i][0], tg.N[i][1]) }; }
+  return best;
+}
+function inPolyFlat(x, z, f) { let c = false; for (let i = 0, j = f.length - 2; i < f.length; j = i, i += 2) { const xi = f[i], zi = f[i + 1], xj = f[j], zj = f[j + 1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; }
+function tgSetup(ap) {
+  const tg = tgBuild(ap); if (!tg || tg.N.length < 8) return; ap._tg = tg;
+  const ends = ap.ends.filter(e => e.dep).sort((a, b) => b.len - a.len), end = ends[0]; if (!end) { ap._tg = null; return; }
+  // pick a gate: a taxiway node inside an apron, a sensible taxi away from the main runway
+  const nearN = tgNearest(tg, endPt(end, 300, 0)[0], endPt(end, 300, 0)[1]), D0 = tgDijkstra(tg, nearN), rw = end.rw;
+  let best = null;
+  const apr = (ap.osm.apr || []).map(a => a[0]);
+  for (let i = 0; i < tg.N.length; i++) { if (D0.dist[i] > 1e11) continue; const g = tg.N[i], st = toRw(rw, g[0], g[1]); if (Math.abs(st[1]) < rw.W / 2 + 150) continue; let inA = false; for (const f of apr) { if (inPolyFlat(g[0], g[1], f)) { inA = true; break; } } const sc = Math.abs(D0.dist[i] - 1800) + (inA ? 0 : 900); if (!best || sc < best.sc) best = { i, sc }; }
+  if (!best) { ap._tg = null; return; }
+  tg.park = best.i; const g = tg.N[best.i], dx = g[0] - ap.x, dz = g[1] - ap.z; ap.park = [dx * ap.ux + dz * ap.uz, dx * ap.rx + dz * ap.rz]; tg.D = tgDijkstra(tg, tg.park);
+}
+function tgDepRoute(ap, end) {
+  const tg = ap._tg, D = tg.D, rw = end.rw, P = ap.ref(ap.park[0], ap.park[1]), w = (s, t) => rwPt(rw, s, t);
+  const best = tgHold(tg, rw, end, D); if (!best) return { pts: [P, w(end.thrS, 0)], hold: { s: end.thrS, t: 0, tTw: 0 }, hdg0: end.hdg, start: P, via: [] };
+  const path = tgPath(D, best.h), pts = path.map(i => tg.N[i].slice()), st = best.st; pts.push(w(st[0], 0));
+  let k = 1; while (k < pts.length - 1 && Math.hypot(pts[k][0] - P[0], pts[k][1] - P[1]) < 8) k++;
+  const dx = pts[k][0] - P[0], dz = pts[k][1] - P[1];
+  return { pts, hold: { s: st[0], t: st[1], tTw: st[1] }, hdg0: ((Math.atan2(dx, -dz) / DEG) + 360) % 360, start: P, via: [] };
+}
+function tgArrRoute(ap, end, x, z) {
+  const tg = ap._tg, D = tg.D, i = tgNearest(tg, x, z, D, 800); if (i < 0) return [[x, z], ap.ref(ap.park[0], ap.park[1])];
+  const path = tgPath(D, i).reverse(), pts = [[x, z]].concat(path.map(j => tg.N[j].slice())); pts.via = []; return pts;
+}
+function tgAudit(ap) { // how well do routes follow real taxiway pavement? (used by tests)
+  const tg = ap._tg; if (!tg) return null; const out = { nodes: tg.N.length, routes: [] };
+  for (const e of ap.ends.filter(q => q.dep)) { const r = tgDepRoute(ap, e); let L = 0, off = 0; for (let i = 1; i < r.pts.length; i++) { const a = r.pts[i - 1], b = r.pts[i], l = Math.hypot(b[0] - a[0], b[1] - a[1]); L += l; if (i === r.pts.length - 1) continue; } out.routes.push({ end: e.name, len: Math.round(L), pts: r.pts.length }); }
+  return out;
+}
+function tgLights(ap, lb) {
+  const d = ap.osm, y = ap.elevM + 0.5; let n = 0;
+  for (const w of d.tw) { const f = w[1], hw = Math.max(7, (w[0] || 18) / 2); let acc = 0; for (let i = 0; i + 3 < f.length && n < 5000; i += 2) { const ax = f[i], az = f[i + 1], bx = f[i + 2], bz = f[i + 3], l = Math.hypot(bx - ax, bz - az); if (l < 1) continue; const ux = (bx - ax) / l, uz = (bz - az) / l; for (let s = 38 - acc; s < l; s += 38) { const px = ax + ux * s, pz = az + uz * s; lb.add(px - uz * hw, y, pz + ux * hw, LC.blue, 0.9); lb.add(px + uz * hw, y, pz - ux * hw, LC.blue, 0.9); n += 2; } acc = (acc + l) % 38; } }
+  const a = ap.ref(ap.rw[0].al, ap.rw[0].lat); for (const c of tgCarSegs(ap, 4)) L3.cars.push({ kind: 'apt', a: c[0], b: c[1], y: ap.elevM + 1.1, t: Math.random(), spd: 7 / Math.hypot(c[1][0] - c[0][0], c[1][1] - c[0][1]), dir: 1, col: LC.ylw });
+}
+function tgCarSegs(ap, k) {
+  const out = []; for (const w of ap.osm.tw) { const f = w[1]; for (let i = 0; i + 3 < f.length; i += 2) { const a = [f[i], f[i + 1]], b = [f[i + 2], f[i + 3]]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 100) out.push([a, b]); } }
+  const r = mulberry(ap.id.charCodeAt(2) * 31 + out.length), res = []; for (let i = 0; i < Math.min(k, out.length); i++) res.push(out.splice(Math.floor(r() * out.length), 1)[0]); return res;
+}
+function tgParked(ap, list, rng) { // a few parked aircraft on the real aprons, beside the taxi lines
+  const apr = (ap.osm.apr || []).map(a => a[0]), tg = ap._tg; if (!tg) return; let n = 0;
+  for (let i = 0; i < tg.N.length && n < 24; i += 3) { const g = tg.N[i]; if (!apr.some(f => inPolyFlat(g[0], g[1], f))) continue; if (Math.hypot(g[0] - ap.ref(ap.park[0], ap.park[1])[0], g[1] - ap.ref(ap.park[0], ap.park[1])[1]) < 60) continue; if (rng() < 0.45) { list.push([g[0], ap.elevM, g[1], rng() * 6.28, 0.42, rng()]); n++; } }
+}
 function depRoute(ap, end) {
   if (ap.real) return realDepRoute(ap, end);
+  if (ap._tg) return tgDepRoute(ap, end);
   const rw = end.rw, sd = end.sd, P = ap.ref(ap.park[0], ap.park[1]);
   const st = toRw(rw, P[0], P[1]), sP = st[0], tP = st[1];
   const tTw = rwTw(rw), sHold = end.thrS + sd * 48;
@@ -964,6 +1048,7 @@ function depRoute(ap, end) {
 }
 function arrRoute(ap, end, x, z) {
   if (ap.real) return realArrRoute(ap, end, x, z);
+  if (ap._tg) return tgArrRoute(ap, end, x, z);
   const rw = end.rw, sd = end.sd, P = ap.ref(ap.park[0], ap.park[1]);
   const st = toRw(rw, x, z), sP = toRw(rw, P[0], P[1]), tTw = rwTw(rw);
   const sx = st[0] + sd * 180, dir = Math.sign(sP[0] - sx) || 1, w = (s, t) => rwPt(rw, s, t);
@@ -987,7 +1072,13 @@ function fuelFor(A, distM) {
   const cruise = A.cruise * KT, burn = A.ffMax * 0.72;
   return Math.min(A.fuelCap, Math.ceil((distM / cruise * burn * 1.25 + burn * 1500 + 6) / 5) * 5);
 }
-function genContracts(sv) {
+const LMK = RG.id === 'nyc' ? { sol: ['Statue of Liberty', 40.6892, -74.0445], esb: ['Empire State Building', 40.7484, -73.9857], ver: ['Verrazzano Bridge', 40.6066, -74.0447], con: ['Coney Island', 40.5742, -73.978], cit: ['Citi Field', 40.7571, -73.8458], jb: ['Jones Beach Tower', 40.5953, -73.5058], fi: ['Fire Island Lighthouse', 40.6322, -73.2192], thr: ['Throgs Neck Bridge', 40.8007, -73.7931] } : {};
+function wpXZ(w) { return w.x != null ? [w.x, w.z] : llxz(w.lat, w.lon); }
+function wpLen(c, a0, a1) {
+  const pts = [[a0.x, a0.z]].concat((c.wps || []).map(wpXZ), [[a1.x, a1.z]]); let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  const f = pts[1]; return { len: L, first: { x: f[0], z: f[1] } };
+}
+function genContracts0(sv) {
   const rng = mulberry(sv.seed * 1013 + sv.flights * 77 + sv.at.length * 5 + sv.at.charCodeAt(3));
   const from = AIRPORTS.byId(sv.at), out = [];
   const others = AIRPORTS.filter(a => a !== from);
@@ -999,7 +1090,7 @@ function genContracts(sv) {
     const mult = acId === 'wren' ? 1 : acId === 'heron' ? 1.4 : 2.2;
     let pay = type === 'lesson' ? 0 : Math.round((80 + km * (12 + payload * 0.045)) * mult * (type === 'ferry' ? 0.5 : 1) * (ifr ? 1.5 : 1) * ({ medevac: 1.7, express: 1.35, charter: 1.5, mail: 1.3, tour: 1.2, banner: 1.3 }[type] || 1) / 5) * 5;
     const reqLic = type === 'lesson' ? 'student' : (type === 'ferry' || type === 'tour' || type === 'banner') ? 'private' : type === 'ifr' ? 'instrument' : 'commercial';
-    const labels = { lesson: 'Lesson', ferry: 'Sightseeing ferry', cargo: 'Cargo', pax: 'Passengers', ifr: 'IFR cargo', medevac: 'Medical flight', express: 'Timed delivery', charter: 'VIP charter', tour: 'Landmark tour', banner: 'Banner flight', mail: 'Mail run' };
+    const labels = { lesson: 'Lesson', ferry: 'Ferry flight', cargo: 'Cargo', pax: 'Passengers', ifr: 'IFR cargo', medevac: 'Medical flight', express: 'Timed delivery', charter: 'VIP charter', tour: 'Landmark tour', banner: 'Banner flight', mail: 'Mail run' };
     return { id: 'c' + sv.flights + '_' + i, type, label: labels[type], from: from.id, to: to.id, ac: acId, payload: Math.round(payload), pay, km, wx: ifr ? 'ifr' : 'vfr',
       req: reqLic, acReq: AC[acId].license, tooShort: maxLen < A.minRw, fuel: fuelFor(A, d), limitMin: (type === 'medevac' || type === 'express' || type === 'mail') ? Math.round((d / (A.cruise * KT * 0.93) / 60 + 9) * (type === 'medevac' ? 1.2 : 1.35)) : 0 };
   };
@@ -1021,9 +1112,14 @@ function genContracts(sv) {
     const TOURS = [['con', 'ver', 'sol'], ['ver', 'sol', 'esb', 'cit'], ['thr', 'cit', 'esb', 'sol']], pick = ks => ks.map(k => ({ n: LM[k][0], lat: LM[k][1], lon: LM[k][2] }));
     const nearEnd = w => { const xz = llxz(w.lat, w.lon); return others.slice().sort((a, b) => Math.hypot(a.x - xz[0], a.z - xz[1]) - Math.hypot(b.x - xz[0], b.z - xz[1]))[0]; };
     const firstD = ks => { const xz = llxz(LM[ks[0]][1], LM[ks[0]][2]); return Math.hypot(from.x - xz[0], from.z - xz[1]); };
-    const ts = TOURS.slice().sort((a, b) => firstD(a) - firstD(b))[0], wp = pick(ts), tc = mk('tour', 'wren', nearEnd(wp[wp.length - 1]), i++);
-    tc.wps = wp; tc.alt = [600, 3500]; tc.pay += 120 * wp.length; out.push(tc);
-    const bw = pick(['jb', 'fi']), bc = mk('banner', 'wren', nearEnd(bw[bw.length - 1]), i++); bc.wps = bw; bc.alt = [300, 1300]; bc.payload = 0; bc.pay += 160; out.push(bc);
+    const TD = [['Statue of Liberty', ['sol']], ['Manhattan skyline', ['esb']], ['Harbour and skyline', ['ver', 'sol', 'esb']]].sort((a, b) => firstD(a[1]) - firstD(b[1])).slice(0, 2);
+    const fxz = [from.x, from.z];
+    const round = (type, label, ks, alt, extra) => {
+      const wp = pick(ks), c = mk(type, 'wren', from, i++), pts = [fxz].concat(wp.map(w => llxz(w.lat, w.lon)), [fxz]); let L = 0; for (let q = 1; q < pts.length; q++) L += Math.hypot(pts[q][0] - pts[q - 1][0], pts[q][1] - pts[q - 1][1]);
+      c.km = L / 1000; c.fuel = fuelFor(AC.wren, L * 1.15); c.pay = Math.round((80 + c.km * 14) * 1.2 / 5) * 5 + extra; c.wps = wp; c.alt = alt; c.label = label; return c;
+    };
+    for (const t of TD) out.push(round('tour', 'Tour: ' + t[0], t[1], [600, 3500], 120 * t[1].length));
+    const bn = round('banner', 'Banner: Jones Beach to Fire Island', ['jb', 'fi'], [300, 1300], 160); bn.payload = 0; out.push(bn);
   }
   return out;
 }
@@ -1073,20 +1169,20 @@ function trafficTick(dt) {
 }
 function wpTick(dt) {
   const c = G.c; if (!c || !c.wps) return;
-  if (!G.wps) G.wps = c.wps.map(w => Object.assign({ xz: llxz(w.lat, w.lon), hit: false, warn: false }, w));
+  if (!G.wps) G.wps = c.wps.map(w => Object.assign({ xz: wpXZ(w), hit: false, warn: false }, w));
   const s = G.s, w = G.wps.find(q => !q.hit); G.wpNext = w || null;
   if (w && s.air) {
     const d = Math.hypot(s.p[0] - w.xz[0], s.p[2] - w.xz[1]), altFt = s.p[1] / FT;
-    if (d < 1600) { if (altFt >= c.alt[0] && altFt <= c.alt[1]) { w.hit = true; toast(w.n + ' visited', 2500); say('Cascade Approach', G.plan.tail + ', ' + w.n + ' in sight. ' + (G.wps.every(q => q.hit) ? 'That is the last one. Continue to ' + c.to + '.' : 'Next, ' + G.wps.find(q => !q.hit).n + '.')); } else if (!w.warn) { w.warn = true; toast((altFt < c.alt[0] ? 'Too low over ' + w.n + '. Stay above ' : 'Too high over ' + w.n + '. Stay below ') + (altFt < c.alt[0] ? c.alt[0] : c.alt[1]).toLocaleString() + ' ft.', 3500); } } else if (d > 2400) w.warn = false;
+    if (d < 1600) { if (!c.alt || (altFt >= c.alt[0] && altFt <= c.alt[1])) { w.hit = true; toast(w.n + ' visited', 2500); say('Cascade Approach', G.plan.tail + ', ' + w.n + ' in sight. ' + (G.wps.every(q => q.hit) ? 'That is the last one. Continue to ' + c.to + '.' : 'Next, ' + G.wps.find(q => !q.hit).n + '.')); } else if (!w.warn) { w.warn = true; toast((altFt < c.alt[0] ? 'Too low over ' + w.n + '. Stay above ' : 'Too high over ' + w.n + '. Stay below ') + (altFt < c.alt[0] ? c.alt[0] : c.alt[1]).toLocaleString() + ' ft.', 3500); } } else if (d > 2400) w.warn = false;
   }
   G.wt = (G.wt || 0) + dt; if (G.wt < 0.5) return; G.wt = 0;
   let e = document.getElementById('wpHud'); if (!e) { e = document.createElement('div'); e.id = 'wpHud'; e.style.cssText = 'position:fixed;top:calc(54px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:30;background:rgba(8,14,26,.72);color:#e8eef7;font:600 13px system-ui;padding:5px 12px;border-radius:14px;pointer-events:none;white-space:nowrap'; document.body.appendChild(e); }
   e.hidden = mode !== 'fly' || paused;
-  if (w) { const dx = w.xz[0] - s.p[0], dz = w.xz[1] - s.p[2], rel = ((Math.atan2(dx, -dz) / DEG - G.at.hdg) % 360 + 540) % 360 - 180; e.textContent = 'Next: ' + w.n + '  ' + (Math.hypot(dx, dz) / 1852).toFixed(1) + ' nm  ' + (Math.abs(rel) < 8 ? 'ahead' : rel > 0 ? 'right ' + Math.round(rel) + '\u00b0' : 'left ' + Math.round(-rel) + '\u00b0') + '  \u00b7  ' + c.alt[0] + ' to ' + c.alt[1] + ' ft'; }
+  if (w) { const dx = w.xz[0] - s.p[0], dz = w.xz[1] - s.p[2], rel = ((Math.atan2(dx, -dz) / DEG - G.at.hdg) % 360 + 540) % 360 - 180; e.textContent = 'Next: ' + w.n + '  ' + (Math.hypot(dx, dz) / 1852).toFixed(1) + ' nm  ' + (Math.abs(rel) < 8 ? 'ahead' : rel > 0 ? 'right ' + Math.round(rel) + '\u00b0' : 'left ' + Math.round(-rel) + '\u00b0') + (c.alt && c.alt[1] < 20000 ? '  \u00b7  ' + c.alt[0] + ' to ' + c.alt[1] + ' ft' : ''); }
   else e.textContent = 'All landmarks visited. Land at ' + c.to;
 }
 
-function lockReason(sv, c) {
+function lockReason0(sv, c) {
   if (!hasLic(sv, c.req)) return 'Requires ' + LICENSES[c.req].name;
   const need = AC[c.ac].license;
   if (need !== 'student' && !hasLic(sv, need)) return 'Requires ' + LICENSES[need].name;
@@ -1594,7 +1690,7 @@ function buildAirports() {
       const rm = new THREE.Mesh(quadGeo(corners, yr, [0, 0, 1, 0, 0, 1, 1, 1]),
         new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
       rm.renderOrder = 2 + 0.1 * (ap.rw.length - ri); g.add(rm);
-      if (ap.real) return;
+      if (ap.real || ap.osm) return;
       const tT = rwTw(rw), tw = 22, ext = 90;
       let a0 = null; const segs = [];
       for (let s = -hl - ext; s <= hl + ext + 0.1; s += 8) { const bad = inOther(rw, s, tT, 18); if (!bad) { if (a0 === null) a0 = s; } else if (a0 !== null) { segs.push([a0, s - 8]); a0 = null; } }
@@ -1612,7 +1708,7 @@ function buildAirports() {
         if (isEnd && rw.dep) for (const o of [0, 1.6]) { const ht = Math.sign(tT) * (hw + 38); g.add(strip(rwPt(rw, s - 5 + o, ht), rwPt(rw, s + 5 + o, ht), 1.0, y0 + 0.28, yl, 5)); }
       }
     });
-    if (ap.real) buildRealAirfield(ap, g); else {
+    if (ap.real) buildRealAirfield(ap, g); else if (ap.osm) { } else {
     // apron
     const pk = ap.ref(ap.park[0], ap.park[1]), ux = ap.ux, uz = ap.uz, rx = ap.rx, rz = ap.rz, A = 70, B = 55;
     const pc = (a, b) => [pk[0] + ux * a + rx * b, pk[1] + uz * a + rz * b];
@@ -1632,9 +1728,15 @@ function buildAirports() {
     const tp = ap.ref(ap.tower[0], ap.tower[1]);
     const shaft = new THREE.Mesh(new THREE.BoxGeometry(7, 34, 7), new THREE.MeshLambertMaterial({ color: 0xd8dade })); shaft.position.set(tp[0], y0 + 17, tp[1]);
     const cab = new THREE.Mesh(new THREE.BoxGeometry(13, 5, 13), new THREE.MeshLambertMaterial({ color: 0x4a7a96, emissive: 0x0a1a24 })); cab.position.set(tp[0], y0 + 36.5, tp[1]);
-    if (!ap.real) g.add(shaft, cab);
+    if (!ap.real && !ap.osm) g.add(shaft, cab);
+    else if (ap.osm && !ap.real && window.FAA_APS && FAA_APS[ap.id] && FAA_APS[ap.id].twr) {
+      const q = FAA_APS[ap.id].twr, big = Math.max.apply(null, ap.rw.map(r => r.len || 0)) > 9000, H = big ? 70 : 32;
+      const sh = new THREE.Mesh(new THREE.BoxGeometry(big ? 9 : 6, H, big ? 9 : 6), new THREE.MeshLambertMaterial({ color: 0xd8dade })); sh.position.set(q[0], y0 + H / 2, q[1]);
+      const cb = new THREE.Mesh(new THREE.BoxGeometry(big ? 16 : 11, 6, big ? 16 : 11), new THREE.MeshLambertMaterial({ color: 0x4a7a96, emissive: 0x0a1a24 })); cb.position.set(q[0], y0 + H + 3, q[1]);
+      g.add(sh, cb); ap.twrXZ = q; ap.twrH = H + 6;
+    }
     // windsock
-    const sp = ap.real ? [REAL.windsock[0], REAL.windsock[1]] : ap.ref(ap.tower[0] + 60, ap.tower[1] * 0.5), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 8, 6), new THREE.MeshLambertMaterial({ color: 0xdddddd }));
+    const sp = ap.real ? [REAL.windsock[0], REAL.windsock[1]] : ap.osm ? ap.ref(ap.rw[0].al, ap.rw[0].lat - (Math.sign(ap.rw[0].twl || 1)) * (ap.rw[0].wid / 2 + 90)) : ap.ref(ap.tower[0] + 60, ap.tower[1] * 0.5), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 8, 6), new THREE.MeshLambertMaterial({ color: 0xdddddd }));
     pole.position.set(sp[0], y0 + 4, sp[1]); g.add(pole);
     const sg = new THREE.CylinderGeometry(0.25, 0.9, 4, 8, 1, true); sg.rotateX(Math.PI / 2);
     const sock = new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ color: 0xff7a1a, side: THREE.DoubleSide })); sock.position.set(sp[0], y0 + 8, sp[1]); g.add(sock);
@@ -1726,7 +1828,7 @@ function buildArcher() {
   add(stripGeo(zsB(0.65, 1.35), degs(45, 135, 6), 0.012, 1), glass, 0, 0, 0);
   // cowl, spinner, intakes, exhaust
   for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.2, 0.1, 0.03), panelM, s * 0.17, -0.33, -2.55);
-  { const sp = new THREE.ConeGeometry(0.21, 0.4, 10); sp.rotateX(-Math.PI / 2); add(sp, navy, 0, -0.27, -2.72); }
+  { const sp = new THREE.LatheGeometry([[0, .44], [.07, .41], [.14, .32], [.19, .16], [.215, 0]].map(q => new THREE.Vector2(q[0], q[1])), 14); sp.rotateX(-Math.PI / 2); add(sp, navy, 0, -0.27, -2.66); add(new THREE.CylinderGeometry(0.235, 0.235, 0.025, 14).rotateX(Math.PI / 2), metal, 0, -0.27, -2.63); for (const s of [-1, 1]) { add(new THREE.BoxGeometry(0.15, 0.085, 0.05), dark, s * 0.2, -0.38, -2.5); } add(new THREE.BoxGeometry(0.36, 0.08, 0.09), dark, 0, -0.6, -2.42); }
   { const ex = new THREE.CylinderGeometry(0.035, 0.045, 0.4, 6); ex.rotateX(Math.PI / 2); add(ex, M(0x575d64), 0.2, -0.66, -1.75); }
   for (const s of [1, -1]) { add(stripGeo(zsB(-0.07, 0.15), degs(0, 62, 4), 0.016, s), dark, 0, 0, 0); add(stripGeo(zsB(-1.22, -1.17), degs(0, 62, 4), 0.016, s), dark, 0, 0, 0); add(stripGeo(zsB(0.93, 0.98), degs(0, 56, 4), 0.016, s), dark, 0, 0, 0); }
   add(stripGeo(zsB(-0.65, -0.6), degs(60, 120, 4), 0.016, 1), dark, 0, 0, 0);
@@ -1777,7 +1879,7 @@ function buildArcher() {
   for (const x of [-0.26, 0.26]) add(new THREE.BoxGeometry(0.03, 0.03, 0.4), dark, x, -0.12, -0.72);
   // ---- propeller (2-blade fixed pitch) and disc
   const prop = new THREE.Group(); prop.position.set(0, -0.27, -2.64); g.add(prop);
-  for (const sg of [1, -1]) { add(new THREE.BoxGeometry(0.13, 0.92, 0.022), dark, 0, sg * 0.5, 0, prop); add(new THREE.BoxGeometry(0.131, 0.12, 0.024), yel, 0, sg * 0.88, 0, prop); }
+  { const bl = new THREE.BoxGeometry(1, 0.9, 0.022), pp = bl.attributes.position; for (let i = 0; i < pp.count; i++) { const t = (pp.getY(i) + 0.45) / 0.9; pp.setX(i, pp.getX(i) * (0.17 - 0.07 * t)); } for (const sg of [1, -1]) { add(bl.clone(), dark, 0, sg * 0.53, 0, prop); add(new THREE.BoxGeometry(0.105, 0.11, 0.024), yel, 0, sg * 0.9, 0, prop); } }
   const disc = new THREE.Mesh(new THREE.CircleGeometry(0.95, 28), new THREE.MeshBasicMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false })); disc.position.set(0, -0.27, -2.66); g.add(disc);
   // ---- fixed tricycle gear; the nose leg steers
   const gear = new THREE.Group(); g.add(gear); let nose = null; const wgs = [];
@@ -2076,7 +2178,7 @@ function buildAirfieldLights() {
         const pap = new LB(); for (let i = 0; i < 4; i++) { const p = endPt(e, 305, -(hw + 20 + i * 14)); pap.add(p[0], y + 1.2, p[1], i < 2 ? LC.red : LC.white, 2.2); }
         const pm = mkPoints(pap, 12); const bx = []; for (let i = 0; i < 4; i++) { const p = endPt(e, 305, -(hw + 20 + i * 14)); const b = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.4, 3.2), new THREE.MeshBasicMaterial({ color: i < 2 ? 0xff3322 : 0xffffff, fog: false })); b.position.set(p[0], y + 1.2, p[1]); scene.add(b); bx.push(b); } pm.material.blending = THREE.NormalBlending; pm.material.transparent = false; pm.material.opacity = 1; L3.papi[ap.id + e.name] = { pts: pm, end: e, bx };
       }
-      if (!ap.real) {
+      if (!ap.real && !ap.osm) {
       const a = W(-hl - 90, tT), b = W(hl + 90, tT), l = rw.L + 180, n = Math.floor(l / 30);
       for (let i = 0; i <= n; i++) { const s = -hl - 90 + i * 30; if (inO(s, tT, 20)) continue; for (const sd of [-1, 1]) { const p = W(s, tT + sd * 12.5); lb.add(p[0], y, p[1], LC.blue, 0.9); } if (i % 1 === 0) { const p = W(s, tT); lb.add(p[0], y, p[1], LC.green, 0.7); } }
       const cons = [-hl + 48, hl - 48]; for (let s = -hl + 800; s < hl - 600; s += 800) cons.push(s);
@@ -2096,9 +2198,10 @@ function buildAirfieldLights() {
       for (let a = -b[3] / 2 + 3; a <= b[3] / 2 - 3; a += step * 1.4) for (const sd of [-1, 1]) { const x = c[0] + ap.ux * sd * (b[2] / 2 + 0.4) + ap.rx * a, z = c[1] + ap.uz * sd * (b[2] / 2 + 0.4) + ap.rz * a; lb.add(x, ap.elevM + b[4] * rows[0], z, LC.hot, 0.7); }
     }
     const pk = ap.ref(ap.park[0], ap.park[1]);
-    if (!ap.real) for (const [a, b] of [[-70, -55], [-70, 55], [70, -55], [70, 55], [0, 80], [0, -80]]) lb.add(pk[0] + ap.ux * a + ap.rx * b, ap.elevM + 14, pk[1] + ap.uz * a + ap.rz * b, LC.hot, 1.6);
-    const tp = ap.ref(ap.tower[0], ap.tower[1]); lb.add(tp[0], ap.elevM + 40, tp[1], LC.white, 1.5);
-    const bk = new LB(); bk.add(tp[0], ap.elevM + 43, tp[1], LC.green, 1.8); const bm = mkPoints(bk, 6); L3.beacons.push(bm);
+    if (!ap.real && !ap.osm) for (const [a, b] of [[-70, -55], [-70, 55], [70, -55], [70, 55], [0, 80], [0, -80]]) lb.add(pk[0] + ap.ux * a + ap.rx * b, ap.elevM + 14, pk[1] + ap.uz * a + ap.rz * b, LC.hot, 1.6);
+    if (!ap.osm || ap.real) { const tp = ap.ref(ap.tower[0], ap.tower[1]); lb.add(tp[0], ap.elevM + 40, tp[1], LC.white, 1.5);
+    const bk = new LB(); bk.add(tp[0], ap.elevM + 43, tp[1], LC.green, 1.8); const bm = mkPoints(bk, 6); L3.beacons.push(bm); }
+    if (ap.osm && !ap.real) { tgLights(ap, lb); continue; }
     if (ap.real) { realLights(ap, lb); continue; }
     // airport vehicles on the parallel taxiway
     const rw0 = ap.rw[0], tT0 = rwTw(rw0); const a0 = rwPt(rw0, -rw0.L / 2, tT0), b0 = rwPt(rw0, rw0.L / 2, tT0);
@@ -2112,6 +2215,7 @@ function buildParked() {
   const list = [], rng = mulberry(11);
   for (const ap of AIRPORTS) {
     if (ap.real) { for (const s of REAL.spots) list.push([s[0], ap.elevM, s[1], -s[2], 0.42, rng()]); continue; }
+    if (ap.osm) { tgParked(ap, list, rng); continue; }
     const big = ['KSEA', 'KBFI', 'KPAE'].includes(ap.id), pk = ap.ref(ap.park[0], ap.park[1]);
     if (big) for (const b of ap.bld) {
       if (b[5] !== 0 || b[3] < 100) continue; const c = ap.ref(b[0], b[1]);
@@ -2265,11 +2369,12 @@ function renderMenu() {
     <div class="stats"><div><span>Balance</span><b>${money(SV.money)}</b></div><div><span>Location</span><b>${ap.id}</b></div>
     <div><span>Logged</span><b>${(SV.minutes / 60).toFixed(1)} h</b></div><div><span>Landings</span><b>${SV.landings}</b></div><div><span>Rank</span><b>${rankOf(SV)}</b></div></div>
     <div class="lics">${LIC_ORDER.map(l => `<span class="lic ${hasLic(SV, l) ? 'on' : ''}" title="${LICENSES[l].name}">${LICENSES[l].short}</span>`).join('')}</div>`;
-  $('mTabs').innerHTML = [['dispatch', 'Dispatch'], ['free', 'Free flight'], ['log', 'Logbook'], ['school', 'Flight school'], ['hangar', 'Hangar & controls']].map(t => `<button class="${tab === t[0] ? 'on' : ''}" data-act="tab" data-v="${t[0]}">${t[1]}</button>`).join('');
-  $('mBody').innerHTML = tab === 'dispatch' ? dispatchHTML() : tab === 'free' ? freeHTML().replace('margin-top:14px', 'margin-top:0') : tab === 'log' ? logHTML() : tab === 'school' ? schoolHTML() : hangarHTML();
+  $('mTabs').innerHTML = [['career', 'Career'], ['dispatch', 'Dispatch'], ['free', 'Free flight'], ['log', 'Logbook'], ['school', 'Flight school'], ['hangar', 'Hangar & controls']].map(t => `<button class="${tab === t[0] ? 'on' : ''}" data-act="tab" data-v="${t[0]}">${t[1]}</button>`).join('');
+  try { careerSync(); } catch (e) { } FFM.R.length = tab === 'free' ? FFM.R.length : 0; setTimeout(drawFF, 30);
+  $('mBody').innerHTML = tab === 'dispatch' ? dispatchHTML() : tab === 'free' ? freeHTML().replace('margin-top:14px', 'margin-top:0') : tab === 'career' ? careerHTML() : tab === 'log' ? logHTML() : tab === 'school' ? schoolHTML() : hangarHTML();
 }
 const FF = { to: null, ac: 'wren' };
-function freeHTML() {
+function freeHTML0() {
   if (!hasLic(SV, 'private')) return '<div class="lead" style="margin-top:14px">Free flight unlocks when you earn your Private Pilot certificate.</div>';
   const from = apOf(SV.at), others = AIRPORTS.filter(a => a !== from).sort((a, b) => dist2(from, a) - dist2(from, b));
   if (!FF.to || !others.find(a => a.id === FF.to)) FF.to = others[0].id;
@@ -2287,6 +2392,156 @@ document.addEventListener('click', e => {
   const from = apOf(SV.at), to = apOf(FF.to), A = AC[FF.ac], d = dist2(from, to);
   if (Math.max(...to.ends.map(x => x.len)) < A.minRw) { toast('The runway at ' + to.id + ' is too short for the ' + A.name, 3000); return; }
   planWx({ id: 'free' + SV.flights, type: 'free', label: 'Free flight', from: from.id, to: to.id, ac: FF.ac, payload: 0, pay: 0, km: d / 1000, wx: 'vfr', req: 'private', acReq: A.license, tooShort: false, fuel: A.fuelCap, limitMin: 0 });
+}, true);
+const repOf = () => SV.rep == null ? 20 : SV.rep;
+const repMul = () => 1 + (repOf() - 20) / 400;
+const REPREQ = { mail: 20, express: 30, medevac: 35, charter: 45 };
+const OBJ = [
+  { id: 'first', t: 'Fly your first lesson', h: 'Open Dispatch and pick a Lesson flight. Score 60 or better to pass it.', tab: 'dispatch', rw: 100, f: sv => [Math.min(sv.lessons, 1), 1] },
+  { id: 'solo', t: 'Pass 3 lessons and log 6 landings', h: 'Keep flying lessons from Dispatch. Each lesson passed and each landing counts.', tab: 'dispatch', rw: 200, f: sv => [Math.min(sv.lessons, 3) + Math.min(sv.landings, 6), 9] },
+  { id: 'pvt', t: 'Earn your Private Pilot certificate', h: 'Open Flight school. Log the hours, pass the written exam, then book the checkride.', tab: 'school', rw: 500, f: sv => [hasLic(sv, 'private') ? 1 : 0, 1] },
+  { id: 'money', t: 'Earn $5,000 from paid flights', h: 'Ferry flights, tours and banner flights pay once you hold a Private certificate.', tab: 'dispatch', rw: 300, f: sv => [Math.min(sv.earned || 0, 5000), 5000] },
+  { id: 'cpl', t: 'Earn your Commercial certificate', h: 'Flight school again: hours, landings, a good recent average, the exam and the checkride.', tab: 'school', rw: 800, f: sv => [hasLic(sv, 'commercial') ? 1 : 0, 1] },
+  { id: 'rep40', t: 'Reach reputation 40', h: 'Land paid jobs smoothly. A score of 80 or better raises your reputation, a crash or a late delivery lowers it.', tab: 'dispatch', rw: 500, f: sv => [Math.min(repOf(), 40), 40] },
+  { id: 'fleet2', t: 'Buy a second aircraft', h: 'The Hangar sells the Skylark, Falcon, Meridian and more. Your fleet is your company.', tab: 'hangar', rw: 500, f: sv => [Math.min(sv.owned.length, 2), 2] },
+  { id: 'ifr', t: 'Earn your Instrument rating', h: 'Flight school: low-visibility checkride. It unlocks the high-paying IFR jobs.', tab: 'school', rw: 1000, f: sv => [hasLic(sv, 'instrument') ? 1 : 0, 1] },
+  { id: 'jobs25', t: 'Complete 25 paid jobs', h: 'Cargo, passengers, medevac, mail and tours all count when you land them.', tab: 'dispatch', rw: 1000, f: sv => [Math.min(sv.jobs || 0, 25), 25] },
+  { id: 'tp', t: 'Earn the Turboprop rating and buy the Heron', h: 'Flight school for the rating and the Hangar for the aircraft.', tab: 'school', rw: 1500, f: sv => [(hasLic(sv, 'turboprop') ? 1 : 0) + (sv.owned.includes('heron') ? 1 : 0), 2] },
+  { id: 'rep65', t: 'Reach reputation 65', h: 'Medevac and VIP charter customers only call pilots with a strong name.', tab: 'dispatch', rw: 1500, f: sv => [Math.min(repOf(), 65), 65] },
+  { id: 'jet', t: 'Earn the Jet rating and buy the Kestrel', h: 'The last rating and the last aircraft.', tab: 'school', rw: 3000, f: sv => [(hasLic(sv, 'jet') ? 1 : 0) + (sv.owned.includes('kestrel') ? 1 : 0), 2] },
+  { id: 'fin', t: 'Finale: fly the Inaugural Jet Service', h: 'The finale flight appears at the top of Dispatch. Fly the Kestrel in low visibility and land with a score of 80 or better.', tab: 'dispatch', rw: 0, f: sv => [sv.fin ? 1 : 0, 1] }
+];
+const objDone = (sv, o) => { const p = o.f(sv); return p[0] >= p[1]; };
+const careerReady = sv => OBJ.every(o => o.id === 'fin' || objDone(sv, o));
+function careerTitle(sv) { return sv.fin ? 'Chief Pilot of Cascade Air' : hasLic(sv, 'jet') ? 'Jet Captain' : hasLic(sv, 'turboprop') ? 'Turboprop Captain' : hasLic(sv, 'instrument') ? 'Instrument Pilot' : hasLic(sv, 'commercial') ? 'Commercial Pilot' : hasLic(sv, 'private') ? 'Private Pilot' : 'Student Pilot'; }
+function careerSync() {
+  SV.objDone = SV.objDone || []; let h = '';
+  for (const o of OBJ) if (!SV.objDone.includes(o.id) && objDone(SV, o)) { SV.objDone.push(o.id); SV.money += o.rw; if (SV.flights || SV.objDone.length > 1) { toast('Objective complete: ' + o.t + (o.rw ? '  +$' + o.rw : ''), 4500); } h += `<div class="award">Objective complete: ${o.t}${o.rw ? ' (+' + money(o.rw) + ')' : ''}</div>`; persist(); }
+  return h;
+}
+function curObj(sv) { return OBJ.find(o => !objDone(sv, o)) || null; }
+function objBar(sv, o) { const p = o.f(sv), f = Math.min(1, p[0] / p[1]); return `<div style="height:7px;background:#16233a;border-radius:4px;margin:6px 0"><div style="height:7px;width:${Math.round(f * 100)}%;background:#45d483;border-radius:4px"></div></div>`; }
+function objBannerHTML() {
+  const o = curObj(SV); if (!o) return `<div class="card" style="padding:10px 12px;margin-bottom:10px"><b>Career complete.</b> ${careerTitle(SV)}. Reputation ${repOf()}. Keep flying and growing the fleet.</div>`;
+  const p = o.f(SV), fin = SV.fin;
+  return `<button class="card" data-act="tab" data-v="career" style="display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:10px"><small style="opacity:.7">Goal &middot; ${careerTitle(SV)} &middot; Reputation ${repOf()}</small><div><b>${o.t}</b></div>${objBar(SV, o)}<small style="opacity:.8">${p[0] >= p[1] ? '' : o.h}</small></button>`;
+}
+function careerHTML() {
+  const o = curObj(SV), done = OBJ.filter(q => objDone(SV, q)).length, hrs = (SV.minutes / 60).toFixed(1);
+  const stat = (k, v) => `<div style="background:#0f1a2c;border-radius:8px;padding:8px 10px"><small style="opacity:.7">${k}</small><div style="font-size:18px"><b>${v}</b></div></div>`;
+  return `<div class="card" style="padding:14px"><small style="opacity:.7">Cascade Air</small><h2 style="margin:2px 0 6px">${careerTitle(SV)}</h2>
+    <p class="lead" style="margin:0 0 10px">${SV.fin ? 'You made Chief Pilot. The company is yours to keep growing.' : 'Build a flying career from your first lesson to the jet that opens Cascade Air. Fly well, earn a name, grow your fleet, and finish with the Inaugural Jet Service.'}</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${stat('Reputation', repOf() + ' / 100')}${stat('Flights', SV.flights)}${stat('Hours', hrs)}${stat('Landings', SV.landings)}${stat('Paid jobs', SV.jobs || 0)}${stat('Cash', money(SV.money))}</div>
+    <div style="height:7px;background:#16233a;border-radius:4px;margin:10px 0 4px"><div style="height:7px;width:${Math.round(done / OBJ.length * 100)}%;background:#4fd6e8;border-radius:4px"></div></div><small style="opacity:.7">${done} of ${OBJ.length} career goals complete. Higher reputation raises your pay up to 20% and unlocks mail, express, medevac and VIP charter jobs.</small></div>
+    ${o ? `<div class="card" style="padding:14px;margin-top:10px;border:1px solid #45d483"><small style="opacity:.7">Next goal</small><h3 style="margin:2px 0">${o.t}</h3>${objBar(SV, o)}<p style="margin:4px 0 10px">${o.h}</p><button class="go" data-act="tab" data-v="${o.tab}">Go to ${o.tab === 'school' ? 'Flight school' : o.tab === 'hangar' ? 'the Hangar' : 'Dispatch'}</button></div>` : ''}
+    <div class="card" style="padding:12px;margin-top:10px"><h3 style="margin:0 0 6px">All goals</h3>${OBJ.map(q => { const dn = objDone(SV, q), p = q.f(SV); return `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #1d2b44;opacity:${dn ? 0.6 : 1}"><span>${dn ? '&#10003; ' : ''}${q.t}</span><small>${dn ? 'done' : p[0] + '/' + p[1]}</small></div>`; }).join('')}</div>`;
+}
+function genContracts(sv) {
+  const out = genContracts0(sv);
+  if (careerReady(sv) && !sv.fin) {
+    const A = AC.kestrel, from = apOf(sv.at), to = AIRPORTS.filter(a => a.id !== sv.at && Math.max(...a.ends.map(e => e.len)) >= A.minRw).sort((a, b) => dist2(from, b) - dist2(from, a))[0] || AIRPORTS.find(a => a.id !== sv.at), d = dist2(from, to);
+    out.unshift({ id: 'finale', type: 'charter', finale: true, label: 'FINALE: Inaugural jet service', from: from.id, to: to.id, ac: 'kestrel', payload: 300, pay: 25000, km: d / 1000, wx: 'ifr', req: 'jet', acReq: 'jet', tooShort: false, fuel: fuelFor(A, d), limitMin: 0 });
+  }
+  return out;
+}
+function lockReason(sv, c) {
+  const r = lockReason0(sv, c); if (r) return r;
+  const need = REPREQ[c.type]; if (need && (sv.rep == null ? 20 : sv.rep) < need) return 'Needs reputation ' + need + ' (you have ' + (sv.rep == null ? 20 : sv.rep) + ')';
+  return null;
+}
+const QUOTE = { hi: ['"Smoothest flight we have had."', '"Textbook landing, thank you."', '"We would fly with you again."'], ok: ['"Good flight, thanks."', '"No complaints."'], lo: ['"That landing was rough."', '"We expected better."'] };
+function careerPost(o) {
+  let h = ''; const c = G.c; if (!c) return '';
+  if (!G.ck && c.type !== 'free' && c.type !== 'lesson') {
+    let d = 0, why = [];
+    if (o.crash) { d = -8; why.push('the crash made the news'); }
+    else if (o.landed && !G.autoLand) {
+      const sc = o.sc.total; d = sc >= 90 ? 3 : sc >= 80 ? 2 : sc >= 70 ? 1 : sc >= 60 ? 0 : -1;
+      if (c.limitMin) { if (o.s.time <= c.limitMin * 60) { d += 1; why.push('on time'); } else { d -= 2; why.push('late'); } }
+      if (G.wps && G.wps.some(q => !q.hit)) { d -= 1; why.push('missed a landmark'); }
+      SV.jobs = (SV.jobs || 0) + 1; SV.earned = (SV.earned || 0) + o.pay;
+      const q = QUOTE[sc >= 85 ? 'hi' : sc >= 70 ? 'ok' : 'lo']; h += `<div class="award">Customer: ${q[(SV.flights + sc) % q.length]}</div>`;
+    }
+    const before = repOf(); SV.rep = Math.max(0, Math.min(100, before + d));
+    if (d) h += `<div class="award${d < 0 ? ' bad' : ''}">Reputation ${d > 0 ? '+' : ''}${d}${why.length ? ' (' + why.join(', ') + ')' : ''}. Now ${SV.rep}</div>`;
+  }
+  if (c.finale) {
+    if (o.landed && !o.crash && !G.autoLand && o.sc.total >= 80) { SV.fin = { t: Date.now(), sc: o.sc.total }; h += '<div class="award" style="font-size:18px">CAREER COMPLETE. You are now Chief Pilot of Cascade Air.</div>'; }
+    else h += '<div class="award bad">The finale needs a safe landing with a score of 80 or better. The flight is still waiting in Dispatch.</div>';
+  }
+  return h + careerSync();
+}
+function postFlight(o) { return postFlight0(o) + careerPost(o); }
+const FFM = { v: null, R: [] };
+function ffItems() {
+  const o = AIRPORTS.map(a => ({ k: 'a', id: a.id, n: a.id, x: a.x, z: a.z, sub: a.city || a.name }));
+  for (const k in LMK) { const xz = llxz(LMK[k][1], LMK[k][2]); o.push({ k: 'l', id: k, n: LMK[k][0], x: xz[0], z: xz[1] }); }
+  return o;
+}
+function ffSummary() {
+  const from = apOf(SV.at), R = FFM.R; if (!R.length) return 'Tap airports or landmarks on the map, in the order you want to fly them.';
+  const last = R[R.length - 1], ret = last.k !== 'a';
+  return [from.id].concat(R.map(r => r.k === 'a' ? r.id : r.n)).concat(ret ? [from.id + ' (return)'] : []).join('  →  ');
+}
+function ffDist() { const from = apOf(SV.at), R = FFM.R, last = R[R.length - 1]; if (!last) return 0; const pts = [[from.x, from.z]].concat(R.map(r => [r.x, r.z])); if (last.k !== 'a') pts.push([from.x, from.z]); let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
+function freeHTML() {
+  if (!hasLic(SV, 'private')) return freeHTML0();
+  const acs = SV.owned.filter(id => AC[id] && hasLic(SV, AC[id].license)); if (!acs.includes(FF.ac)) FF.ac = acs[0] || 'wren';
+  const st = 'style="width:100%;padding:12px;margin:6px 0;background:#0c1422;color:#fff;border:1px solid var(--line);border-radius:8px;font-size:16px"';
+  const bs = 'style="padding:8px 14px;margin:4px 6px 0 0;background:#16233a;color:#fff;border:1px solid var(--line);border-radius:8px;font-size:14px"';
+  return `<div class="card" id="ffCard" style="margin-top:14px;padding:14px"><div class="jt"><span class="tag t-free">Free flight</span></div>
+    <p class="lead" style="margin:8px 0">Fly on your own. No pay, no fuel or upkeep bill, no repair bill. Time and landings still go in your logbook.</p>
+    <label>Route (you start at ${SV.at})</label>
+    <canvas id="ffMap" style="width:100%;height:360px;display:block;border-radius:10px;border:1px solid var(--line);background:#0c1422;touch-action:manipulation"></canvas>
+    <div id="ffSum" class="sub" style="margin:8px 0">${ffSummary()}</div>
+    <div><button id="ffUndo" ${bs}>Undo last</button><button id="ffClear" ${bs}>Clear</button></div>
+    <div class="sub" style="margin-top:6px">The last airport you tap is where you land. If the last tap is a landmark, you fly back to ${SV.at}. White dots are airports and gold diamonds are landmarks.</div>
+    <label>Aircraft</label><select id="ffAc" ${st}>${acs.map(id => `<option value="${id}" ${id === FF.ac ? 'selected' : ''}>${AC[id].name}</option>`).join('')}</select>
+    <div class="bar"><div class="sub">Live weather is used when it is available.</div><button class="go" id="ffGo2">Free flight plan</button></div></div>`;
+}
+function drawFF() {
+  const c = document.getElementById('ffMap'); if (!c) return; const W = c.width = c.clientWidth * 2, H = c.height = c.clientHeight * 2, x = c.getContext('2d'), it = ffItems(), from = apOf(SV.at);
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of it) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); }
+  const pad = 0.1 * Math.max(x1 - x0, z1 - z0, 20000); x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
+  const sc = Math.min(W / (x1 - x0), H / (z1 - z0)), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, P = (px, pz) => [W / 2 + (px - cx) * sc, H / 2 + (pz - cz) * sc];
+  FFM.v = { sc, cx, cz, W, H, it };
+  x.fillStyle = '#0c1422'; x.fillRect(0, 0, W, H);
+  try { if (!mapBase) mapBase = makeMapBase(); x.drawImage(mapBase, W / 2 + (TB.x0 - cx) * sc, H / 2 + (TB.z0 - cz) * sc, (TB.x1 - TB.x0) * sc, (TB.z1 - TB.z0) * sc); } catch (e) { }
+  const R = FFM.R, last = R[R.length - 1], pts = [[from.x, from.z]].concat(R.map(r => [r.x, r.z])); if (last && last.k !== 'a') pts.push([from.x, from.z]);
+  if (pts.length > 1) { x.strokeStyle = '#4fd6e8'; x.lineWidth = 4; x.setLineDash([16, 10]); x.beginPath(); pts.forEach((q, i) => { const p = P(q[0], q[1]); i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); }); x.stroke(); x.setLineDash([]); }
+  x.font = '600 22px "Barlow Condensed", sans-serif'; x.textBaseline = 'middle';
+  for (const p of it) {
+    const q = P(p.x, p.z), idx = R.indexOf(R.find(r => r.k === p.k && r.id === p.id)), isO = p.k === 'a' && p.id === from.id;
+    x.fillStyle = isO ? '#45d483' : p.k === 'a' ? '#ffffff' : '#f2c14e'; x.strokeStyle = '#000'; x.lineWidth = 3; x.beginPath();
+    if (p.k === 'a') x.arc(q[0], q[1], isO ? 13 : 10, 0, 7); else { x.moveTo(q[0], q[1] - 12); x.lineTo(q[0] + 11, q[1]); x.lineTo(q[0], q[1] + 12); x.lineTo(q[0] - 11, q[1]); x.closePath(); }
+    x.stroke(); x.fill();
+    x.fillStyle = '#fff'; x.strokeStyle = 'rgba(0,0,0,.8)'; x.lineWidth = 4; const lab = p.k === 'a' ? p.id : p.n; x.strokeText(lab, q[0] + 16, q[1] - 16); x.fillText(lab, q[0] + 16, q[1] - 16);
+    if (idx >= 0) { x.fillStyle = '#4fd6e8'; x.beginPath(); x.arc(q[0] - 18, q[1] + 18, 12, 0, 7); x.fill(); x.fillStyle = '#000'; x.textAlign = 'center'; x.fillText(String(R.findIndex(r => r.k === p.k && r.id === p.id) + 1), q[0] - 18, q[1] + 19); x.textAlign = 'start'; }
+  }
+  const s = document.getElementById('ffSum'); if (s) s.textContent = ffSummary() + (R.length ? '   ' + (ffDist() / 1852).toFixed(0) + ' nm' : '');
+}
+document.addEventListener('click', e => {
+  const t = e.target; if (!t) return;
+  if (t.id === 'ffMap' && FFM.v) {
+    const r = t.getBoundingClientRect(), mx = (e.clientX - r.left) * 2, my = (e.clientY - r.top) * 2, v = FFM.v; let best = null, bd = 44;
+    for (const p of v.it) { const d = Math.hypot(v.W / 2 + (p.x - v.cx) * v.sc - mx, v.H / 2 + (p.z - v.cz) * v.sc - my); if (d < bd) { bd = d; best = p; } }
+    if (!best) return; e.stopPropagation(); const R = FFM.R, last = R[R.length - 1], from = apOf(SV.at);
+    if (last && last.k === best.k && last.id === best.id) R.pop();
+    else if (best.k === 'a' && best.id === from.id && !R.length) { toast('That is where you start. Tap where you want to go.', 2500); return; }
+    else R.push(best);
+    drawFF(); return;
+  }
+  if (t.id === 'ffUndo') { e.stopPropagation(); FFM.R.pop(); drawFF(); return; }
+  if (t.id === 'ffClear') { e.stopPropagation(); FFM.R.length = 0; drawFF(); return; }
+  if (t.id === 'ffGo2') {
+    e.stopPropagation(); const R = FFM.R, from = apOf(SV.at), A = AC[FF.ac]; if (!R.length) { toast('Tap places on the map to build your route first.', 3000); return; }
+    const last = R[R.length - 1], dest = last.k === 'a' ? apOf(last.id) : from, wi = last.k === 'a' ? R.slice(0, -1) : R, total = ffDist();
+    if (Math.max(...dest.ends.map(q => q.len)) < A.minRw) { toast('The runway at ' + dest.id + ' is too short for the ' + A.name, 3500); return; }
+    const range = (A.fuelCap / (A.ffMax * 0.72)) * A.cruise * KT * 0.93; if (total > range * 0.92) toast('This route is near the limit of your fuel range (' + Math.round(range / 1852) + ' nm).', 4500);
+    const c = { id: 'free' + SV.flights, type: 'free', label: 'Free flight', from: from.id, to: dest.id, ac: FF.ac, payload: 0, pay: 0, km: total / 1000, wx: 'vfr', req: 'private', acReq: A.license, tooShort: false, fuel: A.fuelCap, limitMin: 0 };
+    if (wi.length) { c.wps = wi.map(w => ({ n: w.k === 'a' ? w.id : w.n, x: w.x, z: w.z })); c.alt = [-1000, 60000]; }
+    planWx(c);
+  }
 }, true);
 const DL = { run: false, txt: '' };
 function dlHTML() {
@@ -2309,15 +2564,15 @@ function dispatchHTML() {
   const cur = list.find(c => c.id === sel), bonus = assistBonus(SV.settings);
   const cards = list.map(c => {
     const lk = lockReason(SV, c), A = AC[c.ac];
-    const pay = c.pay ? money(c.pay * bonus) + (bonus > 1 ? ` <small>+${Math.round((bonus - 1) * 100)}% for fewer assists</small>` : '') : 'Training, no pay';
+    const pay = c.pay ? money(c.pay * bonus * repMul()) + (bonus > 1 ? ` <small>+${Math.round((bonus - 1) * 100)}% for fewer assists</small>` : '') : 'Training, no pay';
     return `<button class="card job ${sel === c.id ? 'sel' : ''} ${lk ? 'locked' : ''}" data-act="pick" data-id="${c.id}">
       <div class="jt"><span class="tag t-${c.type}">${c.label}</span>${c.wx === 'ifr' ? '<span class="tag t-ifr">Low visibility</span>' : ''}</div>
-      <div class="route">${c.from}<i>to</i>${c.to}</div>
+      <div class="route">${c.from}<i>${c.from === c.to ? 'round trip' : 'to'}</i>${c.from === c.to ? '' : c.to}</div>
       <div class="meta">${(c.km / 1.852).toFixed(0)} nm &middot; ${A.name} &middot; ${c.payload} kg load${c.wps ? ' &middot; ' + c.wps.map(w => w.n).join(', ') : ''}</div>
       <div class="pay">${pay}</div>${lk ? `<div class="lock">${lk}</div>` : ''}</button>`;
   }).join('');
   const lk = lockReason(SV, cur);
-  return `<p class="lead">You are parked at <b>${ap.name}</b>. Taxi, takeoff and landing are always flown by hand. Once you are airborne and above 1,000 ft AGL you can hand the airplane to the autopilot from the autopilot camera. It flies in real time.</p>
+  return objBannerHTML() + `<p class="lead">You are parked at <b>${ap.name}</b>. Taxi, takeoff and landing are always flown by hand. Once you are airborne and above 1,000 ft AGL you can hand the airplane to the autopilot from the autopilot camera. It flies in real time.</p>
     ${dailyHTML()}<div class="jobs">${cards}</div>
     <div class="bar"><div class="sub">${lk ? lk : 'A flight plan is made for you automatically. You review it before engine start.'}</div>
     <button class="go" data-act="plan" ${lk ? 'disabled' : ''}>Create flight plan</button></div>`;
@@ -2457,11 +2712,12 @@ async function planWx(c) {
 function makePlan(c, ck) {
   const ap0 = apOf(c.from), ap1 = apOf(c.to), A = AC[c.ac], rng = mulberry(SV.seed * 31 + SV.flights * 131 + c.id.length * 7 + c.from.charCodeAt(2));
   const wind = (!ck && WXNOW && WXNOW.icaoId === c.from) ? liveWind(WXNOW, rng) : makeWind(rng, c.wx === 'ifr'), dep = pickEnd(ap0, wind, c.ac), arr = pickEnd(ap1, wind, c.ac);
-  const dist = dist2(ap0, ap1), tc = bearingDeg(ap0, ap1), mc = (tc - MAGVAR + 360) % 360;
+  const wpl = wpLen(c, ap0, ap1), dist = wpl.len, tc = bearingDeg(ap0, wpl.first), mc = (tc - MAGVAR + 360) % 360;
   const east = mc < 180, ifr = c.wx === 'ifr' || !!(wind.live && wind.low);
   const base = dist < 25000 ? 2000 : AC[c.ac].light ? (dist < 60000 ? 3000 : 4000) : c.ac === 'heron' ? 6000 : 9000;
   let alt = east ? (base % 2000 === 0 ? base - 1000 : base) : (base % 2000 === 0 ? base : base - 1000); if (alt < 1000) alt += 2000;
   alt += ifr ? 0 : 500; if (alt < 2500 && dist >= 25000) alt = 2500 + (ifr ? 0 : 0);
+  if (c.wps && c.alt && c.alt[1] < 20000) alt = Math.round(Math.min(c.alt[1] - 300, Math.max(c.alt[0] + 300, alt)) / 100) * 100;
   const ete = dist / (A.cruise * KT * 0.93) / 60 + 9, burn = A.ffMax * 0.72, endur = c.fuel / burn / 60;
   const tail = 'N' + (100 + (SV.seed * 17 + SV.flights * 29) % 800) + String.fromCharCode(65 + (SV.flights * 7) % 26) + String.fromCharCode(65 + (SV.flights * 11 + 3) % 26);
   const route = depRoute(ap0, dep);
@@ -2472,7 +2728,7 @@ function openPlan(c, ck) {
   const row = (k, v) => `<div class="pr"><span>${k}</span><b>${v}</b></div>`;
   $('plan').hidden = false; $('menu').hidden = true; $('pill').hidden = true;
   $('plan').innerHTML = `<div class="sheet wide"><div class="eh">${ck ? 'Checkride' : c.label} flight plan &middot; ${P.tail}</div>
-    <h2>${c.from} <i>to</i> ${c.to}</h2>
+    <h2>${c.from === c.to ? c.from + ' <i>round trip</i>' : c.from + ' <i>to</i> ' + c.to}</h2>
     <div class="pgrid">
     <section style="grid-column:1/-1"><h4>Flight path</h4><canvas id="planMap" width="640" height="250" style="width:100%;display:block;border:1px solid var(--line);image-rendering:pixelated"></canvas></section>
     <section><h4>Route</h4>${row('Distance', (P.dist / NM).toFixed(0) + ' nm (' + (P.dist / 1000).toFixed(0) + ' km)')}${row('Course', String(Math.round(P.mc)).padStart(3, '0') + ' magnetic')}${row('Cruise altitude', P.alt.toLocaleString() + ' ft')}${c.limitMin ? row('Deadline', c.limitMin + ' min after engine start') : ''}${row('Time en route', Math.round(P.ete) + ' min')}${row('Aircraft', A.name)}</section>
@@ -2747,7 +3003,7 @@ function procUpdate(dt) {
       if (agl > 18 && at.vs > 0 && !G.posSaid) { G.posSaid = true; if (G.set.hints) say('Cascade Tower', A.retract ? 'Positive rate. Gear up.' : 'Positive rate.'); }
       if (agl > 300) {
         L.cleanUp = (!A.retract || ctl.gearCmd === 0) && ctl.flapCmd === 0;
-        say('Cascade Departure', `${P.tail}, radar contact. Climb and maintain ${P.alt.toLocaleString()} feet. Proceed direct ${P.c.to}.`);
+        say('Cascade Departure', `${P.tail}, radar contact. Climb and maintain ${P.alt.toLocaleString()} feet. Proceed direct ${P.c.wps && P.c.wps.length ? P.c.wps[0].n : P.c.to}.`);
         G.ap.alt = P.alt; setPhase('ENROUTE');
       }
       break;
@@ -2757,11 +3013,12 @@ function procUpdate(dt) {
         G.altT += dt; if (G.reached && G.altT >= 1) { G.altT = 0; L.altN++; if (Math.abs(altFt - P.alt) < 300) L.altOk++; }
       }
       const d1 = Math.hypot(s.p[0] - P.ap1.x, s.p[2] - P.ap1.z);
-      if (G.phase === 'ENROUTE' && d1 < G.dDesc) {
+      const wpsLeft = !!(G.wps && G.wps.some(q => !q.hit));
+      if (G.phase === 'ENROUTE' && d1 < G.dDesc && !wpsLeft) {
         say('Cascade Approach', `${P.tail}, ${P.c.to} approach. Expect runway ${arr.name}. Descend and maintain ${(P.ap1.elev + (A.light ? 2000 : A.id === 'heron' ? 2500 : 3000)).toLocaleString()} feet. Wind ${windText(P.wind)}.`);
         setPhase('DESCENT');
       }
-      if (d1 < G.dFin) {
+      if (d1 < G.dFin && !wpsLeft) {
         say('Cascade Tower', `${P.tail}, runway ${arr.name}, wind ${windText(P.wind)}, cleared to land.`); G.landClr = true; setPhase('FINAL');
       }
       break;
@@ -3206,7 +3463,7 @@ function dailyHTML() {
   const d = dailyToday(), f = fuelMul(SV.at), pc = Math.round((f - 1) * 100);
   return `<div class="card" style="padding:10px 12px;margin-bottom:10px"><div class="jt"><span class="tag t-free">Daily challenge</span> ${d.done ? '<b style="color:#6fd38a">Done</b>' : '<b>$400</b>'}</div><div class="meta">${DAILY[d.i][1]}</div><div class="meta" style="opacity:.7">Fuel here costs ${pc === 0 ? 'the standard price' : Math.abs(pc) + '% ' + (pc < 0 ? 'less' : 'more') + ' than usual'}.</div></div>`;
 }
-function postFlight(o) {
+function postFlight0(o) {
   let h = ''; const L = o.L, A = o.A;
   SV.wear = SV.wear || {}; SV.wear[A.id] = +(wearH(A.id) + o.s.time / 3600 + (o.landed && L.tdVs != null && Math.abs(L.tdVs) > 300 ? 1.2 : 0)).toFixed(2);
   if (wearH(A.id) >= 100) h += '<div class="award bad">Service is overdue on the ' + A.name + '. Upkeep costs more until you service it in the Hangar.</div>';
@@ -3262,7 +3519,7 @@ function finishFlight(crash) {
   const landed = G.tdDone && G.onRwy && !crash; clearSavedFlight(); let note2 = '', opCost = 0;
   if (G.ck) { fails = checkridePass(G.ck, sc.total, L, crash); if (G.autoLand) fails.push('The autopilot flew the approach while you were away'); passed = !fails.length; if (passed) { SV.lic.push(G.ck.lic); extra = `<div class="award">${LICENSES[G.ck.lic].name} earned</div>`; } }
   else if (!crash) {
-    const bonus = assistBonus(G.set); pay = G.c.pay ? Math.round(G.c.pay * (0.5 + 0.5 * sc.total / 100) * bonus) : 0;
+    const bonus = assistBonus(G.set) * repMul(); pay = G.c.pay ? Math.round(G.c.pay * (0.5 + 0.5 * sc.total / 100) * bonus) : 0;
     if (G.c.type === 'lesson') { if (sc.total >= 60 && !G.autoLand) { SV.lessons++; extra = '<div class="award">Lesson passed</div>'; } else extra = '<div class="award bad">Lesson not passed. A score of 60 is needed.</div>'; }
     if (G.autoLand) { pay = Math.round(pay * 0.6); note2 += '<div class="award bad">The autopilot flew and landed the airplane while you were away. Pay reduced 40%.</div>'; }
     if (G.c.limitMin) { const on = s.time <= G.c.limitMin * 60; pay = Math.round(pay * (on ? 1.5 : 0.6)); note2 += on ? '<div class="award">Delivered on time, bonus +50%</div>' : '<div class="award bad">Missed the ' + G.c.limitMin + ' minute deadline, pay cut 40%</div>'; }

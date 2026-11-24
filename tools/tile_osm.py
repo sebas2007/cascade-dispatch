@@ -24,6 +24,11 @@ ap.add_argument('--tile', type=float, default=4000.0)
 ap.add_argument('--bbox', nargs=4, type=float, metavar=('S', 'W', 'N', 'E'))
 ap.add_argument('--min-building', type=float, default=14.0, help='drop buildings smaller than this many m2')
 ap.add_argument('--max-per-tile', type=int, default=9000, help='safety cap on buildings per tile')
+ap.add_argument('--airports-json', help='airports found by tools/find_airports.py (default: the 8 built-in ones)')
+ap.add_argument('--radius-km', type=float, default=0, help='keep only data within this distance of the game origin (0 = use --bbox)')
+ap.add_argument('--core-km', type=float, default=0, help='full detail inside this radius; beyond it small buildings, houses, minor roads and small land patches are dropped (keeps the download small)')
+ap.add_argument('--far-min-building', type=float, default=250.0)
+ap.add_argument('--airport-zone-km', type=float, default=3.5, help='outside the core, buildings within this distance of an airport are still kept in full')
 args = ap.parse_args()
 T = args.tile
 
@@ -117,6 +122,7 @@ def pack_tile(d):
     return struct.pack('<I', len(j)) + j + bytes(data)
 
 def inbox(lat, lon):
+    if args.radius_km: x, z = xz(lat, lon); return math.hypot(x, z) <= args.radius_km * 1000
     if not args.bbox: return True
     s, w, n, e = args.bbox; return s <= lat <= n and w <= lon <= e
 
@@ -134,8 +140,20 @@ AIRPORTS = {  # icao: (lat, lon, search radius m)
     'KJFK': (40.6398, -73.7789, 5200), 'KLGA': (40.7769, -73.8740, 3000), 'KISP': (40.7952, -73.1002, 3500),
     'KTEB': (40.8501, -74.0608, 2500), 'KHPN': (41.0670, -73.7076, 2800), 'KFOK': (40.8437, -72.6318, 3500),
     'KHWV': (40.8218, -72.8696, 2500), 'KBDR': (41.1635, -73.1262, 2500)}
+AP_META = {}
+if args.airports_json:
+    AIRPORTS = {}
+    for a in json.load(open(args.airports_json)):
+        AIRPORTS[a['id']] = (a['lat'], a['lon'], a.get('radius', 2500)); AP_META[a['id']] = a
 AP_XY = {k: (xz(v[0], v[1]), v[2]) for k, v in AIRPORTS.items()}
 ap_data = {k: {'rw': [], 'tw': [], 'apr': []} for k in AIRPORTS}
+def far_detail(x, z):
+    # True where we can thin out the data (outside the core and not beside an airport)
+    if not args.core_km or math.hypot(x, z) < args.core_km * 1000: return False
+    zr = args.airport_zone_km * 1000
+    for c, r in AP_XY.values():
+        if abs(x - c[0]) < zr + r and abs(z - c[1]) < zr + r and math.hypot(x - c[0], z - c[1]) < zr + r: return False
+    return True
 def ap_of(x, z):
     best, bd = None, 1e18
     for k, (c, r) in AP_XY.items():
@@ -169,6 +187,7 @@ class H(osmium.SimpleHandler):
             except Exception: return
             if len(pts) < 2 or not inbox(*pts[0]): return
             p = [xz(a, b) for a, b in pts]
+            if hw in RC and RC[hw] >= 3 and far_detail(*p[len(p) // 2]): return   # minor roads far from the core
             if hw in RW: p = dp(p, 0.8); kind = 'roads'
             elif rail == 'rail': p = dp(p, 1.0); kind = 'rails'
             else: p = dp(p, 1.5); kind = 'rows'
@@ -228,10 +247,11 @@ class H(osmium.SimpleHandler):
             cx, cz = sum(q[0] for q in p) / len(p), sum(q[1] for q in p) / len(p); tl = tiles[key(cx, cz)]
             if is_b:
                 if A < args.min_building or len(tl['bld']) >= args.max_per_tile: continue
+                if far_detail(cx, cz) and (A < args.far_min_building or t.get('building') in HOUSE or t.get('building') in SMALL): continue
                 b = t.get('building', 'yes')
                 cat = 2 if (t.get('aeroway') == 'hangar' or b == 'hangar') else 3 if t.get('aeroway') == 'terminal' else 0 if b in HOUSE else 4 if b in SMALL else 1 if b in BIG else 5
                 tl['bld'].append([cat, round(bheight(t), 1), flat(p), [] if (cat == 0 and len(p) <= 8) else tri(flat(p))]); self.n['bld'] += 1
-            elif A > 60:
+            elif A > (2500 if far_detail(cx, cz) else 60):
                 tl['land'].append([c, flat(p), tri(flat(p)) if c != 3 else []]); self.n['land'] += 1
 
 h = H()
@@ -283,7 +303,10 @@ def build_airport(k, d):
                 mx, mz = (ax + bx) / 2 - cx, (az + bz) / 2 - cz; s_, t_ = mx * ux + mz * uz, mx * rx + mz * rz
                 if abs(s_) < half and 60 < abs(t_) < 500: score[round(t_ / 12) * 12] += sl
         r['twl'] = max(score, key=score.get) if score else None
-    return {'rw': rws, 'tw': d['tw'], 'apr': d['apr']}
+    o = {'rw': rws, 'tw': d['tw'], 'apr': d['apr']}
+    m = AP_META.get(k)
+    if m: o.update({'name': m.get('name', k), 'city': m.get('city', ''), 'elev': m.get('elev', 0), 'll': [m['lat'], m['lon']]})
+    return o
 out = {k: build_airport(k, d) for k, d in ap_data.items() if d['rw']}
 with open(os.path.join(args.out, 'airports.js'), 'w') as f:
     f.write('window.REAL_APS=' + json.dumps(out, separators=(',', ':')) + ';')
@@ -299,6 +322,7 @@ def make_terrain(outdir, fetch=None):
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pillow'])
         from PIL import Image
     Z = 10; X0, X1, Z0, Z1, D = -66000.0, 64000.0, -56000.0, 44000.0, 300.0
+    if args.radius_km: R_ = args.radius_km * 1000 + 8000; X0, X1, Z0, Z1, D = -R_, R_, -R_, R_, 400.0   # whole play area, a little coarser
     nx, nz = int((X1 - X0) / D) + 1, int((Z1 - Z0) / D) + 1
     gx, gz = np.meshgrid(X0 + np.arange(nx) * D, Z0 + np.arange(nz) * D)
     lat = LAT0 - gz / KZ; lon = LON0 + gx / KX

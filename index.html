@@ -176,7 +176,7 @@ body.compact #rMisc{font-size:10px}
 <div id="exam" class="modal" hidden></div>
 <div id="debrief" class="modal" hidden></div>
 <div id="instr" class="modal" hidden><div class="sheet wide"><div class="eh">Instructions</div><div id="instrBody"></div><div class="btns"><button class="go" id="instrBack">Back</button></div></div></div>
-<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="btns"><button class="go" data-act="resume">Resume</button><button data-act="instr" id="instrBtn">Instructions</button><button id="endHere" hidden>End flight here</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
+<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="eh" style="margin-top:6px">Graphics</div><div class="btns" id="gfxRow" style="margin-bottom:8px"><button data-act="gfx" data-v="sharp">Sharp</button><button data-act="gfx" data-v="bal">Balanced</button><button data-act="gfx" data-v="save">Saver</button></div><p class="lead" id="gfxNote" style="margin:0 auto 12px;font-size:12px"></p><div class="btns"><button class="go" data-act="resume">Resume</button><button data-act="instr" id="instrBtn">Instructions</button><button id="endHere" hidden>End flight here</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
 <div id="toast"></div>
 <script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => { }));</script>
 <script src="three.min.js"></script>
@@ -2692,6 +2692,7 @@ document.addEventListener('click', e => {
   else if (a === 'ans') answerExam(+t.dataset.i);
   else if (a === 'examclose') { $('exam').hidden = true; exam = null; renderMenu(); }
   else if (a === 'debriefok') { $('debrief').hidden = true; clearFlight(); renderMenu(); }
+  else if (a === 'gfx') { const P = { sharp: { saver: false, cruiseSave: false, res: 1, pixH: 900, autoQ: false }, bal: { saver: false, cruiseSave: true, res: 1, pixH: 640, autoQ: true }, save: { saver: true, cruiseSave: true, res: 0.8, pixH: 420, autoQ: true } }[t.dataset.v]; Object.assign(SV.settings, P); SV.settings.gfx = t.dataset.v; persist(); applySettings(); gfxMark(); }
   else if (a === 'resume') setPause(false);
   else if (a === 'abort') { setPause(false); clearFlight(); renderMenu(); }
   else if (a === 'hud') hudAction(t.dataset.v);
@@ -3268,7 +3269,8 @@ function cycleCam() {
   toast(['Chase view', 'Cockpit view', 'Autopilot orbit', 'Free camera: drag to orbit, pinch to zoom', 'Wing view', 'Engine view from the wing', 'Auto camera: cycles through the views'][camMode], 1800);
   renderApPanel();
 }
-function setPause(p) {
+function gfxMark() { const g = SV.settings.gfx || 'bal', r = document.getElementById('gfxRow'); if (!r) return; for (const b of r.children) { const on = b.dataset.v === g; b.style.outline = on ? '2px solid #4fd6e8' : 'none'; } const n = document.getElementById('gfxNote'); if (n) n.textContent = { sharp: 'Sharp: full resolution, finer pixels, no auto-lowering. Can run hot on a phone.', bal: 'Balanced: the default. Lowers quality by itself in cruise and when the phone is slow.', save: 'Saver: coarser pixels, 30 fps, shorter draw distance. Coolest.' }[g]; }
+function setPause(p) { if (p) setTimeout(gfxMark, 0);
   paused = p; $('pause').hidden = !p; { const eb = $('endHere'); if (eb) eb.hidden = !(p && G && G.tdDone && !G.s.air); } if (p && mapOpen) toggleMap();
 }
 window.addEventListener('keydown', e => {

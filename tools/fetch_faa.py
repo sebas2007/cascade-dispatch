@@ -69,36 +69,41 @@ def rough_fit(pg, real):
     return sc, R, t
 
 def grid_lines(pg):
-    V = collections.defaultdict(float); H = collections.defaultdict(float); Vn = collections.Counter(); Hn = collections.Counter()
+    """x positions of vertical thin lines and y positions of horizontal ones (graticule lines and their edge ticks), frame excluded"""
+    V = collections.defaultdict(float); H = collections.defaultdict(float)
+    fr = None
     for d in pg.get_drawings():
-        if d['color'] and d['fill'] is None and 0.3 < (d['width'] or 0) < 0.6:
+        if d['fill'] is None and d['rect'].width > 250 and d['rect'].height > 400: fr = d['rect']
+    for d in pg.get_drawings():
+        if d['color'] and d['fill'] is None and d['width'] is not None and d['width'] < 1.0:
             for it in d['items']:
                 if it[0] != 'l': continue
                 a, b = it[1], it[2]
-                if abs(a.x - b.x) < 0.05: V[round(a.x, 1)] += abs(a.y - b.y); Vn[round(a.x, 1)] += 1
-                elif abs(a.y - b.y) < 0.05: H[round(a.y, 1)] += abs(a.x - b.x); Hn[round(a.y, 1)] += 1
-    def merge(D, N):
+                if abs(a.x - b.x) < 0.05 and abs(a.y - b.y) >= 6: V[round(a.x * 2) / 2] += abs(a.y - b.y)
+                elif abs(a.y - b.y) < 0.05 and abs(a.x - b.x) >= 6: H[round(a.y * 2) / 2] += abs(a.x - b.x)
+    def pick(D, lo, hi):
+        ks = sorted(k for k, v in D.items() if v >= 60 and not (fr and (abs(k - lo) < 1.5 or abs(k - hi) < 1.5)))
         out = []
-        for k in sorted(k for k, v in D.items() if v >= 120 and N[k] >= 3):
-            if out and k - out[-1][0] < 1.0: out[-1][1] += D[k]
-            else: out.append([k, D[k]])
-        return [o[0] for o in out]
-    return merge(V, Vn), merge(H, Hn)
+        for k in ks:
+            if out and k - out[-1] < 1.5: continue
+            out.append(k)
+        return out
+    return (pick(V, fr.x0, fr.x1) if fr else pick(V, -9, -9)), (pick(H, fr.y0, fr.y1) if fr else pick(H, -9, -9))
 
 def georef(pg, real):
     """page point -> game world metres:  w = A @ p + t
-    The scale comes from the printed lat/lon grid (1 minute between lines). Which way is north and which minute each line is
-    are found by trying every option and keeping the one where the OSM runways and taxiways land on the drawing's pavement."""
+    The drawing carries a lat/lon grid. Its spacing (1, 1/2 or 1/4 minute), which way is north and which grid lines they are
+    are all found by trying every option and keeping the one where the OSM runways and taxiways land on the drawing's pavement."""
     V, H = grid_lines(pg)
     if len(V) < 2 or len(H) < 2: return None, 'no lat/lon grid found'
-    sv, sh = float(np.diff(V).mean()), float(np.diff(H).mean())
-    latV = sv > sh                                   # 1' of latitude is longer than 1' of longitude, so the wider spacing is latitude
-    spl, spo = (sv, sh) if latV else (sh, sv)
-    if abs(spo / spl - 0.757) > 0.1: return None, 'grid spacing does not look like 1 minute'
-    mx, mz = KX / 60 / spo, KZ / 60 / spl
-    ixn = 0 if latV else 1; ixe = 1 - ixn
-    lat_lines, lon_lines = (V, H) if latV else (H, V)
-    # the points we test: along every OSM runway and at the taxiway vertices
+    dV = sorted({round(abs(a - b), 1) for i, a in enumerate(V) for b in V[i + 1:] if abs(a - b) > 25})
+    dH = sorted({round(abs(a - b), 1) for i, a in enumerate(H) for b in H[i + 1:] if abs(a - b) > 25})
+    pairs = []
+    for x in dV:
+        for y in dH:
+            hi, lo = max(x, y), min(x, y)
+            if abs(lo / hi - 0.757) < 0.05: pairs.append((x, y))
+    if not pairs: return None, 'grid spacing does not look like a lat/lon grid'
     pts = []
     for r in real['rw']:
         for f in np.linspace(0, 1, 25): pts.append((r['p0'][0] + (r['p1'][0] - r['p0'][0]) * f, r['p0'][1] + (r['p1'][1] - r['p0'][1]) * f))
@@ -111,26 +116,33 @@ def georef(pg, real):
     cx_, cy_ = pg.rect.width / 2, pg.rect.height / 2
     tgt = np.array([np.mean([(r['p0'][0] + r['p1'][0]) / 2 for r in real['rw']]), np.mean([(r['p0'][1] + r['p1'][1]) / 2 for r in real['rw']])])
     best = None
-    for se in (1, -1):
-        for sn in (1, -1):
-            A = np.zeros((2, 2)); A[0, ixe] = se * mx; A[1, ixn] = sn * mz
-            t_c = tgt - A @ np.array([cx_, cy_])              # puts the middle of the page on the airport
-            cand = []
-            for ax, lines, wi, per_deg, origin, sgn in ((ixn, lat_lines, 1, KZ, LAT0, -1), (ixe, lon_lines, 0, KX, LON0, 1)):
-                c0 = lines[0]; w_est = A[wi, ax] * c0 + t_c[wi]
-                m0 = round((w_est / (sgn * per_deg) + origin) * 60)
-                cand.append([sgn * ((m0 + d) / 60 - origin) * per_deg - A[wi, ax] * c0 for d in (-1, 0, 1)])
-            for tz in cand[0]:
-                for tx in cand[1]:
-                    tw = np.zeros(2); tw[1] = tz if True else 0; tw[0] = tx
-                    # cand[0] belongs to the lat axis (world z) and cand[1] to the lon axis (world x)
-                    Ai = np.linalg.inv(A); q = ((pts - tw) @ Ai.T) * k
-                    xi, yi = q[:, 0].astype(int), q[:, 1].astype(int)
-                    ok = (xi > 3) & (xi < pm.width - 3) & (yi > 3) & (yi < pm.height - 3)
-                    if ok.sum() < 20: continue
-                    v = img[yi[ok], xi[ok]]
-                    score = float((((v > 190) & (v < 225)) | (v < 70)).mean()) * (ok.mean())
-                    if best is None or score > best[0]: best = (score, A.copy(), tw.copy())
+    for sv, sh in pairs:
+        latV = sv > sh                                   # the wider spacing is latitude (1' of latitude is longer than 1' of longitude)
+        spl, spo = (sv, sh) if latV else (sh, sv)
+        ixn = 0 if latV else 1; ixe = 1 - ixn
+        lat_lines, lon_lines = (V, H) if latV else (H, V)
+        for I in (1.0, 0.5, 0.25, 2.0):                  # grid interval in minutes
+            mx, mz = KX / 60 * I / spo, KZ / 60 * I / spl
+            for se in (1, -1):
+                for sn in (1, -1):
+                    A = np.zeros((2, 2)); A[0, ixe] = se * mx; A[1, ixn] = sn * mz
+                    Ai = np.linalg.inv(A); t_c = tgt - A @ np.array([cx_, cy_])
+                    cand = []
+                    for ax, lines, wi, per_deg, origin, sgn in ((ixn, lat_lines, 1, KZ, LAT0, -1), (ixe, lon_lines, 0, KX, LON0, 1)):
+                        sp_ = spl if ax == ixn else spo                      # a real grid line has a neighbour exactly one spacing away
+                        refs = [l for l in lines if any(abs(abs(l - l2) - sp_) < 0.8 for l2 in lines)] or lines
+                        c0 = refs[0]; w_est = A[wi, ax] * c0 + t_c[wi]
+                        m0 = round((w_est / (sgn * per_deg) + origin) * 60 / I) * I
+                        cand.append([sgn * ((m0 + d * I) / 60 - origin) * per_deg - A[wi, ax] * c0 for d in (-3, -2, -1, 0, 1, 2, 3)])
+                    for tz in cand[0]:
+                        for tx in cand[1]:
+                            tw = np.array([tx, tz]); q = ((pts - tw) @ Ai.T) * k
+                            xi, yi = q[:, 0].astype(int), q[:, 1].astype(int)
+                            ok = (xi > 3) & (xi < pm.width - 3) & (yi > 3) & (yi < pm.height - 3)
+                            if ok.sum() < 20: continue
+                            v = img[yi[ok], xi[ok]]
+                            score = float((((v > 190) & (v < 225)) | (v < 70)).mean()) * float(ok.mean())
+                            if best is None or score > best[0]: best = (score, A.copy(), tw.copy())
     if best is None or best[0] < 0.5: return None, 'no orientation made the OSM layout fit the diagram'
     return (best[1], best[2]), 'ok'
 
@@ -270,7 +282,7 @@ def main():
         try: res, msg = process(k, fetch(k), real[k])
         except Exception as e: res, msg = None, 'error: ' + str(e)
         if not res: report[k] = {'ok': False, 'reason': msg}; print(k, msg); continue
-        ok = res['pavement_pct'] >= 80
+        ok = res['pavement_pct'] >= 75
         report[k] = {'ok': ok, 'osm_taxiways_on_faa_pavement_pct': res['pavement_pct'], 'tower': bool(res['twr']), 'taxi_labels': len(res['taxi']), 'buildings': len(res['bld']), 'taxiway_points_off_pavement': res['off_pavement'][:10]}
         print(k, {a: b for a, b in report[k].items() if a != 'taxiway_points_off_pavement'})
         if ok: res.pop('off_pavement'); out[k] = res

@@ -1,0 +1,402 @@
+[
+ {
+  "id": "KJFK",
+  "name": "John F. Kennedy International Airport",
+  "city": "Queens",
+  "lat": 40.64581,
+  "lon": -73.78188,
+  "elev": 10,
+  "radius": 3852,
+  "longest": 4408
+ },
+ {
+  "id": "KFOK",
+  "name": "Francis S. Gabreski Airport",
+  "city": "",
+  "lat": 40.84449,
+  "lon": -72.63272,
+  "elev": 62,
+  "radius": 2767,
+  "longest": 2717
+ },
+ {
+  "id": "KLGA",
+  "name": "LaGuardia Airport",
+  "city": "New York",
+  "lat": 40.77314,
+  "lon": -73.87623,
+  "elev": 10,
+  "radius": 2517,
+  "longest": 2131
+ },
+ {
+  "id": "KISP",
+  "name": "Long Island MacArthur Airport",
+  "city": "",
+  "lat": 40.79445,
+  "lon": -73.09903,
+  "elev": 82,
+  "radius": 2199,
+  "longest": 2126
+ },
+ {
+  "id": "KTEB",
+  "name": "Teterboro Airport",
+  "city": "",
+  "lat": 40.84845,
+  "lon": -74.06342,
+  "elev": 0,
+  "radius": 3849,
+  "longest": 2123
+ },
+ {
+  "id": "KHPN",
+  "name": "Westchester County Airport",
+  "city": "White Plains",
+  "lat": 41.06579,
+  "lon": -73.71003,
+  "elev": 439,
+  "radius": 2015,
+  "longest": 1991
+ },
+ {
+  "id": "KBDR",
+  "name": "Igor I. Sikorsky Memorial Airport",
+  "city": "Stratford",
+  "lat": 41.16334,
+  "lon": -73.12547,
+  "elev": 0,
+  "radius": 1800,
+  "longest": 1457
+ },
+ {
+  "id": "KHWV",
+  "name": "Brookhaven Airport",
+  "city": "",
+  "lat": 40.8208,
+  "lon": -72.86606,
+  "elev": 72,
+  "radius": 1933,
+  "longest": 1433
+ },
+ {
+  "id": "KCEF",
+  "name": "Westover Air Reserve Base",
+  "city": "",
+  "lat": 42.19025,
+  "lon": -72.54101,
+  "elev": 240,
+  "radius": 2976,
+  "longest": 3854
+ },
+ {
+  "id": "KSWF",
+  "name": "New York Stewart International Airport",
+  "city": "",
+  "lat": 41.50277,
+  "lon": -74.10384,
+  "elev": 476,
+  "radius": 3164,
+  "longest": 3636
+ },
+ {
+  "id": "KPHL",
+  "name": "Philadelphia International Airport",
+  "city": "Philadelphia",
+  "lat": 39.87198,
+  "lon": -75.25069,
+  "elev": 36,
+  "radius": 4278,
+  "longest": 3609
+ },
+ {
+  "id": "K3C8",
+  "name": "Calverton Executive Airpark",
+  "city": "",
+  "lat": 40.91203,
+  "lon": -72.79562,
+  "elev": 49,
+  "radius": 3452,
+  "longest": 3090
+ },
+ {
+  "id": "KWRI",
+  "name": "McGuire Air Force Base",
+  "city": "",
+  "lat": 40.02171,
+  "lon": -74.59486,
+  "elev": 141,
+  "radius": 2841,
+  "longest": 3015
+ },
+ {
+  "id": "KACY",
+  "name": "Atlantic City International Airport",
+  "city": "",
+  "lat": 39.45215,
+  "lon": -74.57305,
+  "elev": 62,
+  "radius": 2922,
+  "longest": 2998
+ },
+ {
+  "id": "KBLM",
+  "name": "Monmouth Executive Airport",
+  "city": "Wall Township",
+  "lat": 40.18551,
+  "lon": -74.12229,
+  "elev": 154,
+  "radius": 2455,
+  "longest": 2379
+ },
+ {
+  "id": "KABE",
+  "name": "Lehigh Valley International Airport",
+  "city": "Allentown",
+  "lat": 40.65096,
+  "lon": -75.44347,
+  "elev": 371,
+  "radius": 2463,
+  "longest": 2151
+ },
+ {
+  "id": "KEWR",
+  "name": "Newark Liberty International Airport",
+  "city": "Newark",
+  "lat": 40.69158,
+  "lon": -74.17704,
+  "elev": 13,
+  "radius": 2930,
+  "longest": 2127
+ },
+ {
+  "id": "KPNE",
+  "name": "Northeast Philadelphia Airport",
+  "city": "",
+  "lat": 40.08079,
+  "lon": -75.00915,
+  "elev": 112,
+  "radius": 2127,
+  "longest": 2117
+ },
+ {
+  "id": "KOXC",
+  "name": "Waterbury-Oxford Airport",
+  "city": "",
+  "lat": 41.47838,
+  "lon": -73.13425,
+  "elev": 0,
+  "radius": 1832,
+  "longest": 1857
+ },
+ {
+  "id": "KMMU",
+  "name": "Morristown Municipal Airport",
+  "city": "Morristown",
+  "lat": 40.79933,
+  "lon": -74.41927,
+  "elev": 190,
+  "radius": 2232,
+  "longest": 1821
+ },
+ {
+  "id": "KMJX",
+  "name": "Ocean County Airport at Robert J Miller Air Park",
+  "city": "Bayville",
+  "lat": 39.92734,
+  "lon": -74.29182,
+  "elev": 79,
+  "radius": 2076,
+  "longest": 1784
+ },
+ {
+  "id": "KMSV",
+  "name": "Sullivan County International Airport",
+  "city": "",
+  "lat": 41.70272,
+  "lon": -74.79963,
+  "elev": 1368,
+  "radius": 2204,
+  "longest": 1737
+ },
+ {
+  "id": "KHVN",
+  "name": "Tweed New Haven Airport",
+  "city": "",
+  "lat": 41.26303,
+  "lon": -72.88679,
+  "elev": 0,
+  "radius": 1826,
+  "longest": 1703
+ },
+ {
+  "id": "KNEL",
+  "name": "Lakehurst Naval Air Weapons Center/Maxfield Field",
+  "city": "",
+  "lat": 40.03339,
+  "lon": -74.35368,
+  "elev": 92,
+  "radius": 2151,
+  "longest": 1649
+ },
+ {
+  "id": "K1B1",
+  "name": "Columbia County Airport",
+  "city": "Ghent",
+  "lat": 42.29082,
+  "lon": -73.71199,
+  "elev": 0,
+  "radius": 1803,
+  "longest": 1626
+ },
+ {
+  "id": "KPOU",
+  "name": "Hudson Valley Regional Airport",
+  "city": "Wappingers Falls",
+  "lat": 41.62735,
+  "lon": -73.88512,
+  "elev": 157,
+  "radius": 1800,
+  "longest": 1533
+ },
+ {
+  "id": "KTTN",
+  "name": "Trenton Mercer Airport",
+  "city": "Ewing Township",
+  "lat": 40.2779,
+  "lon": -74.81511,
+  "elev": 213,
+  "radius": 1950,
+  "longest": 1524
+ },
+ {
+  "id": "KMPO",
+  "name": "Pocono Mountains Municipal Airport",
+  "city": "Tobyhanna",
+  "lat": 41.13767,
+  "lon": -75.38053,
+  "elev": 1890,
+  "radius": 1800,
+  "longest": 1523
+ },
+ {
+  "id": "KMGJ",
+  "name": "Orange County Airport",
+  "city": "",
+  "lat": 41.51062,
+  "lon": -74.26328,
+  "elev": 364,
+  "radius": 2034,
+  "longest": 1517
+ },
+ {
+  "id": "KCDW",
+  "name": "Essex County Airport",
+  "city": "",
+  "lat": 40.87169,
+  "lon": -74.28332,
+  "elev": 174,
+  "radius": 2003,
+  "longest": 1377
+ },
+ {
+  "id": "KDXR",
+  "name": "Danbury Municipal Airport",
+  "city": "",
+  "lat": 41.37187,
+  "lon": -73.48074,
+  "elev": 459,
+  "radius": 1815,
+  "longest": 1357
+ },
+ {
+  "id": "KHFD",
+  "name": "Hartford\u2013Brainard Airport",
+  "city": "",
+  "lat": 41.73872,
+  "lon": -72.65031,
+  "elev": 0,
+  "radius": 1800,
+  "longest": 1340
+ },
+ {
+  "id": "KIJD",
+  "name": "Windham Airport",
+  "city": "",
+  "lat": 41.7448,
+  "lon": -72.17847,
+  "elev": 0,
+  "radius": 1800,
+  "longest": 1307
+ },
+ {
+  "id": "KCKZ",
+  "name": "Pennridge Airport",
+  "city": "",
+  "lat": 40.39022,
+  "lon": -75.28884,
+  "elev": 568,
+  "radius": 1800,
+  "longest": 1286
+ },
+ {
+  "id": "KN87",
+  "name": "Trenton-Robbinsville Airport",
+  "city": "",
+  "lat": 40.21443,
+  "lon": -74.59965,
+  "elev": 112,
+  "radius": 1800,
+  "longest": 1281
+ },
+ {
+  "id": "KLDJ",
+  "name": "Linden Airport",
+  "city": "",
+  "lat": 40.61638,
+  "lon": -74.2436,
+  "elev": 23,
+  "radius": 1800,
+  "longest": 1258
+ },
+ {
+  "id": "KXLL",
+  "name": "Allentown Queen City Municipal Airport (KXLL)",
+  "city": "",
+  "lat": 40.57222,
+  "lon": -75.48734,
+  "elev": 390,
+  "radius": 1800,
+  "longest": 1199
+ },
+ {
+  "id": "KN89",
+  "name": "Joseph Y. Resnick Airport",
+  "city": "",
+  "lat": 41.72953,
+  "lon": -74.37728,
+  "elev": 0,
+  "radius": 1800,
+  "longest": 1160
+ },
+ {
+  "id": "KVAY",
+  "name": "South Jersey Regional Airport",
+  "city": "",
+  "lat": 39.94143,
+  "lon": -74.84597,
+  "elev": 0,
+  "radius": 4429,
+  "longest": 1154
+ },
+ {
+  "id": "KJVI",
+  "name": "Central Jersey Regional Airport",
+  "city": "",
+  "lat": 40.52509,
+  "lon": -74.5962,
+  "elev": 82,
+  "radius": 1800,
+  "longest": 1130
+ }
+]

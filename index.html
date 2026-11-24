@@ -204,7 +204,7 @@ body.compact #thrB{display:none}
 #jobP .jr1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}#jobP .jr1 b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}#jpLeft{font-size:19px;font-weight:700;color:var(--amber);white-space:nowrap}
 #jobP .jbar{position:relative;height:7px;background:#2a3348;margin:5px 0}#jpFill{display:block;height:100%;width:0;background:var(--amber)}#jpTk u{position:absolute;top:-2px;width:2px;height:11px;background:#e8eef7}
 #jobP .jr2{display:flex;justify-content:space-between;font-size:13px;color:#9aa8bd}#jpLand{color:var(--amber)}#jobP .jr3{font-size:12px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-#topbar #tRoute{display:none}#nextHint{top:calc(max(8px,env(safe-area-inset-top,0px)) + 172px)!important}#side{top:calc(max(8px,env(safe-area-inset-top,0px)) + 176px)!important}body.compact #atc{top:calc(max(8px,env(safe-area-inset-top,0px)) + 172px)!important}body.apopen #jobP{display:none}
+#wpHud{display:none!important}#topbar #tRoute{display:none}#nextHint{top:calc(max(8px,env(safe-area-inset-top,0px)) + 172px)!important}#side{top:calc(max(8px,env(safe-area-inset-top,0px)) + 176px)!important}body.compact #atc{top:calc(max(8px,env(safe-area-inset-top,0px)) + 172px)!important}body.apopen #jobP{display:none}
 #topbar button{padding:4px 7px!important;font-size:12px!important}#topbar{padding:4px 6px!important}
 #cfgBar{gap:3px!important}#cfgBar button{padding:3px 8px!important;font-size:11px!important;min-width:30px!important}#cfgBar span{font-size:10px!important}
 
@@ -3709,20 +3709,28 @@ function drawRoutePv(c) {
 
 /* ======================= fix42: banner tow visual + away autopilot follows the real route ======================= */
 function bannerMake() {
-  const g = new THREE.Group(), A = G.A, z0 = A.tail + 0.6, line = 7, len = 15, H = 3.8, W = 18;
-  const tl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, line + 0.4), new THREE.MeshBasicMaterial({ color: 0x1b1d22 })); tl.position.set(0, -0.2, z0 + line / 2); g.add(tl);
-  const msgs = ['CASCADE AIR  FLY WITH US', 'BEACH SALE TODAY', 'FRESH CLAMS AT THE PIER', 'HAPPY BIRTHDAY SAM', 'SUMMER AT JONES BEACH'], txt = (SV.co && SV.co.name ? SV.co.name.toUpperCase() + '  NOW HIRING' : msgs[Math.abs(hsh(G.c.id || 'b')) % msgs.length]);
-  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#f8f4e8'; x.fillRect(0, 0, 512, 128); x.strokeStyle = '#c8261f'; x.lineWidth = 8; x.strokeRect(5, 5, 502, 118); x.fillStyle = '#c8261f'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  let fs = 76; do { x.font = '800 ' + fs + 'px Arial, sans-serif'; fs -= 4; } while (x.measureText(txt).width > 460 && fs > 20); x.fillText(txt, 256, 68);
-  const tex = new THREE.CanvasTexture(cv), mats = [new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide }), new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide })], meshes = [];
-  for (let k = 0; k < 2; k++) { const geo = new THREE.PlaneGeometry(len, H, W, 1), m = new THREE.Mesh(geo, mats[k]); m.rotation.y = k ? -Math.PI / 2 : Math.PI / 2; m.frustumCulled = false; m.userData.o = Float32Array.from(geo.attributes.position.array); g.add(m); meshes.push(m); }
-  g.position.set(0, 0, z0 + line + len / 2); return { g, meshes, cid: G.c.id, len, H, line, z0 };
+  const g = new THREE.Group(), A = G.A, ws = (() => { try { const bb = new THREE.Box3().setFromObject(G.model); return Math.max(6, bb.max.x - bb.min.x); } catch (e) { return 11; } })(), k = ws / 11,
+    z0 = A.tail + 0.5, rope = 34 * k, len = 26 * k, H = 3.6 * k, drop = 3.2 * k, W = 36;
+  const dark = new THREE.MeshBasicMaterial({ color: 0x23262c });
+  const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push([0, -0.15 - drop * t - Math.sin(Math.PI * t) * 0.5 * k, z0 + rope * t]); }
+  for (let i = 0; i < 10; i++) { const a0 = pts[i], a1 = pts[i + 1], dz = a1[2] - a0[2], dy = a1[1] - a0[1], L = Math.hypot(dz, dy), m = new THREE.Mesh(new THREE.BoxGeometry(0.07 * k, 0.07 * k, L), dark); m.position.set(0, (a0[1] + a1[1]) / 2, (a0[2] + a1[2]) / 2); m.rotation.x = Math.atan2(dy, dz) * -1; g.add(m); }
+  const front = pts[10], bg = new THREE.Group(); bg.position.set(0, front[1] - H * 0.5, front[2]); g.add(bg);
+  const pole = new THREE.Mesh(new THREE.BoxGeometry(0.1 * k, H + 0.5 * k, 0.1 * k), dark); pole.position.set(0, 0, 0); bg.add(pole);
+  const txt = (SV.co && SV.co.name ? SV.co.name.toUpperCase() + ' NOW HIRING' : ['CASCADE AIR  FLY WITH US', 'BEACH SALE TODAY', 'FRESH CLAMS AT THE PIER', 'HAPPY BIRTHDAY SAM', 'SUMMER AT JONES BEACH'][Math.abs(hsh(G.c.id || 'b')) % 5]);
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 150; const x = cv.getContext('2d'); x.fillStyle = '#f6f1e4'; x.fillRect(0, 0, 1024, 150);
+  x.fillStyle = '#d9d2c0'; x.fillRect(0, 0, 1024, 7); x.fillRect(0, 143, 1024, 7); x.fillStyle = '#c8261f'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  let fs = 118; do { x.font = '900 ' + fs + 'px Arial Black, Arial, sans-serif'; fs -= 4; } while (x.measureText(txt).width > 940 && fs > 24); x.fillText(txt, 512, 80);
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4; tex.minFilter = THREE.LinearFilter; const meshes = [];
+  for (let q = 0; q < 2; q++) { const geo = new THREE.PlaneGeometry(len, H, W, 4), m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide })); m.rotation.y = q ? -Math.PI / 2 : Math.PI / 2; m.position.z = 0.12 * k + len / 2; m.frustumCulled = false; m.userData.o = Float32Array.from(geo.attributes.position.array); bg.add(m); meshes.push(m); }
+  return { g, bg, meshes, cid: G.c.id, len, H, k };
 }
 function bannerAnim(b, t) {
-  for (let k = 0; k < 2; k++) { const m = b.meshes[k], p = m.geometry.attributes.position, o = m.userData.o, sg = k ? -1 : 1;
-    for (let i = 0; i < p.count; i++) { const ox = o[i * 3], oy = o[i * 3 + 1], u = (ox + b.len / 2) / b.len, e = 1 - u, d = sg * (Math.pow(e, 1.2) * 1.5 * Math.sin(6.5 * e - 4.2 * t) + 0.25 * e * Math.sin(11 * e - 6 * t));
-      p.array[i * 3 + 2] = d; p.array[i * 3 + 1] = oy - 0.4 - 1.2 * e + 0.12 * e * Math.sin(7 * e - 5 * t); }
-    p.needsUpdate = true; m.geometry.computeBoundingSphere && m.geometry.computeBoundingSphere(); }
+  const sway = Math.sin(t * 0.55) * 0.035 + Math.sin(t * 1.3) * 0.015; b.bg.rotation.y = sway; b.bg.rotation.x = Math.sin(t * 0.8) * 0.012;
+  for (let q = 0; q < 2; q++) { const m = b.meshes[q], p = m.geometry.attributes.position, o = m.userData.o, sg = q ? -1 : 1;
+    for (let i = 0; i < p.count; i++) { const ox = o[i * 3], oy = o[i * 3 + 1], u = (ox + b.len / 2) / b.len, tf = q ? u : 1 - u, e = Math.pow(tf, 1.5), ph = 9 * tf - 5.5 * t;
+      p.array[i * 3 + 2] = sg * b.k * (0.55 * e * Math.sin(ph) + 0.18 * e * Math.sin(2.3 * ph + 1.1));
+      p.array[i * 3 + 1] = oy - b.k * (0.45 * e * e + 0.06 * e * Math.sin(ph * 0.8 + 0.7)) * (oy > 0 ? 0.6 : 1); }
+    p.needsUpdate = true; }
 }
 function bannerFx() {
   const m = G.model; if (!m) return; const on = !!(G.c && G.c.type === 'banner'); let b = m.userData.banner;
@@ -3801,10 +3809,34 @@ function buildHUD() {
 function jobPanelTick() {
   if (mode !== 'fly' || !G || !G.s || !G.plan) return; const e = $('jpLeft'); if (!e) return; const c = G.c || G.plan.c, to = apOf(c.to);
   const t = etaCalc([G.s.p[0], G.s.p[2]]); $('jpDest').textContent = c.to + ' ' + (to.city || to.name || ''); e.textContent = fmtLeft(t.sec) + ' left'; $('jpFill').style.width = Math.round(t.frac * 100) + '%';
-  $('jpNm').textContent = Math.round(t.rem / NM) + ' nm to go'; $('jpLand').textContent = 'lands ' + c.to + ' ' + landsAt(t.sec); $('jpJob').textContent = jobLine(c);
+  $('jpNm').textContent = Math.round(t.rem / NM) + ' nm to go' + (c.pay ? ' · ' + money(dispOf(c)) : ''); $('jpLand').textContent = 'lands ' + c.to + ' ' + landsAt(t.sec); $('jpJob').textContent = objText(c);
   const tk = $('jpTk'); const key = t.ticks.join(','); if (tk.dataset.k !== key) { tk.dataset.k = key; tk.innerHTML = t.ticks.map(f => `<u style="left:${(f * 100).toFixed(1)}%"></u>`).join(''); }
 }
 setInterval(() => { try { jobPanelTick(); } catch (e) { } }, 1000);
+
+function objText(c) {
+  const s = G.s, ph = G.phase, w = G.wps && G.wps.find(q => !q.hit);
+  if (c.wps && c.wps.length && s.air) {
+    if (w) { const dx = w.xz[0] - s.p[0], dz = w.xz[1] - s.p[2], rel = ((Math.atan2(dx, -dz) / DEG - G.at.hdg) % 360 + 540) % 360 - 180; return 'Next: ' + w.n + ' · ' + (Math.hypot(dx, dz) / NM).toFixed(1) + ' nm · ' + (Math.abs(rel) < 8 ? 'ahead' : rel > 0 ? 'right ' + Math.round(rel) + '°' : 'left ' + Math.round(-rel) + '°'); }
+    if (['CLIMB', 'ENROUTE', 'DESCENT'].includes(ph)) return 'All stops done. Fly to ' + c.to;
+  }
+  const alt = Math.round(s.p[1] / FT / 100) * 100;
+  switch (ph) {
+    case 'COLD': { const n = G.cl.indexOf(false); return n < 0 ? 'Checklist done. Call for taxi' : 'Start up ' + (n + 1) + '/5: ' + CL_ITEMS[n]; }
+    case 'CLR': return 'Ready to taxi. Call ground';
+    case 'TAXI': return 'Taxi to runway ' + G.plan.dep.name + ' and hold short';
+    case 'HOLD': return 'Hold short of ' + G.plan.dep.name + '. Call tower';
+    case 'CLEARED': return 'Cleared for takeoff, runway ' + G.plan.dep.name;
+    case 'ROLL': return 'Takeoff roll. Rotate at Vr';
+    case 'CLIMB': return 'Climbing to ' + Math.round(G.plan.alt / 100) * 100 + ' ft';
+    case 'ENROUTE': return 'Cruise ' + alt.toLocaleString() + ' ft. Direct ' + c.to;
+    case 'DESCENT': return 'Arrival ' + c.to + '. Expect runway ' + G.plan.arr.name;
+    case 'FINAL': return 'Final approach, runway ' + G.plan.arr.name;
+    case 'ROLLOUT': return 'Rollout. Exit the runway';
+    case 'TAXI_IN': return 'Taxi to the ramp';
+  }
+  return jobLine(c);
+}
 
 /* ======================= compact autopilot ======================= */
 let apMore = false; const APF = { h: false, a: false, s: false };

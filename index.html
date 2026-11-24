@@ -197,6 +197,17 @@ body.apopen #atc,body.apopen #nextHint,body.apopen #side{display:none}
 @media (max-width:560px){#topbar #tWind,#topbar .grow{display:none}#topbar #tRoute{flex:1 1 auto;min-width:64px}#topbar{gap:5px}#topbar button{padding:5px 6px}}
 #topbar{flex-wrap:nowrap;overflow:hidden}#topbar>*{flex-shrink:0}#topbar #tRoute{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}#topbar .chip{font-size:11px;padding:3px 7px}#topbar button{padding:5px 8px}
 body.compact #thrB{display:none}
+#loader{background:#0f1726!important;font-family:ui-monospace,Menlo,monospace}#loader .ldTop{margin-bottom:6px}.ldLoad{font-size:22px;color:#9aa8bd;letter-spacing:.04em}.ldDots i{display:inline-block;width:5px;height:5px;background:#9aa8bd;margin:0 4px;animation:ldd 1.2s infinite}.ldDots i:nth-child(2){animation-delay:.2s}.ldDots i:nth-child(3){animation-delay:.4s}@keyframes ldd{0%,80%,100%{opacity:.2}40%{opacity:1}}
+#ldTxt{font-size:11px;color:#5d7090;min-height:14px}.ldRoute{font-size:30px;font-weight:700;letter-spacing:.06em;margin-top:18px}.ldRoute span{color:#e8eef7}.ldSub{font-size:13px;color:#8fa3c0;text-align:center;max-width:90vw}
+.ldBarW{width:min(420px,86vw);height:16px;background:#232b3d;margin-top:8px}#ldBar{height:100%;width:2%;background:#f5a623;transition:width .4s}.ldEta{font-size:22px;color:#f5a623;font-weight:600}
+#jobP{position:absolute;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));top:calc(max(8px,env(safe-area-inset-top,0px)) + 52px);background:rgba(10,16,28,.82);border:1px solid var(--line);padding:6px 10px 7px;font-family:var(--mono);pointer-events:none}
+#jobP .jr1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}#jobP .jr1 b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}#jpLeft{font-size:19px;font-weight:700;color:var(--amber);white-space:nowrap}
+#jobP .jbar{position:relative;height:7px;background:#2a3348;margin:5px 0}#jpFill{display:block;height:100%;width:0;background:var(--amber)}#jpTk u{position:absolute;top:-2px;width:2px;height:11px;background:#e8eef7}
+#jobP .jr2{display:flex;justify-content:space-between;font-size:13px;color:#9aa8bd}#jpLand{color:var(--amber)}#jobP .jr3{font-size:12px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+#topbar #tRoute{display:none}#nextHint{top:calc(max(8px,env(safe-area-inset-top,0px)) + 172px)!important}#side{top:calc(max(8px,env(safe-area-inset-top,0px)) + 176px)!important}body.compact #atc{top:calc(max(8px,env(safe-area-inset-top,0px)) + 172px)!important}body.apopen #jobP{display:none}
+#topbar button{padding:4px 7px!important;font-size:12px!important}#topbar{padding:4px 6px!important}
+#cfgBar{gap:3px!important}#cfgBar button{padding:3px 8px!important;font-size:11px!important;min-width:30px!important}#cfgBar span{font-size:10px!important}
+
 body.compact #atc .msg:not(:last-child){display:none}
 body.compact #atc{bottom:auto;top:calc(max(8px,env(safe-area-inset-top,0px)) + 88px)}
 body.compact #side{top:calc(max(8px,env(safe-area-inset-top,0px)) + 130px)}
@@ -2889,10 +2900,11 @@ async function startFlightLoader() {
   if (window._starting) return; window._starting = true;
   { const o0 = document.getElementById('loader'); if (o0) o0.remove(); }
   const d = document.createElement('div'); d.id = 'loader'; d.style.cssText = 'position:fixed;inset:0;z-index:999;background:#0a1220;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:ui-monospace,Menlo,monospace;color:#e8eef7;transition:opacity .5s';
-  d.innerHTML = '<div style="font-size:12px;letter-spacing:.3em;color:#f5a623">CASCADE DISPATCH</div><div style="font-size:26px;font-weight:700">' + (window._resumeData ? 'Resuming your flight' : 'Starting your flight') + '</div><div style="width:min(300px,76vw);height:10px;border:2px solid #2a3a55;padding:2px"><div id="ldBar" style="height:100%;width:3%;background:#f5a623;transition:width .25s"></div></div><div id="ldTxt" style="font-size:12px;color:#8fa3c0;min-height:16px">Preparing</div><div id="ldPct" style="font-size:11px;color:#5d7090">0%</div>';
+  d.innerHTML = ldHTML(); ldInfo();
   document.body.appendChild(d);
   await bootStep('Rolling the airplane out', 0.2); await bootStep('Loading the route and radio plan', 0.5); await bootStep('Setting up the cockpit', 0.8);
   try { if (window._resumeData) resumeApply(); else beginFlight(); } catch (e) { console.error(e); toast('Could not start the flight: ' + e.message, 5000); }
+  ldInfo();
   try { if (G && G.s && SS('routeDl') && TL.idx) {
     const ld = document.getElementById('loader'); if (ld) ld.insertAdjacentHTML('beforeend', '<div style="width:min(300px,76vw);height:8px;border:2px solid #2a3a55;padding:2px"><div id="rtBar" style="height:100%;width:0;background:#4fb3ff;transition:width .2s"></div></div><div id="rtTxt" style="font-size:12px;color:#8fa3c0;min-height:16px">Downloading the route</div>');
     await routeDownload((n, t) => { const bb = document.getElementById('rtBar'), tt = document.getElementById('rtTxt'); if (bb) bb.style.width = (t ? Math.round(100 * n / t) : 100) + '%'; if (tt) tt.textContent = 'Downloading the route: ' + n + ' of ' + t + ' map tiles'; });
@@ -3355,7 +3367,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; if (k === ',') keys.g2 = false; if (k === '.') keys.t = false; });
 
 /* ================= HUD ================= */
-function buildHUD() {
+function buildHUD0() {
   $('hud').innerHTML = `<div id="topbar"><div class="chip" id="tPhase"></div><div id="tRoute"></div><div id="tWind"></div><div class="grow"></div>
     <button data-act="hud" data-v="cam" title="Camera (C)">Cam</button><button data-act="hud" data-v="ap" title="Autopilot (P)" id="apBtn">AP</button><button data-act="hud" data-v="map" title="Map (M)">Map</button><button data-act="hud" data-v="pause" title="Menu (Esc)">Menu</button></div>
     <div id="atc"></div>
@@ -3747,6 +3759,52 @@ function awayApply(sec) {
   G.phase = 'ENROUTE'; setPhase('ENROUTE'); try { placeModel(); } catch (e) { }
   return { kind: held ? 'held' : 'cont', remNm: rem / NM };
 }
+
+/* ======================= fix43: resume loading screen, time-left panel, bigger buttons ======================= */
+function etaCalc(pos) {
+  const c = G.c || G.plan.c, A = G.A || AC[c.ac], dest = apOf(c.to), from = apOf(c.from), air = G.s && G.s.air;
+  const wl = (c.wps || []).map(w => wpXZ(w)), hits = G.wps ? G.wps.map(w => w.hit) : wl.map(() => false);
+  const full = [[from.x, from.z]].concat(wl, [[dest.x, dest.z]]), left = [pos].concat(wl.filter((w, i) => !hits[i]), [[dest.x, dest.z]]);
+  const len = a => { let L = 0; for (let i = 1; i < a.length; i++) L += Math.hypot(a[i][0] - a[i - 1][0], a[i][1] - a[i - 1][1]); return L; };
+  const L0 = Math.max(1, len(full)), rem = len(left);
+  let gs = A.cruise * KT * 0.9; if (G.s && air) { const h = Math.hypot(G.s.v[0], G.s.v[2]); if (h > 35) gs = Math.max(h, 40 * KT); }
+  const sec = rem / gs + (air ? 0 : 420), ticks = []; let acc = 0; for (let i = 1; i < full.length - 1; i++) { acc += Math.hypot(full[i][0] - full[i - 1][0], full[i][1] - full[i - 1][1]); ticks.push(acc / L0); }
+  return { rem, L0, sec, frac: clamp(1 - rem / L0, 0, 1), ticks };
+}
+function fmtLeft(sec) { const m = Math.max(0, Math.round(sec / 60)); if (m < 1) return 'under 1m'; const h = Math.floor(m / 60); return h ? h + 'h ' + String(m % 60).padStart(2, '0') + 'm' : m + 'm'; }
+function landsAt(sec) { return new Date(Date.now() + sec * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s/g, '').toLowerCase(); }
+function aboardTxt(c) {
+  const A = AC[c.ac]; if (['pax', 'charter', 'group', 'tour', 'medevac'].includes(c.type) && c.payload > 0) return Math.max(1, Math.round(c.payload / 90)) + ' of ' + seatsOf(A) + ' aboard';
+  return c.payload > 0 ? fmtKg(c.payload) + ' aboard' : '';
+}
+function jobLine(c) { let pay = ''; try { pay = c.pay ? money(dispOf(c)) : ''; } catch (e) { } return [pay, c.sub || c.label, aboardTxt(c), AC[c.ac].name].filter(Boolean).join(' · '); }
+function ldHTML() {
+  const c = G.plan.c;
+  return `<div class="ldTop"><svg viewBox="0 0 340 86" width="min(320px,82vw)"><defs><linearGradient id="ldg" x1="0" x2="1"><stop offset="0" stop-color="#2a7bd8" stop-opacity="0"/><stop offset=".5" stop-color="#4fb3ff"/><stop offset="1" stop-color="#fff"/></linearGradient></defs>
+    <path d="M10 66 Q150 -2 292 28" fill="none" stroke="url(#ldg)" stroke-width="3" stroke-linecap="round"/><path d="M292 28 l24 -9 l-9 10 l12 6 l-14 -1 l-6 9 z" fill="#e8eef7"/>
+    <text x="170" y="78" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="31" fill="#fff" letter-spacing="1.5">CASCADE <tspan fill="#f5a623">DISPATCH</tspan></text></svg></div>
+    <div class="ldLoad">Loading the world<span class="ldDots"><i></i><i></i><i></i></span></div><div id="ldTxt">Preparing</div>
+    <div class="ldRoute">${c.from} <span>&rarr;</span> ${c.to}</div><div class="ldSub" id="ldSub"></div>
+    <div class="ldBarW"><div id="ldBar"></div></div><div class="ldEta" id="ldEta"></div><span id="ldPct" hidden></span>`;
+}
+function ldInfo() {
+  try { const c = G.plan.c, sub = document.getElementById('ldSub'); if (!sub) return; sub.textContent = jobLine(c).replace(/^\$[\d,]+ · /, '');
+    const p = (G.s && G.s.p) ? [G.s.p[0], G.s.p[2]] : (window._resumeData ? [window._resumeData.s.p[0], window._resumeData.s.p[2]] : (() => { const f = apOf(c.from); return [f.x, f.z]; })());
+    const e = etaCalc(p); document.getElementById('ldBar').style.width = Math.max(2, Math.round(e.frac * 100)) + '%'; document.getElementById('ldEta').textContent = fmtLeft(e.sec) + ' to go · lands ' + landsAt(e.sec); } catch (err) { }
+}
+function bootStep(label, f) { const t = document.getElementById('ldTxt'); if (t) t.textContent = label; return new Promise(r => setTimeout(r, 40)); }
+function buildHUD() {
+  buildHUD0(); const h = $('hud'); if (!h || $('jobP')) return;
+  h.insertAdjacentHTML('beforeend', `<div id="jobP"><div class="jr1"><b id="jpDest"></b><span id="jpLeft"></span></div><div class="jbar"><i id="jpFill"></i><div id="jpTk"></div></div><div class="jr2"><span id="jpNm"></span><span id="jpLand"></span></div><div class="jr3" id="jpJob"></div></div>`);
+  jobPanelTick();
+}
+function jobPanelTick() {
+  if (mode !== 'fly' || !G || !G.s || !G.plan) return; const e = $('jpLeft'); if (!e) return; const c = G.c || G.plan.c, to = apOf(c.to);
+  const t = etaCalc([G.s.p[0], G.s.p[2]]); $('jpDest').textContent = c.to + ' ' + (to.city || to.name || ''); e.textContent = fmtLeft(t.sec) + ' left'; $('jpFill').style.width = Math.round(t.frac * 100) + '%';
+  $('jpNm').textContent = Math.round(t.rem / NM) + ' nm to go'; $('jpLand').textContent = 'lands ' + c.to + ' ' + landsAt(t.sec); $('jpJob').textContent = jobLine(c);
+  const tk = $('jpTk'); const key = t.ticks.join(','); if (tk.dataset.k !== key) { tk.dataset.k = key; tk.innerHTML = t.ticks.map(f => `<u style="left:${(f * 100).toFixed(1)}%"></u>`).join(''); }
+}
+setInterval(() => { try { jobPanelTick(); } catch (e) { } }, 1000);
 
 /* ======================= compact autopilot ======================= */
 let apMore = false; const APF = { h: false, a: false, s: false };

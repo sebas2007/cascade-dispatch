@@ -2,21 +2,145 @@
  "K1B1": "no data",
  "K3C8": "no data",
  "KABE": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 92.2,
+  "tower": true,
+  "taxi_labels": 55,
+  "buildings": 20,
+  "taxiway_points_off_pavement": [
+   [
+    -172104,
+    9202
+   ],
+   [
+    -170640,
+    7623
+   ],
+   [
+    -170577,
+    7609
+   ],
+   [
+    -170473,
+    7598
+   ],
+   [
+    -170448,
+    7593
+   ],
+   [
+    -170405,
+    7588
+   ],
+   [
+    -170396,
+    7585
+   ],
+   [
+    -170386,
+    7578
+   ],
+   [
+    -170380,
+    7567
+   ],
+   [
+    -170369,
+    7555
+   ]
+  ]
  },
  "KACY": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 82.5,
+  "tower": true,
+  "taxi_labels": 29,
+  "buildings": 14,
+  "taxiway_points_off_pavement": [
+   [
+    -98886,
+    141652
+   ],
+   [
+    -98891,
+    141658
+   ],
+   [
+    -98152,
+    139964
+   ],
+   [
+    -98153,
+    139956
+   ],
+   [
+    -98158,
+    139949
+   ],
+   [
+    -98446,
+    141303
+   ],
+   [
+    -98434,
+    141320
+   ],
+   [
+    -98218,
+    141143
+   ],
+   [
+    -98233,
+    141132
+   ],
+   [
+    -99268,
+    140654
+   ]
+  ]
  },
  "KBDR": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 98.7,
+  "tower": true,
+  "taxi_labels": 23,
+  "buildings": 15,
+  "taxiway_points_off_pavement": [
+   [
+    24253,
+    -48341
+   ],
+   [
+    23757,
+    -47525
+   ],
+   [
+    24111,
+    -47876
+   ]
+  ]
  },
  "KBLM": "no data",
  "KCDW": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 93.0,
+  "tower": true,
+  "taxi_labels": 22,
+  "buildings": 18,
+  "taxiway_points_off_pavement": [
+   [
+    -73423,
+    -15955
+   ],
+   [
+    -74027,
+    -16409
+   ],
+   [
+    -73963,
+    -16230
+   ]
+  ]
  },
  "KCEF": {
   "ok": false,
@@ -24,20 +148,61 @@
  },
  "KCKZ": "no data",
  "KDXR": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 98.1,
+  "tower": true,
+  "taxi_labels": 38,
+  "buildings": 20,
+  "taxiway_points_off_pavement": [
+   [
+    -6201,
+    -70773
+   ],
+   [
+    -6235,
+    -70638
+   ],
+   [
+    -6784,
+    -70648
+   ],
+   [
+    -6590,
+    -70764
+   ],
+   [
+    -5698,
+    -71131
+   ],
+   [
+    -5768,
+    -71099
+   ],
+   [
+    -5586,
+    -71166
+   ],
+   [
+    -5815,
+    -70868
+   ],
+   [
+    -5816,
+    -70867
+   ],
+   [
+    -5791,
+    -70862
+   ]
+  ]
  },
  "KEWR": {
   "ok": true,
-  "osm_taxiways_on_faa_pavement_pct": 93.5,
+  "osm_taxiways_on_faa_pavement_pct": 93.8,
   "tower": true,
   "taxi_labels": 133,
   "buildings": 31,
   "taxiway_points_off_pavement": [
-   [
-    -64159,
-    3105
-   ],
    [
     -63253,
     3630
@@ -52,7 +217,7 @@
    ],
    [
     -63670,
-    3183
+    3198
    ],
    [
     -64563,
@@ -73,41 +238,230 @@
    [
     -64000,
     4007
+   ],
+   [
+    -63832,
+    3756
    ]
   ]
  },
  "KFOK": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 90.8,
+  "tower": true,
+  "taxi_labels": 19,
+  "buildings": 8,
+  "taxiway_points_off_pavement": [
+   [
+    64575,
+    -11493
+   ],
+   [
+    65811,
+    -11631
+   ],
+   [
+    65826,
+    -11634
+   ],
+   [
+    65875,
+    -13027
+   ],
+   [
+    65776,
+    -13120
+   ],
+   [
+    65221,
+    -13109
+   ],
+   [
+    65125,
+    -13092
+   ],
+   [
+    66036,
+    -12881
+   ],
+   [
+    66880,
+    -13742
+   ],
+   [
+    65875,
+    -13027
+   ]
+  ]
  },
  "KHFD": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 97.6,
+  "tower": true,
+  "taxi_labels": 12,
+  "buildings": 1,
+  "taxiway_points_off_pavement": [
+   [
+    64213,
+    -112122
+   ],
+   [
+    64209,
+    -112124
+   ],
+   [
+    64204,
+    -112123
+   ],
+   [
+    64201,
+    -112166
+   ],
+   [
+    64208,
+    -112164
+   ],
+   [
+    64212,
+    -112161
+   ],
+   [
+    64217,
+    -112151
+   ]
+  ]
  },
  "KHPN": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 93.3,
+  "tower": true,
+  "taxi_labels": 57,
+  "buildings": 37,
+  "taxiway_points_off_pavement": [
+   [
+    -25166,
+    -37808
+   ],
+   [
+    -25197,
+    -36945
+   ],
+   [
+    -25196,
+    -36953
+   ],
+   [
+    -25196,
+    -36953
+   ],
+   [
+    -25331,
+    -36982
+   ],
+   [
+    -25036,
+    -37556
+   ],
+   [
+    -25030,
+    -37552
+   ],
+   [
+    -25346,
+    -37214
+   ],
+   [
+    -25332,
+    -36979
+   ],
+   [
+    -25331,
+    -36982
+   ]
+  ]
  },
  "KHVN": {
   "ok": false,
   "reason": "no lat/lon grid found"
  },
  "KHWV": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 98.4,
+  "tower": false,
+  "taxi_labels": 29,
+  "buildings": 28,
+  "taxiway_points_off_pavement": [
+   [
+    45705,
+    -10543
+   ],
+   [
+    45726,
+    -10523
+   ]
+  ]
  },
  "KIJD": "no data",
  "KISP": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 97.9,
+  "tower": true,
+  "taxi_labels": 44,
+  "buildings": 32,
+  "taxiway_points_off_pavement": [
+   [
+    25544,
+    -7867
+   ],
+   [
+    26603,
+    -6843
+   ],
+   [
+    26615,
+    -6873
+   ],
+   [
+    26994,
+    -6944
+   ],
+   [
+    25276,
+    -7359
+   ],
+   [
+    25544,
+    -7110
+   ],
+   [
+    25915,
+    -7444
+   ],
+   [
+    25973,
+    -7513
+   ],
+   [
+    27380,
+    -7063
+   ],
+   [
+    27374,
+    -7142
+   ]
+  ]
  },
  "KJFK": {
   "ok": true,
-  "osm_taxiways_on_faa_pavement_pct": 87.6,
+  "osm_taxiways_on_faa_pavement_pct": 88.1,
   "tower": true,
   "taxi_labels": 172,
   "buildings": 27,
   "taxiway_points_off_pavement": [
+   [
+    -32104,
+    8101
+   ],
    [
     -32096,
     8112
@@ -129,8 +483,8 @@
     8383
    ],
    [
-    -31982,
-    8094
+    -31768,
+    8053
    ],
    [
     -31758,
@@ -143,10 +497,6 @@
    [
     -31529,
     8414
-   ],
-   [
-    -31511,
-    8355
    ]
   ]
  },
@@ -154,61 +504,143 @@
  "KLDJ": "no data",
  "KLGA": {
   "ok": true,
-  "osm_taxiways_on_faa_pavement_pct": 95.2,
+  "osm_taxiways_on_faa_pavement_pct": 93.5,
   "tower": true,
   "taxi_labels": 88,
   "buildings": 14,
   "taxiway_points_off_pavement": [
    [
-    -38520,
-    -5126
+    -37773,
+    -4607
+   ],
+   [
+    -37840,
+    -4548
    ],
    [
     -39020,
     -5333
    ],
    [
-    -39358,
-    -5423
+    -39312,
+    -5579
+   ],
+   [
+    -39975,
+    -4537
+   ],
+   [
+    -39956,
+    -4515
+   ],
+   [
+    -39375,
+    -5282
+   ],
+   [
+    -39733,
+    -5336
    ],
    [
     -39342,
     -5093
    ],
    [
-    -39088,
-    -5276
-   ],
-   [
-    -39020,
-    -5333
-   ],
-   [
-    -39955,
-    -4604
-   ],
-   [
-    -38225,
-    -4899
-   ],
-   [
-    -37826,
-    -4655
-   ],
-   [
-    -39149,
-    -5474
+    -37980,
+    -4606
    ]
   ]
  },
  "KMGJ": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 96.1,
+  "tower": false,
+  "taxi_labels": 25,
+  "buildings": 21,
+  "taxiway_points_off_pavement": [
+   [
+    -71837,
+    -86692
+   ],
+   [
+    -71390,
+    -86409
+   ],
+   [
+    -71391,
+    -86416
+   ],
+   [
+    -71395,
+    -86422
+   ],
+   [
+    -71473,
+    -86488
+   ],
+   [
+    -71479,
+    -86488
+   ],
+   [
+    -71486,
+    -86484
+   ],
+   [
+    -71502,
+    -86466
+   ],
+   [
+    -71503,
+    -86461
+   ],
+   [
+    -71500,
+    -86453
+   ]
+  ]
  },
  "KMJX": "no data",
  "KMMU": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 83.3,
+  "tower": true,
+  "taxi_labels": 23,
+  "buildings": 19,
+  "taxiway_points_off_pavement": [
+   [
+    -85382,
+    -7152
+   ],
+   [
+    -85639,
+    -7516
+   ],
+   [
+    -85638,
+    -7526
+   ],
+   [
+    -85542,
+    -7741
+   ],
+   [
+    -85734,
+    -7361
+   ],
+   [
+    -85729,
+    -7406
+   ],
+   [
+    -85451,
+    -7468
+   ],
+   [
+    -85448,
+    -7474
+   ]
+  ]
  },
  "KMPO": "no data",
  "KMSV": "no data",
@@ -216,19 +648,117 @@
  "KN89": "no data",
  "KNEL": {
   "ok": false,
-  "reason": "grid spacing does not look like 1 minute"
+  "osm_taxiways_on_faa_pavement_pct": 5.8,
+  "tower": false,
+  "taxi_labels": 0,
+  "buildings": 19,
+  "taxiway_points_off_pavement": [
+   [
+    -79777,
+    77957
+   ],
+   [
+    -79432,
+    77659
+   ],
+   [
+    -79385,
+    77615
+   ],
+   [
+    -79315,
+    77555
+   ],
+   [
+    -79389,
+    77022
+   ],
+   [
+    -79273,
+    77035
+   ],
+   [
+    -79265,
+    77040
+   ],
+   [
+    -79255,
+    77048
+   ],
+   [
+    -79202,
+    77114
+   ],
+   [
+    -79193,
+    77120
+   ]
+  ]
  },
  "KOXC": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 79.6,
+  "tower": false,
+  "taxi_labels": 19,
+  "buildings": 15,
+  "taxiway_points_off_pavement": [
+   [
+    23200,
+    -81990
+   ],
+   [
+    23206,
+    -81990
+   ],
+   [
+    23273,
+    -82000
+   ],
+   [
+    23419,
+    -82453
+   ],
+   [
+    23025,
+    -83574
+   ],
+   [
+    23016,
+    -83571
+   ],
+   [
+    23008,
+    -83566
+   ],
+   [
+    23004,
+    -83560
+   ],
+   [
+    23208,
+    -81846
+   ],
+   [
+    23163,
+    -82730
+   ]
+  ]
  },
  "KPHL": {
   "ok": true,
-  "osm_taxiways_on_faa_pavement_pct": 91.6,
+  "osm_taxiways_on_faa_pavement_pct": 91.3,
   "tower": true,
   "taxi_labels": 102,
   "buildings": 24,
   "taxiway_points_off_pavement": [
+   [
+    -153428,
+    94825
+   ],
+   [
+    -154452,
+    95241
+   ],
    [
     -153708,
     93929
@@ -258,34 +788,120 @@
     93890
    ],
    [
-    -152735,
-    93906
-   ],
-   [
     -154499,
     94813
-   ],
-   [
-    -154495,
-    94846
    ]
   ]
  },
  "KPNE": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 94.9,
+  "tower": true,
+  "taxi_labels": 55,
+  "buildings": 25,
+  "taxiway_points_off_pavement": [
+   [
+    -135319,
+    71689
+   ],
+   [
+    -134880,
+    72279
+   ],
+   [
+    -134817,
+    72226
+   ],
+   [
+    -135171,
+    71507
+   ],
+   [
+    -135175,
+    71514
+   ],
+   [
+    -135520,
+    71879
+   ],
+   [
+    -135513,
+    71886
+   ],
+   [
+    -135496,
+    71892
+   ],
+   [
+    -135598,
+    71939
+   ],
+   [
+    -134730,
+    71162
+   ]
+  ]
  },
  "KPOU": {
-  "ok": false,
-  "reason": "no lat/lon grid found"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 81.8,
+  "tower": true,
+  "taxi_labels": 32,
+  "buildings": 11,
+  "taxiway_points_off_pavement": [
+   [
+    -40054,
+    -99563
+   ],
+   [
+    -39473,
+    -98887
+   ],
+   [
+    -40266,
+    -98822
+   ],
+   [
+    -39447,
+    -99433
+   ],
+   [
+    -39440,
+    -99437
+   ],
+   [
+    -39436,
+    -99447
+   ],
+   [
+    -39437,
+    -99456
+   ],
+   [
+    -40377,
+    -98752
+   ],
+   [
+    -39577,
+    -99201
+   ],
+   [
+    -39620,
+    -99249
+   ]
+  ]
  },
  "KSWF": {
   "ok": true,
-  "osm_taxiways_on_faa_pavement_pct": 96.9,
+  "osm_taxiways_on_faa_pavement_pct": 97.2,
   "tower": true,
   "taxi_labels": 41,
   "buildings": 20,
   "taxiway_points_off_pavement": [
+   [
+    -57230,
+    -85734
+   ],
    [
     -58586,
     -85560
@@ -299,12 +915,8 @@
     -85399
    ],
    [
-    -59455,
-    -85381
-   ],
-   [
-    -57978,
-    -85581
+    -60565,
+    -85125
    ],
    [
     -59487,
@@ -323,23 +935,81 @@
     -85210
    ],
    [
-    -57819,
-    -84329
+    -56989,
+    -85083
    ]
   ]
  },
  "KTEB": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 98.1,
+  "tower": false,
+  "taxi_labels": 0,
+  "buildings": 54,
+  "taxiway_points_off_pavement": [
+   [
+    -54628,
+    -12665
+   ],
+   [
+    -54809,
+    -13376
+   ],
+   [
+    -54993,
+    -13565
+   ],
+   [
+    -54932,
+    -13554
+   ],
+   [
+    -54993,
+    -13565
+   ],
+   [
+    -54676,
+    -14125
+   ],
+   [
+    -54669,
+    -14129
+   ]
+  ]
  },
  "KTTN": {
-  "ok": false,
-  "reason": "no orientation made the OSM layout fit the diagram"
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 97.1,
+  "tower": false,
+  "taxi_labels": 0,
+  "buildings": 55,
+  "taxiway_points_off_pavement": [
+   [
+    -117803,
+    49599
+   ],
+   [
+    -118788,
+    49351
+   ],
+   [
+    -118053,
+    49930
+   ],
+   [
+    -118087,
+    49899
+   ],
+   [
+    -118168,
+    50180
+   ]
+  ]
  },
  "KVAY": "no data",
  "KWRI": {
   "ok": false,
-  "reason": "no lat/lon grid found"
+  "reason": "no orientation made the OSM layout fit the diagram"
  },
  "KXLL": "no data"
 }

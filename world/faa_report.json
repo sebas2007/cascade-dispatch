@@ -1,168 +1,345 @@
 {
  "K1B1": "no data",
  "K3C8": "no data",
- "KABE": "only 0 runway numbers matched",
+ "KABE": {
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
+ },
  "KACY": {
-  "ok": true,
-  "rms_m": 10.4,
-  "runway_anchors": 4,
-  "tower": true,
-  "taxi_labels": 35,
-  "buildings": 5
+  "ok": false,
+  "reason": "no lat/lon grid found"
  },
  "KBDR": {
   "ok": false,
-  "rms_m": 157.4,
-  "runway_anchors": 4,
-  "tower": true,
-  "taxi_labels": 31,
-  "buildings": 47
+  "reason": "no lat/lon grid found"
  },
  "KBLM": "no data",
  "KCDW": {
-  "ok": true,
-  "rms_m": 8.5,
-  "runway_anchors": 4,
-  "tower": true,
-  "taxi_labels": 32,
-  "buildings": 46
+  "ok": false,
+  "reason": "no lat/lon grid found"
  },
- "KCEF": "only 0 runway numbers matched",
+ "KCEF": {
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
+ },
  "KCKZ": "no data",
  "KDXR": {
-  "ok": true,
-  "rms_m": 7.6,
-  "runway_anchors": 4,
-  "tower": true,
-  "taxi_labels": 46,
-  "buildings": 53
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
  },
  "KEWR": {
-  "ok": false,
-  "rms_m": 541.5,
-  "runway_anchors": 9,
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 93.5,
   "tower": true,
-  "taxi_labels": 150,
-  "buildings": 242
+  "taxi_labels": 133,
+  "buildings": 31,
+  "taxiway_points_off_pavement": [
+   [
+    -64159,
+    3105
+   ],
+   [
+    -63253,
+    3630
+   ],
+   [
+    -63911,
+    3166
+   ],
+   [
+    -64199,
+    4087
+   ],
+   [
+    -63670,
+    3183
+   ],
+   [
+    -64563,
+    5187
+   ],
+   [
+    -64537,
+    5165
+   ],
+   [
+    -64207,
+    4108
+   ],
+   [
+    -63537,
+    3492
+   ],
+   [
+    -64000,
+    4007
+   ]
+  ]
  },
  "KFOK": {
-  "ok": true,
-  "rms_m": 20.1,
-  "runway_anchors": 6,
-  "tower": true,
-  "taxi_labels": 19,
-  "buildings": 3
+  "ok": false,
+  "reason": "no lat/lon grid found"
  },
  "KHFD": {
   "ok": false,
-  "rms_m": 70.4,
-  "runway_anchors": 4,
-  "tower": true,
-  "taxi_labels": 31,
-  "buildings": 21
+  "reason": "no lat/lon grid found"
  },
  "KHPN": {
   "ok": false,
-  "rms_m": 277.7,
-  "runway_anchors": 6,
-  "tower": true,
-  "taxi_labels": 65,
-  "buildings": 99
+  "reason": "no orientation made the OSM layout fit the diagram"
  },
- "KHVN": "only 2 runway numbers matched",
+ "KHVN": {
+  "ok": false,
+  "reason": "no lat/lon grid found"
+ },
  "KHWV": {
   "ok": false,
-  "rms_m": 95.5,
-  "runway_anchors": 4,
-  "tower": false,
-  "taxi_labels": 34,
-  "buildings": 91
+  "reason": "no lat/lon grid found"
  },
  "KIJD": "no data",
  "KISP": {
-  "ok": true,
-  "rms_m": 57.9,
-  "runway_anchors": 5,
-  "tower": true,
-  "taxi_labels": 53,
-  "buildings": 97
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
  },
  "KJFK": {
-  "ok": false,
-  "rms_m": 331.2,
-  "runway_anchors": 7,
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 87.6,
   "tower": true,
-  "taxi_labels": 190,
-  "buildings": 250
+  "taxi_labels": 172,
+  "buildings": 27,
+  "taxiway_points_off_pavement": [
+   [
+    -32096,
+    8112
+   ],
+   [
+    -32091,
+    8116
+   ],
+   [
+    -31693,
+    8355
+   ],
+   [
+    -31681,
+    8367
+   ],
+   [
+    -31670,
+    8383
+   ],
+   [
+    -31982,
+    8094
+   ],
+   [
+    -31758,
+    8048
+   ],
+   [
+    -31747,
+    8046
+   ],
+   [
+    -31529,
+    8414
+   ],
+   [
+    -31511,
+    8355
+   ]
+  ]
  },
  "KJVI": "no data",
  "KLDJ": "no data",
  "KLGA": {
-  "ok": false,
-  "rms_m": 239.4,
-  "runway_anchors": 4,
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 95.2,
   "tower": true,
-  "taxi_labels": 104,
-  "buildings": 167
+  "taxi_labels": 88,
+  "buildings": 14,
+  "taxiway_points_off_pavement": [
+   [
+    -38520,
+    -5126
+   ],
+   [
+    -39020,
+    -5333
+   ],
+   [
+    -39358,
+    -5423
+   ],
+   [
+    -39342,
+    -5093
+   ],
+   [
+    -39088,
+    -5276
+   ],
+   [
+    -39020,
+    -5333
+   ],
+   [
+    -39955,
+    -4604
+   ],
+   [
+    -38225,
+    -4899
+   ],
+   [
+    -37826,
+    -4655
+   ],
+   [
+    -39149,
+    -5474
+   ]
+  ]
  },
  "KMGJ": {
   "ok": false,
-  "rms_m": 154.4,
-  "runway_anchors": 4,
-  "tower": false,
-  "taxi_labels": 32,
-  "buildings": 73
+  "reason": "no lat/lon grid found"
  },
  "KMJX": "no data",
  "KMMU": {
-  "ok": true,
-  "rms_m": 12.0,
-  "runway_anchors": 4,
-  "tower": true,
-  "taxi_labels": 25,
-  "buildings": 3
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
  },
  "KMPO": "no data",
  "KMSV": "no data",
  "KN87": "no data",
  "KN89": "no data",
- "KNEL": "only 0 runway numbers matched",
- "KOXC": "only 2 runway numbers matched",
- "KPHL": {
+ "KNEL": {
   "ok": false,
-  "rms_m": 644.9,
-  "runway_anchors": 10,
+  "reason": "grid spacing does not look like 1 minute"
+ },
+ "KOXC": {
+  "ok": false,
+  "reason": "no lat/lon grid found"
+ },
+ "KPHL": {
+  "ok": true,
+  "osm_taxiways_on_faa_pavement_pct": 91.6,
   "tower": true,
-  "taxi_labels": 120,
-  "buildings": 250
+  "taxi_labels": 102,
+  "buildings": 24,
+  "taxiway_points_off_pavement": [
+   [
+    -153708,
+    93929
+   ],
+   [
+    -153412,
+    93986
+   ],
+   [
+    -152758,
+    93838
+   ],
+   [
+    -152754,
+    93846
+   ],
+   [
+    -152744,
+    93890
+   ],
+   [
+    -152743,
+    93906
+   ],
+   [
+    -152744,
+    93890
+   ],
+   [
+    -152735,
+    93906
+   ],
+   [
+    -154499,
+    94813
+   ],
+   [
+    -154495,
+    94846
+   ]
+  ]
  },
  "KPNE": {
-  "ok": true,
-  "rms_m": 12.9,
-  "runway_anchors": 4,
-  "tower": true,
-  "taxi_labels": 56,
-  "buildings": 20
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
  },
  "KPOU": {
-  "ok": true,
-  "rms_m": 43.9,
-  "runway_anchors": 6,
-  "tower": true,
-  "taxi_labels": 37,
-  "buildings": 46
+  "ok": false,
+  "reason": "no lat/lon grid found"
  },
  "KSWF": {
   "ok": true,
-  "rms_m": 16.1,
-  "runway_anchors": 4,
+  "osm_taxiways_on_faa_pavement_pct": 96.9,
   "tower": true,
-  "taxi_labels": 49,
-  "buildings": 56
+  "taxi_labels": 41,
+  "buildings": 20,
+  "taxiway_points_off_pavement": [
+   [
+    -58586,
+    -85560
+   ],
+   [
+    -59470,
+    -85386
+   ],
+   [
+    -59465,
+    -85399
+   ],
+   [
+    -59455,
+    -85381
+   ],
+   [
+    -57978,
+    -85581
+   ],
+   [
+    -59487,
+    -85505
+   ],
+   [
+    -58586,
+    -85560
+   ],
+   [
+    -58598,
+    -85570
+   ],
+   [
+    -60746,
+    -85210
+   ],
+   [
+    -57819,
+    -84329
+   ]
+  ]
  },
- "KTEB": "only 0 runway numbers matched",
- "KTTN": "only 0 runway numbers matched",
+ "KTEB": {
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
+ },
+ "KTTN": {
+  "ok": false,
+  "reason": "no orientation made the OSM layout fit the diagram"
+ },
  "KVAY": "no data",
- "KWRI": "only 0 runway numbers matched",
+ "KWRI": {
+  "ok": false,
+  "reason": "no lat/lon grid found"
+ },
  "KXLL": "no data"
 }

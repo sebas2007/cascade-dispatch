@@ -133,6 +133,48 @@ h3{font:700 18px var(--disp);letter-spacing:.08em;text-transform:uppercase;color
 #mapwrap{position:fixed;inset:max(60px,env(safe-area-inset-top,0px)) 14px 14px;z-index:6;background:rgba(5,9,16,.92);border:1px solid var(--line)}#map{width:100%;height:100%;display:block}#mapZ{position:absolute;top:64px;right:8px;display:flex;flex-direction:column;gap:8px;z-index:2}#mapZ button{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(10,16,28,.9);color:#fff;font-size:24px;line-height:1;touch-action:manipulation}#map{touch-action:none}#mapX{position:absolute;top:8px;right:8px;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(10,16,28,.9);color:#fff;font-size:22px;line-height:1;z-index:2;touch-action:manipulation}
 #apPanel{left:50%!important;top:calc(max(8px,env(safe-area-inset-top,0px)) + 56px)!important;transform:translateX(-50%)!important;width:min(380px,94vw)!important;padding:8px 10px!important;background:rgba(10,18,32,.92)!important;gap:6px!important}
 .apcols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+
+#menu{left:0!important;right:0!important;width:100%!important;background:none!important;padding:0!important;display:flex;flex-direction:column;pointer-events:none}
+#menu>*{pointer-events:auto}body.peek #menu{display:flex}
+#mTop{padding:max(46px,calc(env(safe-area-inset-top,0px) + 38px)) 10px 6px;display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+#mIcons{display:flex;gap:8px}
+.ib{position:relative;flex:1;min-width:0;max-width:84px;height:66px;background:rgba(14,19,30,.93);border:1px solid #2c384f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:600 11px var(--mono);letter-spacing:.08em;color:#cdd7e6}
+.ib svg{width:26px;height:26px}.ib.on{border-color:var(--amber);color:#fff}.ibn{position:absolute;top:3px;right:5px;font:600 9px var(--mono);color:#7fe39a;letter-spacing:0}
+.nextb{display:flex;gap:10px;align-items:center;text-align:left;width:100%;background:rgba(14,19,30,.94);border:1px solid #2c384f;border-left:4px solid var(--amber);padding:8px 10px;color:#dfe7f3}
+.nextb>b{color:var(--amber);font:600 13px var(--mono);letter-spacing:.1em}.nextb span{flex:1;min-width:0}.nextb em{font:600 13px var(--mono);font-style:normal;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nextb small{display:block;font:11px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nextb i{font-style:normal;font-size:22px;color:#4fd6e8}
+#mSheet{flex:1;min-height:0;display:flex;flex-direction:column;background:#0b111d;border-top:1px solid #2c384f;padding:2px 12px max(8px,env(safe-area-inset-bottom,0px));font-family:var(--mono)}
+.grab{display:flex;justify-content:center;padding:7px 0 5px}.grab i{width:56px;height:5px;border-radius:3px;background:#3a475f}
+#mHead{flex:0 0 auto;display:block!important}.hid{display:flex;align-items:center;gap:12px}.hbox{font:700 34px/1 var(--mono);background:#2a3447;border:1px solid #3d4b66;padding:6px 10px;letter-spacing:.03em}
+.hnm{flex:1;min-width:0;font:600 14px var(--mono);color:#cdd7e6;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.hbal{font:700 21px var(--mono);color:var(--amber)}
+.hsub{font:12px var(--mono);color:#98a6bc;margin:6px 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mTabs{display:flex;gap:0;background:#141c2b;border:1px solid #232f45;border-bottom:1px solid #232f45;flex:0 0 auto}
+#mTabs:empty{display:none}#mTabs button{flex:1;background:none;border:0;border-bottom:0;padding:11px 2px;font:600 14px var(--mono);color:#8795ab;letter-spacing:0;text-transform:none}
+#mTabs button small{margin-left:3px;font-size:12px;color:inherit}#mTabs button.on{background:#2a3447;color:#fff;border:0}
+#mFilt{display:flex;gap:8px;align-items:center;margin:10px 0 8px;flex:0 0 auto}#mFilt:empty{display:none}
+.sl{background:#141c2b;color:#e6edf8;border:1px solid #2c384f;padding:8px;font:13px var(--mono);max-width:44%;border-radius:0}.newin{margin-left:auto;font:12px var(--mono);color:#98a6bc;white-space:nowrap}
+#mBody{flex:1;overflow:auto;min-height:0;padding:10px 0 8px;touch-action:pan-y}body.mpage #mBody{padding-top:2px}
+#mAct{flex:0 0 auto;display:flex;gap:8px;padding-top:8px}#mAct:empty{display:none}
+.fly{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px}.fly b{font:700 19px var(--mono)}.fly small{color:#3a2b08;font:13px var(--mono)}
+.sq{width:62px;background:#222c40;border:1px solid #33425e;color:#e6edf8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 10px var(--mono)}.sq b{font:700 15px var(--mono)}.sq svg{width:28px;height:28px}.sq.gr{background:#7fe27a;color:#0d2a10;border-color:#7fe27a}.sq:disabled{opacity:.4}
+.jc{display:flex;gap:10px;background:#131b2a;border:1px solid #1f2a40;padding:10px;margin-bottom:8px;cursor:pointer}.jc.sel{border-color:var(--amber);background:#2a2412}
+.jb{width:58px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;background:#0c1220;font:600 11px var(--mono);letter-spacing:.06em;border:1px solid #20304a}
+.jm{flex:1;min-width:0}.jr{display:flex;align-items:baseline;gap:6px}.jr b{font:600 16px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jr i{font:10px var(--mono);color:#8795ab;font-style:normal;letter-spacing:.1em}.jp{margin-left:auto;font:700 18px var(--mono);color:var(--amber)}
+.js{display:flex;justify-content:space-between;gap:8px;font:12px var(--mono);color:#98a6bc;margin-top:3px}
+.jc3{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}.jc3 em{font:11px var(--mono);font-style:normal;padding:2px 6px;background:#1b2538;color:#9fb3d1}.jc3 em.rt{background:#3a3010;color:#f2c14e}.jc3 em.tm{background:#3a1b1b;color:#ff9b9b}
+.jx{font:13px var(--mono);color:#e8d9a8;margin:8px 0 0}
+.cardx{background:#131b2a;border:1px solid #1f2a40;padding:12px;margin-bottom:10px}.pt{display:flex;align-items:baseline;gap:10px}.pt b{font:700 17px var(--mono)}.pt small{margin-left:auto;color:#98a6bc;font:12px var(--mono)}
+.mini{background:#222c40;border:1px solid #33425e;padding:6px 10px;font:12px var(--mono);color:#e6edf8}.mini:disabled{opacity:.4}
+.bl{color:#b8c4d8;margin:6px 0;font:13px var(--body)}.sp{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}.sp span{font:11px var(--mono);background:#1b2538;padding:2px 6px;color:#9fb3d1}
+.bar2{height:7px;background:#1b2538;margin:6px 0}.bar2 i{display:block;height:100%;background:#4fd6e8}.bar2.bad i{background:#ff7a7a}.lk{color:#ff9b9b;font:12px var(--mono);margin:4px 0}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}.stat3 div{background:#0f1726;padding:8px}.stat3 small{display:block}.stat3 b{font:700 15px var(--mono)}
+.cj{display:flex;align-items:center;gap:10px;text-align:left}.cjm{flex:1;min-width:0}.cjm b{display:block;font:600 15px var(--mono)}.cjm small{display:block;color:#98a6bc;font:12px var(--mono)}.pos{color:#7fe27a}.neg{color:#ff9b9b}.ms{font:12px var(--mono);color:#b8c4d8;margin:6px 0}
+.inp{width:100%;background:#0f1726;color:#fff;border:1px solid #2c384f;padding:10px;font:16px var(--mono)}
+.dt{border:1px solid #1f2a40;background:#101828;margin-bottom:8px}.dt summary{padding:12px;font:700 15px var(--mono);letter-spacing:.04em;cursor:pointer}.dt>div{padding:4px 12px 10px}
+.mrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#131b2a;border:1px solid #1f2a40;padding:14px;margin-bottom:8px}.mrow b{font:700 16px var(--mono)}.mrow small{display:block;color:#98a6bc;flex:1;font:12px var(--mono)}.mrow i{font-style:normal;color:#98a6bc;font-size:22px}
+.pgh{display:flex;align-items:center;gap:12px;margin:2px 0 8px}.pgh b{font:700 20px var(--mono)}.back{background:#222c40;border:1px solid #33425e;padding:8px 12px;font:600 13px var(--mono)}
+.hid2{font:12px var(--mono);color:#7b8aa3;margin:10px 4px}.hid2 a{color:#4fd6e8;text-decoration:underline;cursor:pointer}
+#mPeek{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:max(14px,env(safe-area-inset-bottom,0px));background:#222c40;border:1px solid #33425e;padding:10px 20px;font:600 14px var(--mono);z-index:6}body.peek #mPeek{display:block}body.peek #mSheet{display:none}body.peek #mTop{flex:1}
+@media (min-width:761px){#menu{left:auto!important;width:min(560px,100%)!important;background:linear-gradient(90deg,rgba(8,13,24,0),rgba(8,13,24,.7) 14%)!important}}
 .ffz{width:40px;height:40px;border-radius:8px;background:rgba(12,20,36,.9);color:#fff;border:1px solid var(--line);font:700 20px var(--mono)}
 #apPanel{width:min(236px,80vw)!important;padding:4px 6px!important;gap:3px!important;top:calc(max(8px,env(safe-area-inset-top,0px)) + 46px)!important}
 #apPanel .aph{display:flex;align-items:center;gap:5px;font-size:11px}#apPanel .aph b{font-size:11px}#apPanel .aph .state{flex:1;font-size:10px}
@@ -691,6 +733,20 @@ AC.meridian = Object.assign({}, AC.wren, { id: 'meridian', name: 'Meridian SR', 
 AC.falcon = Object.assign({}, AC.wren, { id: 'falcon', name: 'Falcon Z', cls: 'Aerobatic single', price: 26000, license: 'private', blurb: 'Symmetrical wing, huge control authority. Fly it in Free flight and try rolls and loops. Flight assist switches off by itself.',
   empty: 620, fuelCap: 100, payloadMax: 100, S: 10.4, span: 8.2, CL0: 0, CLa: 4.4, as: 17 * DEG, dCLflap: 0.08, CD0: 0.028, k: 0.06, P: 235e3, Tstat: 3000, ffMax: 0.0165, ffIdle: 0.002, Ix: 800, Iy: 1000, pmax: 3.4, ks: 9, kd: 4.6, Vref: 38,
   wheels: [[0.9, -1.15, 0, true], [-0.3, -1.15, -1.1], [-0.3, -1.15, 1.1]], vr: 58, vref: 70, vy: 90, cruise: 135, minRw: 450, climbAlt: 6000 });
+Object.assign(AC.heron, { price: 85000 }); Object.assign(AC.kestrel, { price: 520000, fuelCap: 2400 });
+AC.cub = Object.assign({}, AC.wren, { id: 'cub', name: 'Bush Cub', cls: 'STOL bush plane', price: 16000, license: 'private', blurb: 'Light, slow and short-field. Lands almost anywhere, carries little.',
+  empty: 430, fuelCap: 75, payloadMax: 170, S: 16.6, span: 10.7, CL0: 0.5, CLa: 4.6, as: 17 * DEG, dCLflap: 0.22, CD0: 0.040, k: 0.062, P: 85e3, Tstat: 2100, ffMax: 0.0062, ffIdle: 0.0009,
+  Ix: 900, Iy: 1200, Vref: 28, vr: 40, vref: 46, vy: 60, cruise: 85, minRw: 250, climbAlt: 3500, takeoffFlaps: 1, landFlaps: 2 });
+AC.voyager = Object.assign({}, AC.wren, { id: 'voyager', name: 'Voyager 2T', cls: 'Light twin piston', price: 70000, license: 'commercial', blurb: 'Two engines, six seats and a real cross-country cruise.',
+  empty: 1250, fuelCap: 320, payloadMax: 520, S: 17.1, span: 11.8, CL0: 0.3, CLa: 4.7, CD0: 0.029, k: 0.052, P: 270e3, Tstat: 5200, ffMax: 0.0185, ffIdle: 0.0022,
+  Ix: 2600, Iy: 2900, pmax: 1.1, Vref: 38, vr: 65, vref: 78, vy: 88, cruise: 160, minRw: 800, climbAlt: 8000 });
+AC.regent = Object.assign({}, AC.heron, { id: 'regent', name: 'Regent 350', cls: 'Twin turboprop', price: 320000, license: 'turboprop', blurb: 'Pressurised twin turboprop. Fast, big payload, still lands on short runways.',
+  empty: 4100, fuelCap: 1500, payloadMax: 1800, S: 28.8, span: 17.7, P: 1100e3, Tstat: 24000, ffMax: 0.16, ffIdle: 0.03, Ix: 14000, Iy: 18000, Vref: 48, vr: 95, vref: 100, vy: 120, cruise: 260, minRw: 1000, climbAlt: 14000 });
+AC.sovereign = Object.assign({}, AC.kestrel, { id: 'sovereign', name: 'Sovereign X', cls: 'Super-midsize jet', price: 1800000, license: 'jet', blurb: 'Fast and long-legged. Crosses the whole region before the coffee cools.',
+  empty: 8600, fuelCap: 5000, payloadMax: 2200, S: 47, span: 19.4, Tmax: 46000, vT: 1200, ffMax: 0.55, ffIdle: 0.08, Ix: 40000, Iy: 90000, Vref: 66, vr: 120, vref: 125, vy: 180, cruise: 440, minRw: 1500, climbAlt: 41000 });
+AC.atlas = Object.assign({}, AC.heron, { id: 'atlas', name: 'Atlas 70', cls: 'Regional airliner', price: 6500000, license: 'jet', blurb: 'Seventy-seat regional turboprop. The biggest payload in the game.',
+  empty: 13000, fuelCap: 5000, payloadMax: 7000, S: 61, span: 27, P: 4000e3, Tstat: 70000, ffMax: 0.45, ffIdle: 0.08, Ix: 80000, Iy: 250000, Vref: 55, vr: 115, vref: 120, vy: 150, cruise: 275, minRw: 1100, climbAlt: 25000,
+  wheels: [[3.2, -2.2, 0, true], [-0.8, -2.2, -2.2], [-0.8, -2.2, 2.2]] });
 function airDensity(h) { const t = Math.max(0, 1 - 2.2558e-5 * Math.max(h, 0)); return 1.225 * Math.pow(t, 4.2559); }
 
 function createAircraft(type, x, z, hdgTrue, payload, fuel) {
@@ -732,12 +788,12 @@ function iasOf(s, wind) {
 /* c = {pit, rol, yaw, thr, brk, flapCmd, gearCmd, trim}; env = {wind:[x,0,z]} */
 function step0(s, c, dt, env) {
   if (s.crashed) { s.v = [0, 0, 0]; return; }
-  const A = s.ac; s.time += dt;
+  const A = s.ac; s.time += dt; const RL = SS('phys') !== 'arcade';
   const wind = env.wind || [0, 0, 0];
-  s.thr += clamp(c.thr - s.thr, -1.0 * dt, 1.0 * dt);
+  { const sp = !RL ? 1.0 : A.prop ? (A.P > 3e5 ? 0.6 : 1.5) : 0.3; s.thr += clamp(c.thr - s.thr, -sp * dt, sp * dt); }
   s.flaps += clamp(c.flapCmd - s.flaps, -0.5 * dt, 0.5 * dt);
   if (A.retract) s.gear += clamp((c.gearCmd ? 1 : 0) - s.gear, -dt / 6, dt / 6);
-  const fN = s.flaps, m = mass(s), rho = airDensity(s.p[1]), dens = rho / 1.225;
+  const fN = s.flaps, m = mass(s), rho = airDensity(s.p[1]) * (RL ? (env.rhoK || 1) : 1), dens = rho / 1.225;
   const f = s.f, up = s.u, right = s.r;
   const va = [s.v[0] - wind[0], s.v[1] - wind[1], s.v[2] - wind[2]];
   const V = vlen(va);
@@ -746,9 +802,10 @@ function step0(s, c, dt, env) {
     const u = dot(va, f), w = dot(va, up), sv = dot(va, right);
     alpha = clamp(Math.atan2(-w, u), -1.4, 1.4); beta = Math.atan2(sv, Math.max(Math.hypot(u, w), 0.3));
     const vh = vmul(va, 1 / V), q = 0.5 * rho * V * V;
-    const CL = clOf(A, alpha, fN);
+    const hw = RL ? Math.max(0.2, s.p[1] - surfH(s.p[0], s.p[2])) : 99, x16 = 16 * hw / A.span, gef = x16 * x16 / (1 + x16 * x16), asnd = 340.3 - 0.004 * Math.max(0, s.p[1]);
+    const CL = clOf(A, alpha, fN) * (1 + 0.10 * (1 - gef));
     const ab = Math.abs(alpha);
-    const CD = A.CD0 + A.k * CL * CL + A.cdFlap * fN + (A.retract ? 0.014 * s.gear : 0) + 1.2 * sstep(A.as, 0.9, ab) + 0.5 * beta * beta;
+    const CD = A.CD0 + A.k * gef * CL * CL + (RL && !A.prop ? 12 * Math.pow(Math.max(0, V / asnd - 0.78), 2) : 0) + A.cdFlap * fN + (A.retract ? 0.014 * s.gear : 0) + 1.2 * sstep(A.as, 0.9, ab) + 0.5 * beta * beta;
     let ld = cross(right, vh); const ll = vlen(ld); ld = ll > 0.05 ? vmul(ld, 1 / ll) : up;
     const Fa = vadd(vadd(vmul(ld, q * A.S * CL), vmul(vh, -q * A.S * CD)), vmul(right, -q * A.S * 0.6 * beta));
     F = vadd(F, Fa);
@@ -799,7 +856,7 @@ function step0(s, c, dt, env) {
   // ---- angular dynamics ----
   const eff = clamp(V * V / (A.Vref * A.Vref), 0, 1.6);
   const effE = grounded ? eff : Math.max(eff, s.eng ? s.thr * 0.35 : 0);
-  const aEq = A.a0 + (c.trim || 0) * 0.08 - (grounded ? 0.035 : 0);
+  const aEq = A.a0 + (c.trim || 0) * 0.08 - (grounded ? 0.035 : 0) - (RL ? 0.007 * fN : 0);
   const stallPush = alpha > A.as ? (alpha - A.as) * 14 : 0;
   const kmE = A.ks * 0.30;
   let qd = effE * (kmE * c.pit - A.ks * (alpha - aEq)) - A.kd * s.qr * (0.3 + 0.7 * Math.min(1, effE)) - stallPush * Math.min(1, eff * 1.5);
@@ -811,7 +868,13 @@ function step0(s, c, dt, env) {
   s.pr += ((pt - s.pr) * 4.5 + tauF / A.Ix) * dt;
   // adverse/dihedral: bank + sideslip couple
   s.pr += -beta * 0.8 * effR * dt;
-  let rd = effE * (1.1 * c.yaw + 3.0 * beta) - A.kd * 0.8 * s.rr * (0.3 + 0.7 * Math.min(1, effE)) + (s.pr * 0.03) * effR;
+  if (RL && !grounded) {
+    const stF = clamp((alpha - A.as * 0.97) / 0.08, 0, 1);
+    if (stF > 0 && eff > 0.15) { if (!s.stSide) s.stSide = Math.random() < 0.5 ? -1 : 1; s.pr += s.stSide * stF * 1.6 * dt; const sg = Math.sign(s.rr) || s.stSide; s.pr += sg * stF * Math.min(1, Math.abs(s.rr) * 3) * 1.2 * dt; s.rr += sg * stF * Math.min(1, Math.abs(s.rr) * 3) * 0.5 * dt; }
+    else if (alpha < A.as * 0.85) s.stSide = 0;
+    if (A.prop && s.eng) { const pf = s.thr * (1 - Math.min(1, V / 45)); s.pr -= 0.03 * pf * dt; }
+  }
+  let rd = effE * (1.1 * c.yaw + 3.0 * beta) - A.kd * 0.8 * s.rr * (0.3 + 0.7 * Math.min(1, effE)) + (RL ? -0.10 * s.pr * effR - (A.prop && s.eng ? 0.12 * s.thr * (1 - Math.min(1, V / 45)) * (grounded ? 0.4 : 1) : 0) : (s.pr * 0.03) * effR);
   s.rr += rd * dt;
   if (noseC) s.rr = 0;
 
@@ -830,7 +893,7 @@ function step0(s, c, dt, env) {
     if ((c.brk || 0) > 0.9 && Math.abs(vf) < 4 && s.thr < 0.35) vf *= Math.max(0, 1 - dt * 6);
     s.v[0] = fh[0] * vf + rh[0] * vl; s.v[2] = fh[2] * vf + rh[2] * vl;
     if (noseC) {
-      const Vg = Math.abs(vf), yr = c.yaw * A.steerRate * Math.min(1, Vg / 3) / (1 + Vg / 14) + c.yaw * 0.08 * (Vg < 3 ? 1 : 0) * (1 - Math.min(1, Vg / 3));
+      const Vg = Math.abs(vf), yr = c.yaw * A.steerRate * Math.min(1, Vg / 3) / (1 + Vg / 14) + c.yaw * 0.08 * (Vg < 3 ? 1 : 0) * (1 - Math.min(1, Vg / 3)) - (RL && A.prop && s.eng ? 0.03 * s.thr * (1 - Math.min(1, Vg / 35)) * Math.min(1, Vg / 4) : 0);
       const ax2 = [0, -1, 0];
       s.f = rotAxis(s.f, ax2, yr * dt); s.u = rotAxis(s.u, ax2, yr * dt); s.r = rotAxis(s.r, ax2, yr * dt);
     }
@@ -945,7 +1008,7 @@ function makeWind(rng, ifr) {
   const south = rng() < 0.55;
   const from = ((south ? 190 : 350) + (rng() - 0.5) * 70 + 360) % 360;
   const kts = (ifr ? 9 : 4) + rng() * 9;
-  return { from, kts };
+  return { from, kts, temp: 6 + Math.floor(rng() * 22) };
 }
 const windVec = w => { const to = (w.from + 180) * DEG; return [Math.sin(to) * w.kts * KT, 0, -Math.cos(to) * w.kts * KT]; };
 function headwindOf(w, hdg) { return w.kts * Math.cos((w.from - hdg) * DEG); }
@@ -1836,6 +1899,11 @@ const PLANE_SPEC = {
     wing: { y: -.5, z: .5, rc: 3.0, tc: 1.15, span: 7.6, sw: 1.55, t: [.3, .14], dih: .22 }, high: false, fin: { rc: 2.6, tc: 1.2, h: 2.5, sw: 1.7, z: 6.1, y: .5 }, stab: { rc: 1.5, tc: .8, span: 3.1, sw: .5, z: 6.55, y: 2.95 },
     prop: 0, pr: 0, wr: .42, body: 0xe9eef2, acc: 0x2e8f8a, acc2: 0x12343a, jet: true }
 };
+PLANE_SPEC.cub = Object.assign({}, PLANE_SPEC.skylark, { body: 0xf2c230, acc: 0x2b4c8c, acc2: 0x1a1a1a, sx: .9, sy: .95 });
+PLANE_SPEC.voyager = Object.assign({}, PLANE_SPEC.meridian, { body: 0xeef1f4, acc: 0x7a1f2b, acc2: 0x2a2a2e, sx: 1.0, sy: 1.02 });
+PLANE_SPEC.regent = Object.assign({}, PLANE_SPEC.heron, { body: 0xf3f5f7, acc: 0x1c6b4a, acc2: 0x103a2a, sx: 1.02 });
+PLANE_SPEC.sovereign = Object.assign({}, PLANE_SPEC.kestrel, { body: 0xf4f6f8, acc: 0x8a6a2a, acc2: 0x2a2418, sx: 1.04 });
+PLANE_SPEC.atlas = Object.assign({}, PLANE_SPEC.heron, { body: 0xe8edf2, acc: 0x2a4f9a, acc2: 0x16264a, sx: 1.1, sy: 1.1 });
 /* ---------- Piper PA-28 Archer: lofted fuselage, tapered wing, working control surfaces ---------- */
 function buildArcher() {
   const A = AC.wren, g = new THREE.Group(), V = THREE.Vector3, D2R = Math.PI / 180;
@@ -2039,7 +2107,7 @@ function buildPlane(type) {
     add(new THREE.BoxGeometry(0.8, 0.06, 0.4), panelM, 0, yh - 0.24, zs[0] - 0.62);
   }
   { // registration on both sides of the rear fuselage
-    const reg = { wren: 'N100CD', heron: 'N300CD', kestrel: 'N500CD' }[type], cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const cx = cv.getContext('2d');
+    const reg = { wren: 'N100CD', heron: 'N300CD', kestrel: 'N500CD' }[type] || ('N' + (100 + (type.length * 211) % 800) + 'AC'), cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const cx = cv.getContext('2d');
     cx.font = '700 50px "Barlow Condensed", "Arial Narrow", Arial, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#' + P.acc2.toString(16).padStart(6, '0'); cx.fillText(reg, 128, 34);
     const tx = new THREE.CanvasTexture(cv), dm = new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false }), zz = P.jet ? 3.5 : type === 'heron' ? 3.4 : 2.45;
     for (const s of [-1, 1]) { const dc = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.31), dm); dc.position.set(s * (fr(zz) + 0.012), P.jet ? 0.05 : 0.12, zz); dc.rotation.y = s * Math.PI / 2; g.add(dc); }
@@ -2388,7 +2456,7 @@ function switchRegion(id) { if (!REGIONS[id] || id === RG.id) return; SV.region 
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(SV)); } catch (e) { } }
 let SV = loadSave(), G = null, mode = 'menu', tab = 'dispatch', sel = null, exam = null, camMode = 0, paused = false, mapOpen = false, lastTs = 0, menuT = 0;
 let AUTOQ = 1, apOpen = false;
-const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, sfx: true, routeDl: true, trees: true, lamps: true, fail: 'low' };
+const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, sfx: true, routeDl: true, trees: true, lamps: true, fail: 'low', phys: 'real' };
 const SS = k => (SV.settings[k] === undefined ? SET_DEF[k] : SV.settings[k]);
 const freeCam = { yaw: 0, pit: 0.3, dist: 1, init: false, user: false, min: 0.2, max: 8, sgn: 1 };
 const keys = {}, ctl = { pit: 0, rol: 0, yaw: 0, thr: 0, brk: 1, trim: 0, flapCmd: 0, gearCmd: 1 };
@@ -2444,10 +2512,10 @@ const OBJ = [
   { id: 'money', t: 'Earn $5,000 from paid flights', h: 'Ferry flights, tours and banner flights pay once you hold a Private certificate.', tab: 'dispatch', rw: 300, f: sv => [Math.min(sv.earned || 0, 5000), 5000] },
   { id: 'cpl', t: 'Earn your Commercial certificate', h: 'Flight school again: hours, landings, a good recent average, the exam and the checkride.', tab: 'school', rw: 800, f: sv => [hasLic(sv, 'commercial') ? 1 : 0, 1] },
   { id: 'rep40', t: 'Reach reputation 40', h: 'Land paid jobs smoothly. A score of 80 or better raises your reputation, a crash or a late delivery lowers it.', tab: 'dispatch', rw: 500, f: sv => [Math.min(repOf(), 40), 40] },
-  { id: 'fleet2', t: 'Buy a second aircraft', h: 'The Hangar sells the Skylark, Falcon, Meridian and more. Your fleet is your company.', tab: 'hangar', rw: 500, f: sv => [Math.min(sv.owned.length, 2), 2] },
+  { id: 'fleet2', t: 'Buy a second aircraft', h: 'The Shop sells the Skylark, Cub, Falcon, Meridian and more. Your fleet is your company.', tab: 'shop', rw: 500, f: sv => [Math.min(sv.owned.length, 2), 2] },
   { id: 'ifr', t: 'Earn your Instrument rating', h: 'Flight school: low-visibility checkride. It unlocks the high-paying IFR jobs.', tab: 'school', rw: 1000, f: sv => [hasLic(sv, 'instrument') ? 1 : 0, 1] },
   { id: 'jobs25', t: 'Complete 25 paid jobs', h: 'Cargo, passengers, medevac, mail and tours all count when you land them.', tab: 'dispatch', rw: 1000, f: sv => [Math.min(sv.jobs || 0, 25), 25] },
-  { id: 'tp', t: 'Earn the Turboprop rating and buy the Heron', h: 'Flight school for the rating and the Hangar for the aircraft.', tab: 'school', rw: 1500, f: sv => [(hasLic(sv, 'turboprop') ? 1 : 0) + (sv.owned.includes('heron') ? 1 : 0), 2] },
+  { id: 'tp', t: 'Earn the Turboprop rating and buy the Heron', h: 'Flight school for the rating and the Shop for the aircraft.', tab: 'school', rw: 1500, f: sv => [(hasLic(sv, 'turboprop') ? 1 : 0) + (sv.owned.includes('heron') ? 1 : 0), 2] },
   { id: 'rep65', t: 'Reach reputation 65', h: 'Medevac and VIP charter customers only call pilots with a strong name.', tab: 'dispatch', rw: 1500, f: sv => [Math.min(repOf(), 65), 65] },
   { id: 'jet', t: 'Earn the Jet rating and buy the Kestrel', h: 'The last rating and the last aircraft.', tab: 'school', rw: 3000, f: sv => [(hasLic(sv, 'jet') ? 1 : 0) + (sv.owned.includes('kestrel') ? 1 : 0), 2] },
   { id: 'fin', t: 'Finale: fly the Inaugural Jet Service', h: 'The finale flight appears at the top of Dispatch. Fly the Kestrel in low visibility and land with a score of 80 or better.', tab: 'dispatch', rw: 0, f: sv => [sv.fin ? 1 : 0, 1] }
@@ -2474,7 +2542,7 @@ function careerHTML() {
     <p class="lead" style="margin:0 0 10px">${SV.fin ? 'You made Chief Pilot. The company is yours to keep growing.' : 'Build a flying career from your first lesson to the jet that opens Cascade Air. Fly well, earn a name, grow your fleet, and finish with the Inaugural Jet Service.'}</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${stat('Reputation', repOf() + ' / 100')}${stat('Flights', SV.flights)}${stat('Hours', hrs)}${stat('Landings', SV.landings)}${stat('Paid jobs', SV.jobs || 0)}${stat('Cash', money(SV.money))}</div>
     <div style="height:7px;background:#16233a;border-radius:4px;margin:10px 0 4px"><div style="height:7px;width:${Math.round(done / OBJ.length * 100)}%;background:#4fd6e8;border-radius:4px"></div></div><small style="opacity:.7">${done} of ${OBJ.length} career goals complete. Higher reputation raises your pay up to 20% and unlocks mail, express, medevac and VIP charter jobs.</small></div>
-    ${o ? `<div class="card" style="padding:14px;margin-top:10px;border:1px solid #45d483"><small style="opacity:.7">Next goal</small><h3 style="margin:2px 0">${o.t}</h3>${objBar(SV, o)}<p style="margin:4px 0 10px">${o.h}</p><button class="go" data-act="tab" data-v="${o.tab}">Go to ${o.tab === 'school' ? 'Flight school' : o.tab === 'hangar' ? 'the Hangar' : 'Dispatch'}</button></div>` : ''}
+    ${o ? `<div class="card" style="padding:14px;margin-top:10px;border:1px solid #45d483"><small style="opacity:.7">Next goal</small><h3 style="margin:2px 0">${o.t}</h3>${objBar(SV, o)}<p style="margin:4px 0 10px">${o.h}</p><button class="go" data-act="tab" data-v="${o.tab}">Go to ${o.tab === 'school' ? 'Flight school' : o.tab === 'shop' ? 'the Shop' : o.tab === 'hangar' ? 'the Hangar' : 'Jobs'}</button></div>` : ''}
     <div class="card" style="padding:12px;margin-top:10px"><h3 style="margin:0 0 6px">All goals</h3>${OBJ.map(q => { const dn = objDone(SV, q), p = q.f(SV); return `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #1d2b44;opacity:${dn ? 0.6 : 1}"><span>${dn ? '&#10003; ' : ''}${q.t}</span><small>${dn ? 'done' : p[0] + '/' + p[1]}</small></div>`; }).join('')}</div>`;
 }
 function genContracts(sv) {
@@ -2485,7 +2553,7 @@ function genContracts(sv) {
   }
   return out;
 }
-function lockReason(sv, c) {
+function lockReason1(sv, c) {
   const r = lockReason0(sv, c); if (r) return r;
   const need = REPREQ[c.type]; if (need && (sv.rep == null ? 20 : sv.rep) < need) return 'Needs reputation ' + need + ' (you have ' + (sv.rep == null ? 20 : sv.rep) + ')';
   return null;
@@ -2682,7 +2750,7 @@ document.addEventListener('click', e => {
   else if (a === 'svc') { const id = t.dataset.id, c = svcCost(id); if (SV.money >= c) { SV.money -= c; SV.wear = SV.wear || {}; SV.wear[id] = 0; persist(); toast('Serviced. Upkeep is back to normal.', 2500); renderMenu(); } }
   else if (a === 'replay') startReplay();
   else if (a === 'buy') { const A = AC[t.dataset.id]; if (SV.money >= A.price) { SV.money -= A.price; SV.owned.push(A.id); persist(); renderMenu(); } }
-  else if (a === 'reset') { if (SV._confirm) { SV = newSave(); persist(); sel = null; } else { SV._confirm = true; } renderMenu(); setTimeout(() => { if (SV._confirm) { delete SV._confirm; if (mode === 'menu' && tab === 'hangar') renderMenu(); } }, 4000); }
+  else if (a === 'reset') { if (SV._confirm) { SV = newSave(); persist(); sel = null; } else { SV._confirm = true; } renderMenu(); setTimeout(() => { if (SV._confirm) { delete SV._confirm; if (mode === 'menu' && (tab === 'hangar' || tab === 'settings')) renderMenu(); } }, 4000); }
   else if (a === 'setv') { const v = t.dataset.v; SV.settings[t.dataset.k] = isNaN(+v) ? v : +v; persist(); applySettings(); renderMenu(); }
   else if (a === 'region') switchRegion(t.dataset.v);
   else if (a === 'tod') { SV.settings.tod = t.dataset.v; persist(); setWeather(false); renderMenu(); }
@@ -2747,13 +2815,13 @@ function liveWind(m, rng) {
   const vrb = typeof m.wdir !== 'number', mag = vrb ? rng() * 360 : m.wdir, g = m.wgst ? (m.wgst - m.wspd) * 0.5 : 0;
   let vis = parseFloat(m.visib); if (isNaN(vis)) vis = 10; let ceil = 99999; for (const c of (m.clouds || [])) if ((c.cover === 'BKN' || c.cover === 'OVC' || c.cover === 'VV') && c.base != null) ceil = Math.min(ceil, c.base);
   const alt = m.altim ? (m.altim * 0.02953).toFixed(2) : null;
-  return { from: ((mag + MAGVAR) % 360 + 360) % 360, kts: Math.max(vrb ? 3 : 0, m.wspd + g), live: true, raw: m.rawOb || '', alt, low: vis < 3 || ceil < 1000 };
+  return { temp: typeof m.temp === 'number' ? m.temp : null, from: ((mag + MAGVAR) % 360 + 360) % 360, kts: Math.max(vrb ? 3 : 0, m.wspd + g), live: true, raw: m.rawOb || '', alt, low: vis < 3 || ceil < 1000 };
 }
 async function planWx(c) {
   if (typeof toast === 'function') toast('Checking live weather at ' + c.from, 1800);
   WXNOW = await fetchMetar(c.from); openPlan(c, null); WXNOW = null;
 }
-function makePlan(c, ck) {
+function makePlan0(c, ck) {
   const ap0 = apOf(c.from), ap1 = apOf(c.to), A = AC[c.ac], rng = mulberry(SV.seed * 31 + SV.flights * 131 + c.id.length * 7 + c.from.charCodeAt(2));
   const wind = (!ck && WXNOW && WXNOW.icaoId === c.from) ? liveWind(WXNOW, rng) : makeWind(rng, c.wx === 'ifr'), dep = pickEnd(ap0, wind, c.ac), arr = pickEnd(ap1, wind, c.ac);
   const wpl = wpLen(c, ap0, ap1), dist = wpl.len, tc = bearingDeg(ap0, wpl.first), mc = (tc - MAGVAR + 360) % 360;
@@ -3351,14 +3419,290 @@ function updateApPanel() {
   $('apT').textContent = 'Autothrottle ' + (ap.spdOn ? 'on' : 'off'); $('apE').textContent = ap.on ? 'Disengage autopilot' : 'Engage autopilot';
   if ($('apV')) { $('apV').textContent = ap.vsR ? ap.vsR + ' fpm' : 'auto'; $('apVs').textContent = 'VOR: ' + (NAVAIDS[ap.vi || 0] ? NAVAIDS[ap.vi || 0].id : 'none'); $('apVT').textContent = ap.vorOn ? 'Stop VOR track' : 'Track VOR'; $('apVor').textContent = vorText(ap, G.s); }
 }
+/* ======================= fix40: new menu, job board, hangar, shop, company ======================= */
+Object.assign(FUELP, { cub: 2.0, voyager: 1.9, regent: 0.9, sovereign: 0.7, atlas: 0.6 }); Object.assign(MAINT, { cub: 14, voyager: 110, regent: 190, sovereign: 520, atlas: 900 });
+Object.assign(REPREQ, { group: 25, art: 30, survey: 20 });
+const RATE = { wren: 17, cub: 14, skylark: 18, falcon: 8, meridian: 27, voyager: 34, heron: 50, regent: 54, kestrel: 81, sovereign: 91, atlas: 260 };
+const REACHF = { cub: 0.4, wren: 0.5, skylark: 0.55, falcon: 0.4, meridian: 0.7, voyager: 0.78, heron: 0.82, regent: 0.9, kestrel: 0.95, sovereign: 1, atlas: 1 };
+const MAINTABS = ['dispatch', 'hangar', 'shop', 'company'], PAGE_T = { menu: 'Menu', settings: 'Settings', career: 'Career', school: 'Flight school', free: 'World map', log: 'Logbook' };
+const JF = { sort: 'hr', f: 'all' }, JX = {};
+const hsh = s => { let a = 7; for (let i = 0; i < s.length; i++) a = (a * 31 + s.charCodeAt(i)) | 0; return a; };
+const apLen = a => Math.max.apply(null, a.ends.map(e => e.len || 0));
+const apCls = a => { const L = apLen(a); return L < 1000 ? 'STRIP' : L < 1700 ? 'REGIONAL' : 'HUB'; };
+const fmtDur = m => { m = Math.max(1, Math.round(m)); return m >= 60 ? Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm' : m + 'm'; };
+const fmtKg = k => k >= 1000 ? (k / 1000).toFixed(1).replace(/\.0$/, '') + 't' : Math.round(k) + 'kg';
+const seatsOf = A => Math.max(1, Math.min(70, Math.floor(A.payloadMax / 95)));
+const eteMin = (A, d) => d / (A.cruise * KT * 0.93) / 60 + 9;
+const r5 = v => Math.round(v / 5) * 5;
+const SUB = {
+  pax: ['Charter', 'Business shuttle', 'Sightseeing party', 'Wedding party', 'Sports team', 'Film crew', 'Executives', 'Family trip'],
+  cargo: ['Freight', 'Auto parts', 'Seafood', 'Electronics', 'Newspapers', 'Flowers', 'Machine parts', 'Fresh produce', 'Aircraft parts', 'Pharmacy stock'],
+  mail: ['Mail run', 'Parcels', 'Express mail'], art: ['Precious cargo', 'Fine art', 'Gold bullion', 'Lab samples'],
+  group: ['Survey crew', 'Film crew', 'Rescue team', 'Fire crew', 'Line crew'], medevac: ['Organ transport', 'Patient transfer', 'Blood supplies'], charter: ['VIP charter', 'Executive transfer']
+};
+const DESC = {
+  pax: ['Passengers: fly them there. Smooth flying earns better tips.', 'They are at the gate with their bags. Keep it comfortable.', 'A nervous bunch. Gentle turns and a soft landing.'],
+  cargo: ['Freight is loaded and strapped. Keep it smooth.', 'The customer wants it there today.', 'Heavy load. Watch the weight on takeoff.'],
+  mail: ['Mail has a deadline. Land before the limit for a bonus.', 'Sacks of parcels. Fast turnaround.'], express: ['Timed delivery. Beat the clock for +50%.', 'The customer is waiting at the other end.'],
+  medevac: ['Medical flight. Every minute counts.', 'The hospital is expecting you. Fly it fast and land it soft.'], art: ['Fragile and valuable. A hard landing halves the pay.', 'Handle with care. Land it gently.'],
+  group: ['A crew and their gear. They need to be on site today.', 'Team plus equipment. Watch the load.'], charter: ['VIP clients. A hard landing halves the pay.', 'Executives on a schedule. Land it softly.'],
+  ifr: ['Low visibility. Fly the approach on instruments.', 'Cloud on the route. This one pays extra.'], ferry: ['Reposition the aircraft. Small pay, no payload.'], survey: ['Fly the survey points in order, then come home.'],
+  route: ['Fly the stops in order, then land at the destination. Each stop adds pay.'], lesson: ['Instructor lesson. Score 60 or better to pass.'], tour: ['Fly over the landmarks in the order shown.'], banner: ['Tow the banner along the beach. Stay low.']
+};
+const TYPE_W = [['pax', 22], ['cargo', 20], ['mail', 8], ['express', 8], ['medevac', 6], ['art', 6], ['group', 8], ['charter', 4], ['ifr', 6], ['ferry', 5], ['survey', 4], ['route', 9]];
+const DIST = { pax: [25, 200], cargo: [25, 200], mail: [30, 150], express: [25, 130], medevac: [15, 90], art: [30, 180], group: [20, 130], charter: [60, 210], ifr: [30, 170], ferry: [20, 95] };
+const REQ_OF = t => t === 'lesson' ? 'student' : (t === 'ferry' || t === 'tour' || t === 'banner') ? 'private' : t === 'ifr' ? 'instrument' : 'commercial';
+const T_MULT = { pax: 1, cargo: 0.95, mail: 1.15, express: 1.35, medevac: 1.7, art: 1.5, group: 1.25, charter: 1.9, ifr: 1.5, ferry: 0.45, survey: 1.2, route: 1.0 };
+const catOf = c => c.type === 'lesson' ? 'Lessons' : c.rn ? 'Routes' : (c.type === 'pax' || c.type === 'charter' || c.type === 'group') ? 'People' : (c.type === 'cargo' || c.type === 'mail' || c.type === 'art') ? 'Cargo' : (c.type === 'express' || c.type === 'medevac') ? 'Urgent' : c.type === 'ifr' ? 'IFR' : 'Scenic and survey';
+function coBusy(id) { const co = SV.co; if (!co) return null; for (const p of co.pilots) if (p.run && p.run.ac === id && p.run.end > Date.now()) return p.run; return null; }
+function pathLen(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
+function genJobsAll(sv) {
+  const from = apOf(sv.at), tb = Math.floor(Date.now() / 600000), rng = mulberry((sv.seed * 1013) ^ hsh(sv.at) ^ (sv.flights * 77) ^ (tb * 131)), others = AIRPORTS.filter(a => a !== from);
+  const fleet = Object.values(AC), flyable = A => sv.owned.includes(A.id) && (A.license === 'student' || hasLic(sv, A.license)) && !coBusy(A.id);
+  const own = fleet.filter(flyable), cls = apCls(from), keys = TYPE_W.map(t => t[0]), special = keys[Math.abs(hsh(from.id)) % keys.length];
+  const adj = cls === 'HUB' ? { cargo: 1.6, charter: 2, pax: 1.3, group: 0.6, ferry: 0.5, mail: 0.8 } : cls === 'STRIP' ? { mail: 2, medevac: 1.5, group: 1.6, art: 0.7, ifr: 0, charter: 0.3, cargo: 0.8 } : {}, wts = TYPE_W.map(([k, w]) => [k, w * (k === special ? 2.5 : 1) * (adj[k] === undefined ? 1 : adj[k])]);
+  const out = [], seen = new Set(); let idn = 0;
+  const base = genContracts0(sv); for (const c of base) if (c.type === 'lesson' || c.type === 'tour' || c.type === 'banner') { c.id = 'L' + (idn++) + '_' + c.id; if (c.type !== 'lesson') { c.pay = r5(c.pay * 1.8); } c.cat = catOf(c); c.desc = DESC[c.type][0]; c.sub = c.label; c.to === c.from && (c.rt = true); out.push(c); }
+  { const tpl = out.find(c => c.type === 'lesson'); if (tpl) { const have = new Set(out.filter(c => c.type === 'lesson').map(c => c.to)), near = others.filter(o => !have.has(o.id) && apLen(o) >= AC.wren.minRw).sort((a, b) => dist2(from, a) - dist2(from, b)).slice(0, 6); near.forEach((o, i) => { const d = dist2(from, o); out.push(Object.assign({}, tpl, { id: 'L' + (idn++) + '_x', to: o.id, km: d / 1000, fuel: fuelFor(AC.wren, d), tooShort: apLen(o) < AC.wren.minRw })); }); } }
+  const far = a => others.reduce((m, o) => Math.max(m, Math.hypot(o.x - a.x, o.z - a.z)), 0) / 1852;
+  const reach = far(from);
+  const pickType = () => { let t = 0; for (const w of wts) t += w[1]; let r = rng() * t; for (const w of wts) { r -= w[1]; if (r <= 0) return w[0]; } return 'pax'; };
+  for (let k = 0, made = 0; k < 90 && made < 30; k++) {
+    let type = pickType(); const pool = rng() < 0.82 && own.length ? own : fleet; let A = pool[Math.floor(rng() * pool.length)];
+    if (type === 'survey' || type === 'ferry') { const lights = pool.filter(a => a.light || a.cruise <= 170); if (lights.length) A = lights[Math.floor(rng() * lights.length)]; }
+    if (type === 'route' && A.cruise < 100) continue; if (type === 'ifr' && cls === 'STRIP') continue;
+    const maxRange = (A.fuelCap / (A.ffMax * 0.72) - 2700) * A.cruise * KT / 1852, f = REACHF[A.id] || 0.6;
+    let lo, hi; if (type === 'survey') { lo = hi = 0; } else { [lo, hi] = DIST[type === 'route' ? 'cargo' : type]; }
+    let want = Math.min(reach * f * (0.8 + 0.3 * rng()), maxRange * 0.9, reach); if (type !== 'survey') want = Math.max(Math.min(want, hi * Math.max(1, A.cruise / 150) * 1.3), Math.min(lo, reach));
+    const ok = others.filter(o => apLen(o) >= A.minRw); if (!ok.length && type !== 'survey') continue;
+    let to = from, wps = null, alt = null, rn = 0, km, label, payload = 0, sub, dscr;
+    const toXZ = [from.x, from.z];
+    if (type === 'survey') {
+      const n = 3 + Math.floor(rng() * 2), a0 = rng() * 6.28, pts = []; for (let q = 0; q < n; q++) { const a = a0 + q * 6.28 / n + (rng() - 0.5) * 0.5, r = (9 + rng() * 14) * 1852; pts.push({ n: 'Survey point ' + (q + 1), x: from.x + Math.sin(a) * r, z: from.z - Math.cos(a) * r }); }
+      wps = pts; alt = [800, 4500]; km = pathLen([toXZ].concat(pts.map(p => [p.x, p.z]), [toXZ])) / 1000; label = 'Aerial survey'; sub = 'Aerial survey'; payload = 0; rn = 0;
+    } else {
+      to = ok.slice().sort((a, b) => Math.abs(Math.hypot(a.x - from.x, a.z - from.z) / 1852 - want) - Math.abs(Math.hypot(b.x - from.x, b.z - from.z) / 1852 - want))[Math.floor(rng() * Math.min(3, ok.length))];
+      const d = Math.hypot(to.x - from.x, to.z - from.z); km = d / 1000;
+      if (type === 'route') {
+        const ux = (to.x - from.x) / d, uz = (to.z - from.z) / d, cand = []; for (const o of others) { if (o === to) continue; const px = (o.x - from.x) * ux + (o.z - from.z) * uz, py = Math.abs(-(o.x - from.x) * uz + (o.z - from.z) * ux); if (px > 0.15 * d && px < 0.85 * d && py < 0.3 * d) cand.push({ o, px }); }
+        cand.sort((a, b) => a.px - b.px); const want2 = Math.min(cand.length, 1 + Math.floor(rng() * 3)); if (want2 < 1) continue; const chosen = [], step = cand.length / want2; for (let q = 0; q < want2; q++) chosen.push(cand[Math.min(cand.length - 1, Math.floor(q * step + rng() * step))].o);
+        wps = chosen.map(o => ({ n: o.id + ' ' + (o.city || ''), x: o.x, z: o.z })); alt = [-1000, 60000]; rn = wps.length + 1; km = pathLen([toXZ].concat(wps.map(p => [p.x, p.z]), [[to.x, to.z]])) / 1000; type = rng() < 0.5 ? 'cargo' : 'pax';
+      }
+    }
+    const nmd = km / 1.852, dist = km * 1000;
+    let payFrac = 0.7;
+    if (type === 'pax' || type === 'charter') { const seats = type === 'charter' ? Math.min(4, seatsOf(A)) : seatsOf(A), n = Math.max(1, Math.min(seats, Math.ceil(seats * (0.3 + 0.7 * rng())))); payload = n * 90; payFrac = payload / A.payloadMax; label = SUB[type][Math.floor(rng() * SUB[type].length)]; sub = label + ' \u00b7 ' + n + ' passenger' + (n > 1 ? 's' : ''); }
+    else if (type === 'cargo' || type === 'ifr') { payload = Math.max(20, Math.round(A.payloadMax * (0.35 + 0.65 * rng()) / 10) * 10); payFrac = payload / A.payloadMax; const nmx = SUB.cargo[Math.floor(rng() * SUB.cargo.length)]; label = type === 'ifr' ? 'IFR cargo' : nmx; sub = (type === 'ifr' ? 'IFR cargo' : nmx) + ' · ' + fmtKg(payload); }
+    else if (type === 'mail' || type === 'express') { payload = Math.max(20, Math.round(A.payloadMax * (0.4 + 0.5 * rng()) / 10) * 10); payFrac = payload / A.payloadMax; label = type === 'mail' ? SUB.mail[Math.floor(rng() * 3)] : 'Timed delivery'; sub = label + ' · ' + fmtKg(payload); }
+    else if (type === 'art') { payload = Math.min(A.payloadMax, Math.round((40 + rng() * 180) / 10) * 10); payFrac = 0.75; label = SUB.art[Math.floor(rng() * 4)]; sub = label + ' · ' + fmtKg(payload); }
+    else if (type === 'group') { const ppl = Math.max(2, Math.min(6, seatsOf(A) - 1)), kit = 60 + Math.round(rng() * 10) * 10; payload = Math.min(A.payloadMax, ppl * 90 + kit); payFrac = payload / A.payloadMax; label = SUB.group[Math.floor(rng() * SUB.group.length)]; sub = 'Group · ' + ppl + ' + ' + kit + 'kg kit'; }
+    else if (type === 'medevac') { payload = Math.min(A.payloadMax, 180 + Math.round(rng() * 12) * 10); payFrac = 0.8; label = SUB.medevac[Math.floor(rng() * 3)]; sub = label; }
+    else if (type === 'ferry') { payload = 0; label = 'Ferry flight'; sub = 'Ferry flight · no payload'; payFrac = 0.8; }
+    if (type === 'survey') { payFrac = 0.85; }
+    if (payload > A.payloadMax) continue;
+    const rate = RATE[A.id] || 20, tm = T_MULT[type] || 1, jit = 0.92 + 0.22 * rng(), rt = rn ? 1 + 0.22 * (rn - 1) : 1;
+    let pay = r5(((100 + 6 * rate) + nmd * rate) * (0.55 + 0.45 * payFrac) * tm * jit * rt); if (type === 'survey') pay = r5(pay * 1.1);
+    const timed = type === 'medevac' || type === 'express' || type === 'mail', limitMin = timed ? Math.round(eteMin(A, dist) * (type === 'medevac' ? 1.2 : 1.35)) : 0;
+    const key = type + '|' + to.id + '|' + A.id; if (seen.has(key)) continue; seen.add(key);
+    const c = { id: 'n' + sv.flights + '_' + tb + '_' + (idn++), type: type === 'route' ? 'cargo' : type, label, from: from.id, to: to.id, ac: A.id, payload, pay, km, wx: type === 'ifr' ? 'ifr' : 'vfr', req: REQ_OF(type), acReq: A.license, tooShort: apLen(from) < A.minRw || (to !== from && apLen(to) < A.minRw), fuel: fuelFor(A, dist * (wps ? 1.12 : 1)), limitMin, sub, rn };
+    if (wps) { c.wps = wps; c.alt = alt; }
+    if (type === 'survey') { c.type = 'survey'; c.rt = true; }
+    if (rn) c.label = 'Route to ' + (to.city || to.id);
+    c.cat = catOf(c); c.desc = DESC[rn ? 'route' : type][Math.floor(rng() * DESC[rn ? 'route' : type].length)]; out.push(c); made++;
+  }
+  return out;
+}
+function genContracts(sv) {
+  const all = genJobsAll(sv), out = [];
+  if (careerReady(sv) && !sv.fin) {
+    const A = AC.kestrel, from = apOf(sv.at), to = AIRPORTS.filter(a => a.id !== sv.at && apLen(a) >= A.minRw).sort((a, b) => dist2(from, b) - dist2(from, a))[0] || AIRPORTS.find(a => a.id !== sv.at), d = dist2(from, to);
+    out.push({ id: 'finale', type: 'charter', finale: true, label: 'FINALE: Inaugural jet service', sub: 'FINALE · Inaugural jet service', from: from.id, to: to.id, ac: 'kestrel', payload: 300, pay: 25000, km: d / 1000, wx: 'ifr', req: 'jet', acReq: 'jet', tooShort: false, fuel: fuelFor(A, d), limitMin: 0, cat: 'Urgent', desc: 'The finale. Fly the Kestrel in low visibility and land with a score of 80 or better.' });
+  }
+  return out.concat(all);
+}
+function lockReason(sv, c) {
+  const r = lockReason1(sv, c); if (r) return r; const b = coBusy(c.ac); if (b) return 'Aircraft is out on a company run';
+  return null;
+}
+function jobList() { const all = genContracts(SV), ok = all.filter(c => !lockReason(SV, c)); return { all, ok, hidden: all.length - ok.length }; }
+function dispOf(c) { return c.pay * assistBonus(SV.settings) * repMul(); }
+function jobEte(c) { return eteMin(AC[c.ac], c.km * 1000); }
+function applyJX(c) {
+  const x = JX[c.id]; if (!x || (!x.stops.length && !x.scenic)) return c; const A = AC[c.ac], from = apOf(c.from), to = apOf(c.to), n = Object.assign({}, c);
+  if (x.stops.length) {
+    const ux = to.x - from.x, uz = to.z - from.z, L2 = ux * ux + uz * uz || 1, ap = x.stops.map(id => apOf(id)).sort((a, b) => ((a.x - from.x) * ux + (a.z - from.z) * uz) / L2 - ((b.x - from.x) * ux + (b.z - from.z) * uz) / L2);
+    n.wps = (c.wps || []).concat(ap.map(o => ({ n: o.id + ' ' + (o.city || ''), x: o.x, z: o.z }))); if (!n.alt) n.alt = [-1000, 60000]; n.rn = (c.rn || 1) + x.stops.length;
+    const pts = [[from.x, from.z]].concat(n.wps.map(w => wpXZ(w)), [[to.x, to.z]]); const L = pathLen(pts); const k = L / 1000 / Math.max(1, c.km); n.km = L / 1000; n.fuel = fuelFor(A, L * 1.12); n.pay = r5(c.pay * k * (1 + 0.06 * x.stops.length)); if (c.limitMin) n.limitMin = Math.round(c.limitMin * k);
+  }
+  if (x.scenic) { n.scenic = true; n.pay = r5(n.pay * 1.12); }
+  return n;
+}
+function makePlan(c, ck) {
+  const P = makePlan0(c, ck); if (c && c.scenic && !ck) { const hi = Math.max(P.ap0.elev || 0, P.ap1.elev || 0); P.alt = Math.min(3500, Math.max(2000, Math.round((hi + 1500) / 100) * 100)); } return P;
+}
+/* ---- company ---- */
+const PILOT_NAMES = ['A. Rivera', 'J. Okafor', 'M. Lindqvist', 'S. Tanaka', 'R. Duarte', 'K. Novak', 'L. Haddad', 'E. Brooks', 'T. Ishii', 'P. Moreau', 'D. Silva', 'C. Alvarez'];
+const coLevel = () => SV.co ? Math.min(6, 1 + Math.floor((SV.co.runs || 0) / 10)) : 0, coCap = () => 1 + coLevel();
+const PTIER = { cpl: { n: 'Commercial pilot', cost: 4000, cut: 0.12, lic: ['student', 'private', 'commercial'] }, atp: { n: 'Captain (turboprop and jet)', cost: 14000, cut: 0.16, lic: ['student', 'private', 'commercial', 'instrument', 'turboprop', 'jet'] } };
+function coCollect() {
+  const co = SV.co; if (!co) return 0; let got = 0;
+  for (const p of co.pilots) if (p.run && p.run.end <= Date.now()) {
+    const r = p.run; p.run = null; const net = r.net; SV.money += net; co.rev = (co.rev || 0) + net; co.runs = (co.runs || 0) + 1; got += net;
+    SV.wear = SV.wear || {}; SV.wear[r.ac] = +(wearH(r.ac) + r.hrs).toFixed(2); co.hist.unshift({ t: Date.now(), from: r.from, to: r.to, label: r.label, ac: r.ac, pilot: p.name, net, late: r.late }); if (co.hist.length > 20) co.hist.length = 20;
+    try { toast(co.name + ': ' + p.name + ' delivered ' + r.label + '. ' + (net >= 0 ? '+' : '') + money(net), 4500); } catch (e) { }
+  }
+  if (got) persist(); return got;
+}
+function coAssign(c) {
+  const co = SV.co; if (!co) return 'Open a company first'; const pl = co.pilots.filter(p => !p.run); if (!pl.length) return 'No idle pilot';
+  const cc = applyJX(c);
+  for (const p of pl) {
+    const T = PTIER[p.tier], cands = Object.values(AC).filter(A => SV.owned.includes(A.id) && T.lic.includes(A.license) && !coBusy(A.id) && cc.payload <= A.payloadMax && apLen(apOf(cc.from)) >= A.minRw && apLen(apOf(cc.to)) >= A.minRw).sort((a, b) => (a.id === cc.ac ? -1 : 0) - (b.id === cc.ac ? -1 : 0) || a.price - b.price);
+    if (cc.wx === 'ifr' && p.tier !== 'atp') continue; if (!cands.length) continue; const A = cands[0], mins = jobEte(Object.assign({}, cc, { ac: A.id })), hrs = mins / 60;
+    const late = Math.random() * 100 > p.skill + 10, pay = cc.pay * (late ? 0.6 : 1) * (0.6 + 0.0035 * p.skill) * (1 - T.cut), fuelC = (cc.fuel || 0) * 0.55 * (FUELP[A.id] || 1.5) * fuelMul(cc.from), upk = hrs * (MAINT[A.id] || 20), net = Math.round(pay - fuelC - upk);
+    p.run = { ac: A.id, from: cc.from, to: cc.to, label: cc.label, start: Date.now(), end: Date.now() + Math.max(90000, mins * 60000 / 8), net, hrs, late }; persist(); return null;
+  }
+  return 'No pilot and aircraft can fly this job';
+}
+function coHTML() {
+  const co = SV.co;
+  if (!co) {
+    const ok1 = hasLic(SV, 'commercial'), ok2 = SV.money >= 20000, ok3 = (SV.flights || 0) >= 5;
+    return `<div class="cardx"><h3 style="margin:0 0 6px">Open your own company</h3><p class="lead" style="margin:0 0 8px">Hire pilots, put your aircraft to work and earn while you fly. Your pilots take jobs from the board. Their flights take real time, about one minute for every eight of flight time.</p>
+      <ul class="req"><li class="${ok1 ? 'ok' : ''}">Hold a Commercial pilot certificate</li><li class="${ok3 ? 'ok' : ''}">Log 5 flights (${Math.min(SV.flights || 0, 5)} / 5)</li><li class="${ok2 ? 'ok' : ''}">Have ${money(20000)} (${money(SV.money)})</li></ul>
+      <input id="coName" class="inp" maxlength="22" value="Cascade Air" placeholder="Company name"><div class="btns" style="margin-top:8px"><button class="go" data-act="coopen" ${ok1 && ok2 && ok3 ? '' : 'disabled'}>Open for ${money(20000)}</button></div></div>`;
+  }
+  coCollect(); const lv = coLevel(), now = Date.now();
+  const pil = co.pilots.map((p, i) => { const r = p.run, T = PTIER[p.tier]; const pr = r ? Math.min(1, (now - r.start) / (r.end - r.start)) : 0;
+    return `<div class="cardx pil"><div class="pt"><b>${p.name}</b><small>${T.n} · skill ${p.skill}</small><button class="mini" data-act="cofire" data-i="${i}" ${r ? 'disabled' : ''}>Release</button></div>
+      ${r ? `<div class="ms">${AC[r.ac].name} · ${r.from} to ${r.to} · ${r.label}</div><div class="bar2"><i style="width:${Math.round(pr * 100)}%"></i></div><small>Back in ${fmtDur(Math.max(1, (r.end - now) / 60000))}. Expected ${money(r.net)}</small>` : '<div class="ms">Idle. Pick a job below to send them out.</div>'}</div>`; }).join('');
+  const jb = jobList().all.filter(c => c.type !== 'lesson' && !c.finale).slice(0, 40), pool = co.pilots.some(p => !p.run), rows = jb.map(c => { const cc = applyJX(c); return `<div class="cardx cj"><div class="cjm"><b>${c.from} → ${c.to}</b><small>${c.sub} · ${(cc.km / 1.852).toFixed(0)} nm · ${money(c.pay)}</small></div><button class="mini" data-act="coassign" data-id="${c.id}" ${pool ? '' : 'disabled'}>Assign</button></div>`; }).join('');
+  return `<div class="cardx"><div class="pt"><h3 style="margin:0">${co.name}</h3><small>Level ${lv} · ${co.runs || 0} runs</small></div><div class="stat3"><div><small>Revenue</small><b>${money(co.rev || 0)}</b></div><div><small>Pilots</small><b>${co.pilots.length} / ${coCap()}</b></div><div><small>Next level</small><b>${lv >= 6 ? 'Max' : (10 - (co.runs || 0) % 10) + ' runs'}</b></div></div></div>
+    <h3>Pilots</h3>${pil || '<p class="lead">No pilots yet.</p>'}<div class="btns">${Object.keys(PTIER).map(k => `<button data-act="cohire" data-k="${k}" ${co.pilots.length >= coCap() || SV.money < PTIER[k].cost ? 'disabled' : ''}>Hire ${PTIER[k].n}<br><small>${money(PTIER[k].cost)} · keeps ${Math.round((1 - PTIER[k].cut) * 100)}% of pay</small></button>`).join('')}</div>
+    <h3 style="margin-top:14px">Send a pilot out</h3><p class="lead" style="margin:0 0 6px">Jobs from this airport. Your owned aircraft and idle pilots are matched for you. The aircraft is not available to you while it is out.</p>${rows}
+    ${co.hist.length ? '<h3 style="margin-top:14px">Recent runs</h3>' + co.hist.slice(0, 8).map(h => `<div class="cardx cj"><div class="cjm"><b>${h.from} → ${h.to}</b><small>${h.pilot} · ${AC[h.ac].name}${h.late ? ' · ran late' : ''}</small></div><b class="${h.net >= 0 ? 'pos' : 'neg'}">${money(h.net)}</b></div>`).join('') : ''}`;
+}
+setInterval(() => { try { if (SV.co && coCollect() && mode === 'menu' && !$('mdl') && tab === 'company') renderMenu(); } catch (e) { } }, 15000);
+/* ---- menu pages ---- */
+function hdrAirport(ap) {
+  const L = apLen(ap), t = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '');
+  return `<div class="hid"><div class="hbox">${ap.id}</div><div class="hnm"><div>${ap.name}</div></div><div class="hbal">${money(SV.money)}</div></div>
+    <div class="hsub">${apCls(ap).charAt(0) + apCls(ap).slice(1).toLowerCase()} · ${Math.round(L * 3.281).toLocaleString()} ft rwy · ${t} <span id="hWx"></span></div>`;
+}
+function hdrWx(ap) {
+  fetchMetar(ap.id).then(m => { const e = $('hWx'); if (!e || !m || SV.at !== ap.id) return; const cl = (m.clouds || []).map(c => c.cover), sky = cl.includes('OVC') ? 'Overcast' : cl.includes('BKN') ? 'Broken' : cl.includes('SCT') ? 'Scattered' : cl.includes('FEW') ? 'Few clouds' : 'Clear'; const f = m.temp != null ? Math.round(m.temp * 9 / 5 + 32) + '°F · ' : ''; e.textContent = '· ' + f + sky + (m.wspd != null ? ' · wind ' + (typeof m.wdir === 'number' ? String(m.wdir).padStart(3, '0') : 'VRB') + '/' + m.wspd : ''); }).catch(() => { });
+}
+const ICON = { menu: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="3" fill="none"/></svg>', career: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2.4" fill="none"/><path d="M4 21c0-5 4-7 8-7s8 2 8 7" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>', school: '<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z M6 12v5c3 2.4 9 2.4 12 0v-5" stroke="currentColor" stroke-width="2.2" fill="none"/></svg>', world: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2" fill="none"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>', map: '<svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14 M15 6v14" stroke="currentColor" stroke-width="2" fill="none"/></svg>' };
+function topHTML() {
+  const ib = (v, ic, t, sm) => `<button class="ib ${tab === v ? 'on' : ''}" data-act="tab" data-v="${v}">${sm ? `<small class="ibn">${sm}</small>` : ''}${ICON[ic]}<span>${t}</span></button>`;
+  const o = curObj(SV), p = o && o.f(SV);
+  return `<div id="mIcons">${ib('menu', 'menu', 'MENU')}${ib('career', 'career', 'CAREER', repOf() + ' rep')}${ib('school', 'school', 'SCHOOL')}${ib('free', 'world', 'WORLD', AIRPORTS.length)}</div>` +
+    (o ? `<button class="nextb" data-act="tab" data-v="career"><b>NEXT</b><span><em>${o.t}</em><small>${o.h}</small>${objBar(SV, o)}</span><i>›</i></button>` : `<div class="nextb"><b>DONE</b><span><em>Career complete</em><small>${careerTitle(SV)}</small></span></div>`);
+}
+function ensureMenuDom() {
+  if ($('mSheet')) return; $('menu').innerHTML = '<div id="mTop"></div><div id="mSheet"><div class="grab" data-act="peek"><i></i></div><div id="mHead"></div><div id="mTabs"></div><div id="mFilt"></div><div id="mBody"></div><div id="mAct"></div></div><button id="mPeek" data-act="peek">Show menu</button>';
+}
+function jobCard(c, sel) {
+  const A = AC[c.ac], to = apOf(c.to), cc = sel ? applyJX(c) : c, pay = dispOf(cc), mins = jobEte(cc), nmx = cc.km / 1.852, tail = c.rt ? 'ROUND TRIP' : apCls(to);
+  const xs = JX[c.id] && JX[c.id].stops.length ? ' + ' + JX[c.id].stops.length + ' stop' + (JX[c.id].stops.length > 1 ? 's' : '') : '';
+  return `<div class="jc ${sel ? 'sel' : ''}" data-act="pick" data-id="${c.id}"><div class="jb t-${c.type}">${c.cat === 'Routes' ? 'ROUTE' : ({ pax: 'PAX', cargo: 'CARGO', mail: 'MAIL', express: 'EXPR', medevac: 'MED', art: 'ART', group: 'GROUP', charter: 'VIP', ifr: 'IFR', ferry: 'FERRY', survey: 'SURVEY', lesson: 'LESSON', tour: 'TOUR', banner: 'BANNER' }[c.type] || c.type.toUpperCase())}</div>
+    <div class="jm"><div class="jr"><b>${c.rt ? c.from : c.to}${c.rt ? '' : ' ' + (to.city || '')}</b> <i>${tail}</i><span class="jp">${c.pay ? money(pay) : 'Free'}</span></div>
+    <div class="js"><span>${c.sub || c.label}</span><span>${nmx.toFixed(0)} nm · ${fmtDur(mins)}</span></div>
+    <div class="jc3"><em>${A.name}</em>${c.rn ? `<em class="rt">Route · ${cc.rn} legs${xs}</em>` : ''}${c.limitMin ? `<em class="tm">${c.limitMin} min limit</em>` : ''}${c.wx === 'ifr' ? '<em class="tm">Low vis</em>' : ''}</div>
+    ${sel ? `<p class="jx">${c.desc || ''}</p>` : ''}</div></div>`;
+}
+function dispatchHTML() {
+  const { all, ok, hidden } = jobList(); let list = ok.slice(); if (JF.f !== 'all') list = list.filter(c => c.cat === JF.f);
+  const key = { hr: c => -dispOf(c) / (jobEte(c) / 60 || 1), pay: c => -dispOf(c), near: c => c.km, far: c => -c.km, time: c => jobEte(c) }[JF.sort]; list.sort((a, b) => key(a) - key(b));
+  if (!sel || !list.find(c => c.id === sel)) sel = list.length ? list[0].id : null;
+  const cats = ['All jobs'].concat(['People', 'Cargo', 'Urgent', 'Routes', 'Scenic and survey', 'Lessons', 'IFR'].filter(k => ok.some(c => c.cat === k)));
+  const mt = Math.max(1, 10 - Math.floor((Date.now() % 600000) / 60000));
+  $('mFilt').innerHTML = `<select class="sl" data-jf="sort">${[['hr', 'Best $ an hour'], ['pay', 'Highest pay'], ['far', 'Longest trip'], ['near', 'Shortest trip'], ['time', 'Quickest']].map(o => `<option value="${o[0]}" ${JF.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>
+    <select class="sl" data-jf="f">${cats.map(k => `<option value="${k === 'All jobs' ? 'all' : k}" ${JF.f === (k === 'All jobs' ? 'all' : k) ? 'selected' : ''}>${k}</option>`).join('')}</select><span class="newin">new in ${mt}m</span>`;
+  const cards = list.map(c => jobCard(c, c.id === sel)).join('') || `<p class="lead" style="margin:18px 4px">No jobs match here right now. Try another filter, or fly a lesson or a free flight.</p>`;
+  const cur = list.find(c => c.id === sel), x = cur ? (JX[cur.id] = JX[cur.id] || { stops: [], scenic: false }) : null, cc = cur ? applyJX(cur) : null;
+  $('mAct').innerHTML = cur ? `<button class="go fly" data-act="plan"><b>Fly to ${cur.rt ? cur.from : cur.to}</b><small>${money(dispOf(cc))} · ${fmtDur(jobEte(cc))}</small></button><button class="sq" data-act="stop" ${cur.rt || cur.type === 'lesson' || x.stops.length >= 3 ? 'disabled' : ''}><b>+</b><small>STOP${x.stops.length ? ' ' + x.stops.length : ''}</small></button><button class="sq ${x.scenic ? 'gr' : ''}" data-act="scenic" ${cur.type === 'lesson' ? 'disabled' : ''}><b>${x.scenic ? 'SCEN' : 'DIRECT'}</b><small>ROUTE</small></button><button class="sq" data-act="rmap">${ICON.map}</button>` : '';
+  return cards + (hidden ? `<p class="hid2">${hidden} more job${hidden > 1 ? 's' : ''} hidden: they need a licence, an aircraft you do not own, or a better reputation. <a data-act="tab" data-v="career">See Career</a></p>` : '') + dailyHTML();
+}
+function acCard(A, shop) {
+  const own = SV.owned.includes(A.id), lic = A.license === 'student' || hasLic(SV, A.license), range = Math.round((A.fuelCap / (A.ffMax * 0.72) - 2700) * A.cruise * KT / 1852), w = wearH(A.id), b = coBusy(A.id);
+  const sell = Math.round(A.price * 0.6 * (1 - Math.min(0.5, w / 200))), only = SV.owned.filter(i => AC[i].license === 'student' || hasLic(SV, AC[i].license)).length < 2 && lic;
+  const spec = `<div class="sp"><span>${A.cruise} kt</span><span>${fmtKg(A.payloadMax)}</span><span>${seatsOf(A)} pax</span><span>${range} nm</span><span>${Math.round(A.minRw * 3.281)} ft rwy</span></div>`;
+  return `<div class="cardx ac2"><div class="pt"><b>${A.name}</b><small>${A.cls}</small></div><p class="bl">${A.blurb}</p>${spec}
+    ${shop ? `<div class="lk">${lic ? '' : 'Needs ' + LICENSES[A.license].name}</div><button class="go" data-act="buy" data-id="${A.id}" ${lic && SV.money >= A.price ? '' : 'disabled'}>Buy for ${money(A.price)}</button>`
+    : `<div class="cond"><div class="bar2 ${w > 100 ? 'bad' : ''}"><i style="width:${Math.max(3, Math.round(100 - Math.min(100, w)))}%"></i></div><small>Condition ${Math.max(0, Math.round(100 - w))}% · ${w.toFixed(1)} h since service${b ? ' · out on a company run' : ''}${lic ? '' : ' · licence needed to fly'}</small></div>
+    <div class="btns">${w > 1 ? `<button data-act="svc" data-id="${A.id}" ${SV.money >= svcCost(A.id) ? '' : 'disabled'}>Service ${money(svcCost(A.id))}</button>` : ''}${A.price ? `<button data-act="sell" data-id="${A.id}" ${only || b ? 'disabled' : ''}>Sell ${money(sell)}</button>` : ''}</div>`}</div>`;
+}
+function hangarHTML() { const own = Object.values(AC).filter(A => SV.owned.includes(A.id)); return own.map(A => acCard(A, false)).join('') + badgesHTML(); }
+function shopHTML() { const sale = Object.values(AC).filter(A => !SV.owned.includes(A.id)).sort((a, b) => a.price - b.price); return (sale.map(A => acCard(A, true)).join('') || '<p class="lead">You own every aircraft. Nothing left to buy.</p>'); }
+function settingsHTML() {
+  const tg = (k, t, d) => `<label class="tg"><input type="checkbox" data-act="set" data-k="${k}" ${SS(k) ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`, sg = (k, t, o) => `<div class="seg"><span>${t}</span>${o.map(x => `<button class="${SS(k) === x[0] ? 'on' : ''}" data-act="setv" data-k="${k}" data-v="${x[0]}">${x[1]}</button>`).join('')}</div>`;
+  const dt = (t, body, open) => `<details class="dt" ${open ? 'open' : ''}><summary>${t}</summary><div>${body}</div></details>`;
+  return dt('Gameplay and assists', tg('stab', 'Flight assist', 'Levels the wings and helps with rotation, steering and the flare. Turn off for +25% pay. Always off in checkrides.') + tg('guide', 'Taxi guidance line', 'Yellow route on the ground and arrow. Turn off for +10% pay.') + tg('hints', 'Procedure hints', 'Next-step prompts and checklist coaching. Turn off for +10% pay.') + tg('autoRud', 'Automatic rudder', 'Coordinates turns for you.') + tg('invert', 'Invert pitch keys', 'Up arrow pulls the nose up.') + tg('compact', 'Compact HUD', 'Shows only the next checklist item and the latest radio call.') + sg('phys', 'Flight physics (ground effect, stalls, gusts, engine torque)', [['real', 'Realistic'], ['arcade', 'Easy']]) + sg('fail', 'Failures (equipment problems in flight)', [['off', 'Off'], ['low', 'Low'], ['med', 'Medium'], ['high', 'High'], ['max', 'Extreme']]), true)
+    + dt('Graphics and performance', tg('pixel', 'Low-poly pixel look', 'Renders at low resolution and scales up. Turn off for a sharp image.') + sg('pixH', 'Pixel size', [[900, 'Fine'], [640, 'Normal'], [420, 'Chunky']]) + sg('res', 'Resolution', [[1, 'Full'], [0.8, 'Balanced'], [0.6, 'Low']]) + sg('fps', 'Frame rate', [[60, '60'], [30, '30']]) + tg('saver', 'Power Saver', 'Lower resolution, 30 fps and a shorter draw distance.') + tg('cruiseSave', 'Cruise saver', 'Autopilot in cruise drops to 30 fps and lower resolution. Full quality returns for the landing.') + tg('autoQ', 'Auto quality', 'Lowers resolution when the frame rate drops.') + sg('dist', 'Draw distance', [['short', 'Short'], ['normal', 'Normal'], ['far', 'Far']]) + sg('detail', 'Scenery detail (restart to apply)', [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']]) + tg('trees', 'Trees', 'Turn off for a smoother frame rate.') + tg('lamps', 'Street and building lights at night', 'Turn off for a smoother frame rate.') + sg('fov', 'Field of view', [[50, 'Narrow'], [62, 'Normal'], [78, 'Wide']]))
+    + dt('Camera, controls and sound', sg('cam', 'Starting camera', [['free', 'Free'], ['chase', 'Chase'], ['cockpit', 'Cockpit'], ['auto', 'Auto']]) + sg('smooth', 'Control smoothing', [[0.05, 'Snappy'], [0.12, 'Smooth'], [0.24, 'Silky']]) + sg('sens', 'Wheel sensitivity', [[0.7, 'Gentle'], [1, 'Normal'], [1.3, 'Sharp']]) + tg('sfx', 'Touchdown thump and sound', 'Camera jolt and tyre sound on touchdown. Shows your landing rate.'))
+    + dt('World', `<div class="seg"><span>Time of day</span>${['real', 'day', 'dusk', 'night'].map(t => `<button class="${(SV.settings.tod || 'real') === t ? 'on' : ''}" data-act="tod" data-v="${t}">${t === 'real' ? 'Real time' : t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>` + `<div class="seg"><span>Region</span>${Object.values(REGIONS).map(r => `<button class="${r.id === RG.id ? 'on' : ''}" data-act="region" data-v="${r.id}">${r.name}</button>`).join('')}</div><small>Switching region reloads the world.</small>` + tg('routeDl', 'Download the route before flight', 'Fetches the map for your route while the flight loads.') + dlHTML())
+    + dt('Keys', `<div class="keys">Pitch / roll <kbd>Arrows</kbd> · Throttle <kbd>W</kbd><kbd>S</kbd> · Rudder and nose wheel <kbd>A</kbd><kbd>D</kbd> · Brakes <kbd>Space</kbd> · Parking brake <kbd>B</kbd><br>Flaps <kbd>F</kbd><kbd>V</kbd> · Gear <kbd>G</kbd> · Lights <kbd>L</kbd> · Trim <kbd>,</kbd><kbd>.</kbd> · Radio <kbd>R</kbd> · Checklist <kbd>E</kbd><br>Camera <kbd>C</kbd> · Autopilot <kbd>P</kbd> · Map <kbd>M</kbd> · Pause <kbd>Esc</kbd></div>`)
+    + dt('Data', `<button class="ghost" data-act="reset">${SV._confirm ? 'Click again to erase all progress' : 'Reset progress'}</button>`);
+}
+function menuPageHTML() {
+  const row = (v, t, d) => `<button class="mrow" data-act="tab" data-v="${v}"><b>${t}</b><small>${d}</small><i>›</i></button>`;
+  return row('settings', 'Settings', 'Assists, graphics, failures, camera, world and keys') + row('log', 'Logbook', 'Your flights, scores and landings') + row('school', 'Flight school', 'Licences, written exams and checkrides') + row('career', 'Career', 'Goals, reputation and progress') + row('free', 'World map', 'Free flight and landmark routes') + `<p class="lead" style="margin:14px 4px 0">${RG.name} · ${AIRPORTS.length} airports</p>`;
+}
+function renderMenu() {
+  mode = 'menu'; $('menu').hidden = false; $('hud').hidden = true; $('debrief').hidden = true; $('plan').hidden = true; $('pill').hidden = true; ensureMenuDom();
+  const ap = apOf(SV.at); if (typeof ensureDetail === 'function') ensureDetail(ap); try { coCollect(); } catch (e) { } try { careerSync(); } catch (e) { }
+  FFM.R.length = tab === 'free' ? FFM.R.length : 0; $('mTop').innerHTML = topHTML(); $('mFilt').innerHTML = ''; $('mAct').innerHTML = ''; document.body.classList.toggle('mpage', MAINTABS.indexOf(tab) < 0);
+  const main = MAINTABS.indexOf(tab) >= 0; let body;
+  if (main) {
+    $('mHead').innerHTML = hdrAirport(ap); hdrWx(ap); const n = jobList().ok.length, own = SV.owned.length, sale = Object.keys(AC).length - own;
+    $('mTabs').innerHTML = [['dispatch', 'Jobs', n], ['hangar', 'Hangar', own], ['shop', 'Shop', sale], ['company', 'Company', SV.co ? SV.co.pilots.length : '']].map(t => `<button class="${tab === t[0] ? 'on' : ''}" data-act="tab" data-v="${t[0]}">${t[1]}${t[2] !== '' ? '<small>(' + t[2] + ')</small>' : ''}</button>`).join('');
+    body = tab === 'dispatch' ? dispatchHTML() : tab === 'hangar' ? hangarHTML() : tab === 'shop' ? shopHTML() : coHTML();
+  } else {
+    $('mHead').innerHTML = `<div class="pgh"><button class="back" data-act="tab" data-v="${tab === 'menu' ? 'dispatch' : 'menu'}">‹ Back</button><b>${PAGE_T[tab] || ''}</b></div>`; $('mTabs').innerHTML = '';
+    body = tab === 'menu' ? menuPageHTML() : tab === 'settings' ? settingsHTML() : tab === 'career' ? careerHTML() + dailyHTML() : tab === 'log' ? logHTML() : tab === 'school' ? schoolHTML() : freeHTML().replace('margin-top:14px', 'margin-top:0');
+  }
+  $('mBody').innerHTML = body; setTimeout(drawFF, 30);
+}
+/* ---- click handlers ---- */
+function mdl(html) { let m = $('mdl'); if (!m) { m = document.createElement('div'); m.id = 'mdl'; m.className = 'modal'; document.body.appendChild(m); } m.hidden = false; m.innerHTML = '<div class="sheet" style="max-height:86vh;overflow:auto">' + html + '</div>'; }
+function mdlClose() { const m = $('mdl'); if (m) m.remove(); }
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-act]'); if (!t || mode !== 'menu') return; const a = t.dataset.act;
+  if (a === 'tab') { e.stopImmediatePropagation(); if (tab !== t.dataset.v) { const mb = $('mBody'); setTab(t.dataset.v); if ($('mBody')) $('mBody').scrollTop = 0; } return; }
+  if (a === 'pick') { e.stopImmediatePropagation(); sel = t.dataset.id; renderMenu(); return; }
+  if (a === 'plan') { e.stopImmediatePropagation(); const c0 = jobList().ok.find(x => x.id === sel); if (!c0) return; const c = applyJX(c0); if (!lockReason(SV, c)) planWx(c); return; }
+  if (a === 'scenic') { e.stopImmediatePropagation(); const x = JX[sel] = JX[sel] || { stops: [], scenic: false }; x.scenic = !x.scenic; renderMenu(); return; }
+  if (a === 'stop') { e.stopImmediatePropagation(); const c = jobList().ok.find(q => q.id === sel); if (!c) return; const x = JX[sel] = JX[sel] || { stops: [], scenic: false }, from = apOf(c.from), to = apOf(c.to), d = Math.hypot(to.x - from.x, to.z - from.z), ux = (to.x - from.x) / d, uz = (to.z - from.z) / d;
+    const cand = AIRPORTS.filter(o => o !== from && o !== to && !x.stops.includes(o.id) && apLen(o) >= AC[c.ac].minRw).map(o => { const px = (o.x - from.x) * ux + (o.z - from.z) * uz, py = Math.abs(-(o.x - from.x) * uz + (o.z - from.z) * ux); return { o, px, py, det: Math.hypot(o.x - from.x, o.z - from.z) + Math.hypot(to.x - o.x, to.z - o.z) - d }; }).filter(q => q.px > 0.1 * d && q.px < 0.9 * d).sort((a, b) => a.det - b.det).slice(0, 8);
+    mdl(`<div class="eh">Add a stop</div><h2>${c.from} to ${c.to}</h2><p class="lead" style="margin:0 0 8px">Fly over the airport on the way. Each stop adds pay. Max 3.</p>${x.stops.length ? `<button class="btns" data-mdl="clear" style="margin-bottom:8px">Remove all stops</button>` : ''}${cand.map(q => `<button class="cardx cj" style="width:100%" data-mdl="add" data-id="${q.o.id}"><div class="cjm"><b>${q.o.id} ${q.o.city || ''}</b><small>+${(q.det / 1852).toFixed(0)} nm detour</small></div></button>`).join('') || '<p class="lead">No airports near this route.</p>'}<div class="btns"><button class="ghost" data-mdl="close">Close</button></div>`); return; }
+  if (a === 'rmap') { e.stopImmediatePropagation(); const c = jobList().ok.find(q => q.id === sel); if (!c) return; mdl(`<div class="eh">Route</div><h2>${c.rt ? c.from + ' round trip' : c.from + ' to ' + c.to}</h2><canvas id="rpvC" style="width:100%;height:340px;display:block;border-radius:10px;border:1px solid var(--line)"></canvas><div class="btns"><button class="ghost" data-mdl="close">Close</button></div>`); setTimeout(() => drawRoutePv(applyJX(c)), 30); return; }
+  if (a === 'sell') { e.stopImmediatePropagation(); const A = AC[t.dataset.id], w = wearH(A.id), v = Math.round(A.price * 0.6 * (1 - Math.min(0.5, w / 200))); SV.owned = SV.owned.filter(i => i !== A.id); SV.money += v; persist(); toast('Sold the ' + A.name + ' for ' + money(v), 3000); renderMenu(); return; }
+  if (a === 'coopen') { e.stopImmediatePropagation(); const nm = (($('coName') || {}).value || 'Cascade Air').trim().slice(0, 22) || 'Cascade Air'; if (SV.money >= 20000 && hasLic(SV, 'commercial')) { SV.money -= 20000; SV.co = { name: nm, t0: Date.now(), pilots: [], hist: [], rev: 0, runs: 0 }; persist(); renderMenu(); } return; }
+  if (a === 'cohire') { e.stopImmediatePropagation(); const co = SV.co, T = PTIER[t.dataset.k]; if (co && T && SV.money >= T.cost && co.pilots.length < coCap()) { SV.money -= T.cost; const used = co.pilots.map(p => p.name), nm = PILOT_NAMES.find(n => !used.includes(n)) || 'Pilot ' + (co.pilots.length + 1); co.pilots.push({ id: Date.now(), name: nm, tier: t.dataset.k, skill: 55 + Math.floor(Math.random() * 36), run: null }); persist(); renderMenu(); } return; }
+  if (a === 'cofire') { e.stopImmediatePropagation(); const co = SV.co; if (co && !co.pilots[+t.dataset.i].run) { co.pilots.splice(+t.dataset.i, 1); persist(); renderMenu(); } return; }
+  if (a === 'coassign') { e.stopImmediatePropagation(); const c = jobList().all.find(q => q.id === t.dataset.id); if (c) { const err = coAssign(c); if (err) toast(err, 2500); else toast('Pilot sent to ' + c.to, 2500); renderMenu(); } return; }
+}, true);
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-mdl]'); if (!t) return; e.stopPropagation(); const a = t.dataset.mdl, x = JX[sel]; if (a === 'close') mdlClose(); else if (a === 'clear') { x.stops = []; mdlClose(); renderMenu(); } else if (a === 'add') { if (x && x.stops.length < 3) x.stops.push(t.dataset.id); mdlClose(); renderMenu(); } }, true);
+document.addEventListener('change', e => { const t = e.target; if (t && t.dataset && t.dataset.jf) { JF[t.dataset.jf] = t.value; renderMenu(); } });
+function drawRoutePv(c) {
+  const cv = $('rpvC'); if (!cv) return; const W = cv.width = cv.clientWidth * 2, H = cv.height = cv.clientHeight * 2, x = cv.getContext('2d'), from = apOf(c.from), to = apOf(c.to), pts = [[from.x, from.z]].concat((c.wps || []).map(wpXZ), [[to.x, to.z]]);
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); } const pad = 0.25 * Math.max(x1 - x0, z1 - z0, 20000); x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
+  const sc = Math.min(W / (x1 - x0), H / (z1 - z0)), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, P = (px, pz) => [W / 2 + (px - cx) * sc, H / 2 + (pz - cz) * sc];
+  x.fillStyle = '#16314a'; x.fillRect(0, 0, W, H); try { if (!mapBase) mapBase = makeMapBase(); x.drawImage(mapBase, W / 2 + (TB.x0 - cx) * sc, H / 2 + (TB.z0 - cz) * sc, (TB.x1 - TB.x0) * sc, (TB.z1 - TB.z0) * sc); } catch (e) { }
+  x.strokeStyle = '#4fd6e8'; x.lineWidth = 4; x.setLineDash([16, 10]); x.beginPath(); pts.forEach((q, i) => { const p = P(q[0], q[1]); i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); }); x.stroke(); x.setLineDash([]);
+  x.font = '600 22px "Barlow Condensed", sans-serif'; x.textBaseline = 'middle'; const dot = (px, pz, lab, col) => { const p = P(px, pz); x.fillStyle = col; x.strokeStyle = '#000'; x.lineWidth = 3; x.beginPath(); x.arc(p[0], p[1], 10, 0, 7); x.stroke(); x.fill(); x.fillStyle = '#fff'; x.strokeStyle = 'rgba(0,0,0,.85)'; x.lineWidth = 4; x.strokeText(lab, p[0] + 14, p[1] - 16); x.fillText(lab, p[0] + 14, p[1] - 16); };
+  (c.wps || []).forEach(w => { const q = wpXZ(w); dot(q[0], q[1], w.n, '#f2c14e'); }); dot(from.x, from.z, from.id, '#45d483'); if (!c.rt) dot(to.x, to.z, to.id, '#fff');
+}
+
 /* ======================= compact autopilot ======================= */
 let apMore = false; const APF = { h: false, a: false, s: false };
 function renderApPanel() {
   const p = $('apPanel'); if (!p || !G) return; document.body.classList.toggle('apopen', apOpen); p.hidden = !apOpen; p.classList.toggle('more', apMore); if (!apOpen) return;
-  const b = (v, t) => `<button data-act="ap" data-v="${v}">${t}</button>`, cell = (lab, id, key, ch, fine, coarse) => { const st = APF[key] ? fine : coarse; return `<div class="apc"><span>${lab}${APF[key] ? ' fine' : ''}</span><b id="${id}" data-act="ap" data-v="f${key}"></b><div class="g">${b(ch + '-' + st, '&minus;')}${b(ch + '+' + st, '+')}</div></div>`; };
+  const b = (v, t) => `<button data-act="ap" data-v="${v}">${t}</button>`, cell = (lab, id, key, ch, fine, coarse) => { const st = APF[key] ? fine : coarse; return `<div class="apc"><span>${lab}</span><b id="${id}" data-act="ap" data-v="f${key}"></b><div class="g">${b(ch + '-' + st, '&minus;')}${b(ch + '+' + st, '+')}</div></div>`; };
   const nx = G.wpNext ? G.wpNext.n : G.plan.c.to;
   p.innerHTML = `<div class="aph"><b>AP</b><span class="state" id="apState"></span><button data-act="ap" data-v="more" aria-label="More">${apMore ? '&#9650;' : '&#9660;'}</button><button data-act="ap" data-v="back" class="x" aria-label="Close">&#10005;</button></div>
-    <div class="apcols">${cell('HDG', 'apH', 'h', 'h', 1, 10)}${cell('ALT', 'apA', 'a', 'a', 100, 500)}${cell('SPD', 'apS', 's', 's', 2, 5)}</div>
+    <div class="apcols">${cell('HDG', 'apH', 'h', 'h', 1, 1)}${cell('ALT', 'apA', 'a', 'a', 100, 100)}${cell('SPD', 'apS', 's', 's', 5, 5)}</div>
     <div class="apr2"><button class="go apE" data-act="ap" data-v="on" id="apE"></button><button data-act="ap" data-v="dest" style="flex:1.2">Next: ${nx}</button></div>
     <div class="apm"><div class="apb">${b('sync', 'Match current')}<button data-act="ap" data-v="spd" id="apT"></button></div>
     <div class="apb">${b('appr', 'Approach: runway ' + G.plan.arr.name)}</div>
@@ -3511,7 +3855,22 @@ function fxTick(s, dt) {
   let tot = 0; for (const id of L) tot += FXT[id].w; let r = Math.random() * tot, pick = L[0]; for (const id of L) { r -= FXT[id].w; if (r <= 0) { pick = id; break; } }
   FX.cool = lv === 'max' ? 40 : 100; if (pick) fxStart(pick);
 }
-function step(s, c, dt, env) { try { c = fxCtl(s, c, dt); } catch (e) { } step0(s, c, dt, env); try { fxTick(s, dt); } catch (e) { } }
+function step1(s, c, dt, env) { try { c = fxCtl(s, c, dt); } catch (e) { } step0(s, c, dt, env); try { fxTick(s, dt); } catch (e) { } }
+const TRB = { p: [Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28] };
+const trbN = (t, k) => (Math.sin(0.9 * t + TRB.p[k]) + 0.6 * Math.sin(2.3 * t + TRB.p[(k + 1) % 6]) + 0.4 * Math.sin(4.1 * t + TRB.p[(k + 2) % 6])) / 2;
+function step(s, c, dt, env) {
+  if (SS('phys') === 'arcade' || s.crashed) return step1(s, c, dt, env);
+  let e = env;
+  try {
+    const w = env.wind || [0, 0, 0], agl = Math.max(0, s.p[1] - surfH(s.p[0], s.p[2])), spd = Math.hypot(w[0], w[2]), t = s.time;
+    const k = 1 + 0.9 * (1 - Math.exp(-agl / 400)), ang = 0.26 * (1 - Math.exp(-agl / 600)), ca = Math.cos(ang), sa = Math.sin(ang);
+    const turb = clamp(spd / 4, 0, 1.6), sig = turb * 0.9 * Math.exp(-agl / 900) + 0.12 * (agl < 3000 ? 1 : 0.4);
+    const T = (G && G.plan && G.plan.wind && typeof G.plan.wind.temp === 'number') ? G.plan.wind.temp : 15;
+    e = { wind: [(w[0] * ca - w[2] * sa) * k + sig * 0.6 * trbN(t, 0), sig * trbN(t, 2), (w[0] * sa + w[2] * ca) * k + sig * 0.6 * trbN(t, 1)], rhoK: 288.15 / (288.15 + (T - 15)) };
+    if (s.air) { const ti = turb * Math.exp(-agl / 1500); s.pr += 0.22 * ti * trbN(t * 1.3, 3) * dt * 3; s.qr += 0.08 * ti * trbN(t * 1.1, 4) * dt * 3; }
+  } catch (er) { e = env; }
+  step1(s, c, dt, e);
+}
 function updateHUD() {
   updateHUD0(); const on = FX.on; if (!G || (!on.pitot && !on.stat && !on.gyro && !on.elec)) return;
   if (on.pitot) $('rSpd').textContent = Math.round(on.pitot.v) + '*'; if (on.stat) { $('rAlt').textContent = (Math.round(on.stat.a / 10) * 10).toLocaleString() + '*'; $('rVs').textContent = '0*'; }
@@ -3737,8 +4096,9 @@ function finishFlight(crash) {
     if (G.c.type === 'lesson') { if (sc.total >= 60 && !G.autoLand) { SV.lessons++; extra = '<div class="award">Lesson passed</div>'; } else extra = '<div class="award bad">Lesson not passed. A score of 60 is needed.</div>'; }
     if (G.autoLand) { pay = Math.round(pay * 0.6); note2 += '<div class="award bad">The autopilot flew and landed the airplane while you were away. Pay reduced 40%.</div>'; }
     if (G.c.limitMin) { const on = s.time <= G.c.limitMin * 60; pay = Math.round(pay * (on ? 1.5 : 0.6)); note2 += on ? '<div class="award">Delivered on time, bonus +50%</div>' : '<div class="award bad">Missed the ' + G.c.limitMin + ' minute deadline, pay cut 40%</div>'; }
-    if (G.c.type === 'charter' && !G.autoLand && L.tdVs != null && Math.abs(L.tdVs) > 300) { pay = Math.round(pay * 0.5); note2 += '<div class="award bad">The passengers felt that landing. Pay halved.</div>'; }
+    if ((G.c.type === 'charter' || G.c.type === 'art') && !G.autoLand && L.tdVs != null && Math.abs(L.tdVs) > 300) { pay = Math.round(pay * 0.5); note2 += '<div class="award bad">The passengers felt that landing. Pay halved.</div>'; }
   }
+  if (G.c && G.c.scenic && !crash && !G.ck && !G.autoLand) { pay = Math.round(pay * 1.12); note2 += '<div class="award">Scenic route tip +12%</div>'; }
   if (G.wps && !crash && !G.ck) { const n = G.wps.filter(q => q.hit).length, f = n / G.wps.length; pay = Math.round(pay * (0.3 + 0.7 * f)); note2 += `<div class="award${f < 1 ? ' bad' : ''}">${n} of ${G.wps.length} landmarks visited</div>`; }
   if (!G.ck && !crash && G.c.type !== 'free') { const used = Math.max(0, (G.c.fuel || 0) - s.fuel); opCost = Math.round(used * (FUELP[A.id] || 1.5) * fuelMul(G.c.from) + (s.time / 3600) * (MAINT[A.id] || 20) * wearMul(A.id)); }
   SV.money = Math.max(0, SV.money + pay - opCost); SV.minutes += s.time / 60; if (landed && !G.autoLand) SV.landings++; SV.flights++;
@@ -3884,7 +4244,7 @@ function startScreen() {
     const go = f => { d.remove(); res(); f && f(); };
     d.querySelector('#smResume').onclick = () => { if (!o) return; d.remove(); maybeResume().then(ok => { if (!ok) hideLoader(); res(); }); };
     d.querySelector('#smFree').onclick = () => go(() => { setTab('free'); });
-    d.querySelector('#smSet').onclick = () => go(() => { setTab('hangar'); });
+    d.querySelector('#smSet').onclick = () => go(() => { setTab('settings'); });
     d.querySelector('#smCareer').onclick = () => go(() => { setTab('dispatch'); });
   });
 }

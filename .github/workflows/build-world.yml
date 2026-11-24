@@ -1,57 +1,78 @@
 name: Build world tiles
-# Downloads OpenStreetMap data for the region, cuts it into game tiles, and commits them to world/
+# Downloads OpenStreetMap for the New York region, finds every airport in range, cuts the data into game tiles and commits them to world/
 on:
   workflow_dispatch:
     inputs:
-      region:
-        description: Geofabrik extract (path after download.geofabrik.de/)
-        default: us/new-york
-      bbox:
-        description: "Area to keep: west,south,east,north"
-        default: "-74.10,40.55,-72.90,41.00"
+      radius_nm:
+        description: "Play area radius in nautical miles around Republic (KFRG)"
+        default: "100"
+      core_nm:
+        description: "Full detail inside this many nm; beyond it small buildings, houses and minor roads are left out (keeps the download small)"
+        default: "35"
+      max_airports:
+        description: "How many airports to build in full (longest runways first)"
+        default: "40"
+      regions:
+        description: "Geofabrik regions to read (space separated)"
+        default: "us/new-york us/new-jersey us/connecticut us/pennsylvania us/massachusetts us/rhode-island"
 permissions:
   contents: write
 jobs:
   tiles:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y osmium-tool
-          pip install osmium numpy mapbox-earcut
-      - name: Download OpenStreetMap extract
+          pip install osmium numpy mapbox-earcut pillow
+      - name: Work out the area
         run: |
-          R="${{ github.event.inputs.region }}"
-          ID="${R##*/}"
+          python3 - <<'PY' >> $GITHUB_ENV
+          import math
+          R = float("${{ github.event.inputs.radius_nm }}") * 1.852 + 6   # km, plus a margin
+          lat0, lon0 = 40.73, -73.41
+          dlat = R / 110.54; dlon = R / (111.32 * math.cos(math.radians(lat0)))
+          print(f"BBOX={lon0-dlon:.3f},{lat0-dlat:.3f},{lon0+dlon:.3f},{lat0+dlat:.3f}")
+          print(f"RADIUS_KM={float('${{ github.event.inputs.radius_nm }}') * 1.852:.1f}")
+          print(f"CORE_KM={float('${{ github.event.inputs.core_nm }}') * 1.852:.1f}")
+          PY
+          echo "Area: $(grep BBOX $GITHUB_ENV)"
+      - name: Download and cut each state
+        run: |
           UA="Mozilla/5.0 (X11; Linux x86_64) CascadeDispatch-tiler"
           curl -sSL -A "$UA" -o index.json "https://download.geofabrik.de/index-v1-nogeom.json"
-          echo "Index size: $(stat -c%s index.json) bytes"
-          echo "== PBF links in the index that mention '$ID' =="
-          grep -o "https://[^\"]*${ID}[^\"]*\.osm\.pbf" index.json | sort -u | tee found.txt
-          URLS=()
-          while read -r L; do URLS+=("$L"); done < <(grep -E "/${ID}-latest\.osm\.pbf$" found.txt)
-          while read -r L; do URLS+=("$L"); done < <(grep -v -E "/${ID}-latest\.osm\.pbf$" found.txt)
-          [ ${#URLS[@]} -eq 0 ] && { echo "No links found for $ID"; exit 1; }
-          for U in "${URLS[@]}"; do
-            echo "== Trying $U =="
-            if curl -L --fail -A "$UA" -o region.osm.pbf "$U" && [ "$(stat -c%s region.osm.pbf)" -gt 5000000 ]; then
-              echo "Downloaded OK"; ls -lh region.osm.pbf; exit 0
-            fi
+          mkdir -p parts
+          for R in ${{ github.event.inputs.regions }}; do
+            ID="${R##*/}"
+            grep -o "https://[^\"]*${ID}[^\"]*\.osm\.pbf" index.json | sort -u > found.txt
+            URLS=(); while read -r L; do URLS+=("$L"); done < <(grep -E "/${ID}-latest\.osm\.pbf$" found.txt)
+            [ ${#URLS[@]} -eq 0 ] && { echo "No link for $R"; continue; }
+            echo "== $R: ${URLS[0]} =="
+            curl -L --fail -A "$UA" -o region.osm.pbf "${URLS[0]}" || { echo "download failed for $R"; continue; }
+            osmium extract --bbox $BBOX --strategy smart -o "parts/$ID.osm.pbf" region.osm.pbf && ls -lh "parts/$ID.osm.pbf"
+            rm -f region.osm.pbf
           done
-          echo "All download sources failed"; exit 1
-      - name: Cut out the play area
-        run: osmium extract --bbox ${{ github.event.inputs.bbox }} --strategy smart -o area.osm.pbf region.osm.pbf
+          ls -lh parts; osmium merge parts/*.osm.pbf -o area.osm.pbf; ls -lh area.osm.pbf
+      - name: Find airports
+        run: |
+          osmium tags-filter area.osm.pbf nwr/aeroway=aerodrome nwr/aeroway=runway -o aero.osm.pbf
+          mkdir -p data
+          python3 tools/find_airports.py aero.osm.pbf data/airports_found.json --radius-km $RADIUS_KM --max ${{ github.event.inputs.max_airports }}
       - name: Make tiles
         run: |
-          IFS=, read W S E N <<< "${{ github.event.inputs.bbox }}"
-          rm -rf world && python3 tools/tile_osm.py world area.osm.pbf --bbox $S $W $N $E
+          rm -rf world
+          python3 tools/tile_osm.py world area.osm.pbf --radius-km $RADIUS_KM --core-km $CORE_KM --airports-json data/airports_found.json
           du -sh world; ls world | wc -l
-      - name: Commit tiles
+      - name: Check the size
+        run: |
+          S=$(du -sm world | cut -f1); echo "world/ is ${S} MB"
+          if [ "$S" -gt 900 ]; then echo "::error::world/ is ${S} MB, too big for GitHub Pages (1 GB limit). Run again with a smaller radius or core."; exit 1; fi
+      - name: Commit
         run: |
           git config user.name "world-bot"; git config user.email "bot@users.noreply.github.com"
-          git add -A world
-          git commit -m "Update world tiles" || echo "nothing to commit"
+          git add -A world data/airports_found.json
+          git commit -m "Update world tiles (${{ github.event.inputs.radius_nm }} nm)" || echo "nothing to commit"
           git push

@@ -1,0 +1,168 @@
+{
+ "K1B1": "no data",
+ "K3C8": "no data",
+ "KABE": "only 0 runway numbers matched",
+ "KACY": {
+  "ok": true,
+  "rms_m": 10.4,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 35,
+  "buildings": 5
+ },
+ "KBDR": {
+  "ok": false,
+  "rms_m": 157.4,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 31,
+  "buildings": 47
+ },
+ "KBLM": "no data",
+ "KCDW": {
+  "ok": true,
+  "rms_m": 8.5,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 32,
+  "buildings": 46
+ },
+ "KCEF": "only 0 runway numbers matched",
+ "KCKZ": "no data",
+ "KDXR": {
+  "ok": true,
+  "rms_m": 7.6,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 46,
+  "buildings": 53
+ },
+ "KEWR": {
+  "ok": false,
+  "rms_m": 541.5,
+  "runway_anchors": 9,
+  "tower": true,
+  "taxi_labels": 150,
+  "buildings": 242
+ },
+ "KFOK": {
+  "ok": true,
+  "rms_m": 20.1,
+  "runway_anchors": 6,
+  "tower": true,
+  "taxi_labels": 19,
+  "buildings": 3
+ },
+ "KHFD": {
+  "ok": false,
+  "rms_m": 70.4,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 31,
+  "buildings": 21
+ },
+ "KHPN": {
+  "ok": false,
+  "rms_m": 277.7,
+  "runway_anchors": 6,
+  "tower": true,
+  "taxi_labels": 65,
+  "buildings": 99
+ },
+ "KHVN": "only 2 runway numbers matched",
+ "KHWV": {
+  "ok": false,
+  "rms_m": 95.5,
+  "runway_anchors": 4,
+  "tower": false,
+  "taxi_labels": 34,
+  "buildings": 91
+ },
+ "KIJD": "no data",
+ "KISP": {
+  "ok": true,
+  "rms_m": 57.9,
+  "runway_anchors": 5,
+  "tower": true,
+  "taxi_labels": 53,
+  "buildings": 97
+ },
+ "KJFK": {
+  "ok": false,
+  "rms_m": 331.2,
+  "runway_anchors": 7,
+  "tower": true,
+  "taxi_labels": 190,
+  "buildings": 250
+ },
+ "KJVI": "no data",
+ "KLDJ": "no data",
+ "KLGA": {
+  "ok": false,
+  "rms_m": 239.4,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 104,
+  "buildings": 167
+ },
+ "KMGJ": {
+  "ok": false,
+  "rms_m": 154.4,
+  "runway_anchors": 4,
+  "tower": false,
+  "taxi_labels": 32,
+  "buildings": 73
+ },
+ "KMJX": "no data",
+ "KMMU": {
+  "ok": true,
+  "rms_m": 12.0,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 25,
+  "buildings": 3
+ },
+ "KMPO": "no data",
+ "KMSV": "no data",
+ "KN87": "no data",
+ "KN89": "no data",
+ "KNEL": "only 0 runway numbers matched",
+ "KOXC": "only 2 runway numbers matched",
+ "KPHL": {
+  "ok": false,
+  "rms_m": 644.9,
+  "runway_anchors": 10,
+  "tower": true,
+  "taxi_labels": 120,
+  "buildings": 250
+ },
+ "KPNE": {
+  "ok": true,
+  "rms_m": 12.9,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 56,
+  "buildings": 20
+ },
+ "KPOU": {
+  "ok": true,
+  "rms_m": 43.9,
+  "runway_anchors": 6,
+  "tower": true,
+  "taxi_labels": 37,
+  "buildings": 46
+ },
+ "KSWF": {
+  "ok": true,
+  "rms_m": 16.1,
+  "runway_anchors": 4,
+  "tower": true,
+  "taxi_labels": 49,
+  "buildings": 56
+ },
+ "KTEB": "only 0 runway numbers matched",
+ "KTTN": "only 0 runway numbers matched",
+ "KVAY": "no data",
+ "KWRI": "only 0 runway numbers matched",
+ "KXLL": "no data"
+}

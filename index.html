@@ -133,6 +133,17 @@ h3{font:700 18px var(--disp);letter-spacing:.08em;text-transform:uppercase;color
 #mapwrap{position:fixed;inset:max(60px,env(safe-area-inset-top,0px)) 14px 14px;z-index:6;background:rgba(5,9,16,.92);border:1px solid var(--line)}#map{width:100%;height:100%;display:block}#mapZ{position:absolute;top:64px;right:8px;display:flex;flex-direction:column;gap:8px;z-index:2}#mapZ button{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(10,16,28,.9);color:#fff;font-size:24px;line-height:1;touch-action:manipulation}#map{touch-action:none}#mapX{position:absolute;top:8px;right:8px;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(10,16,28,.9);color:#fff;font-size:22px;line-height:1;z-index:2;touch-action:manipulation}
 #apPanel{left:50%!important;top:calc(max(8px,env(safe-area-inset-top,0px)) + 56px)!important;transform:translateX(-50%)!important;width:min(380px,94vw)!important;padding:8px 10px!important;background:rgba(10,18,32,.92)!important;gap:6px!important}
 .apcols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ffz{width:40px;height:40px;border-radius:8px;background:rgba(12,20,36,.9);color:#fff;border:1px solid var(--line);font:700 20px var(--mono)}
+#apPanel{width:min(236px,80vw)!important;padding:4px 6px!important;gap:3px!important;top:calc(max(8px,env(safe-area-inset-top,0px)) + 46px)!important}
+#apPanel .aph{display:flex;align-items:center;gap:5px;font-size:11px}#apPanel .aph b{font-size:11px}#apPanel .aph .state{flex:1;font-size:10px}
+#apPanel .aph button{flex:0;padding:1px 8px;font-size:13px;min-height:22px}
+#apPanel .apcols{gap:3px}#apPanel .apc{padding:2px 3px;gap:1px}#apPanel .apc span{font-size:8px;letter-spacing:.1em}
+#apPanel .apc b{font-size:15px;cursor:pointer}#apPanel .apc .g{gap:2px}#apPanel .apc .g button{min-height:30px;padding:2px;font-size:13px}
+#apPanel .apE{padding:5px;font-size:12px;min-height:30px}#apPanel .apr2{display:flex;gap:3px}#apPanel .apr2 button{padding:3px 4px;font-size:11px;min-height:28px}
+#apPanel .apm{display:none;gap:3px}#apPanel.more .apm{display:grid}#apPanel .apn{display:none}
+#apPanel .apb button{padding:4px;font-size:11px}
+#fxBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 168px);display:flex;flex-wrap:wrap;gap:5px;justify-content:center;z-index:5;max-width:92vw;pointer-events:none}
+#fxBar button{pointer-events:auto;background:rgba(60,10,10,.92);color:#ffd9d9;border:1px solid #ff6b6b;padding:4px 9px;font:700 11px var(--mono);letter-spacing:.06em;min-height:28px}#fxBar button.w{background:rgba(70,48,6,.92);border-color:#ffb23e;color:#ffe7b8}
 .apc{background:#0e1a2e;border:1px solid var(--line);padding:5px;display:grid;gap:3px;text-align:center}
 .apc span{font:600 10px var(--mono);letter-spacing:.14em;color:var(--dim)}
 .apc b{font:700 21px var(--mono);color:var(--cyan)}
@@ -719,7 +730,7 @@ function iasOf(s, wind) {
 }
 
 /* c = {pit, rol, yaw, thr, brk, flapCmd, gearCmd, trim}; env = {wind:[x,0,z]} */
-function step(s, c, dt, env) {
+function step0(s, c, dt, env) {
   if (s.crashed) { s.v = [0, 0, 0]; return; }
   const A = s.ac; s.time += dt;
   const wind = env.wind || [0, 0, 0];
@@ -1285,7 +1296,7 @@ let renderer, scene, camera, skyMesh, hemi, sunL, waterMesh, terrainMesh, beacon
 const sprites = [], socks = [], planeCache = {}, BOOTQ = [];
 function bootStep(label, f) { const b = document.getElementById('ldBar'); if (b) { b.style.width = Math.round(f * 100) + '%'; document.getElementById('ldTxt').textContent = label; document.getElementById('ldPct').textContent = Math.round(f * 100) + '%'; } return new Promise(r => setTimeout(r, 40)); }
 function hideLoader() { const l = document.getElementById('loader'); if (l) { l.style.opacity = 0; setTimeout(() => l.remove(), 600); } }
-const TB = RG.id === 'nyc' ? { x0: -64000, x1: 62000, z0: -54000, z1: 42000 } : { x0: -60000, x1: 56000, z0: -97000, z1: 76000 };
+const TB = (RG.id === 'nyc' && window.REAL_TERR) ? { x0: REAL_TERR.x0, x1: REAL_TERR.x0 + (REAL_TERR.nx - 1) * REAL_TERR.d, z0: REAL_TERR.z0, z1: REAL_TERR.z0 + (REAL_TERR.nz - 1) * REAL_TERR.d } : RG.id === 'nyc' ? { x0: -64000, x1: 62000, z0: -54000, z1: 42000 } : { x0: -60000, x1: 56000, z0: -97000, z1: 76000 };
 const BUILT_T = RG.id === 'nyc' ? 0.42 : 0.5;
 
 async function initThree(canvas) {
@@ -2377,7 +2388,7 @@ function switchRegion(id) { if (!REGIONS[id] || id === RG.id) return; SV.region 
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(SV)); } catch (e) { } }
 let SV = loadSave(), G = null, mode = 'menu', tab = 'dispatch', sel = null, exam = null, camMode = 0, paused = false, mapOpen = false, lastTs = 0, menuT = 0;
 let AUTOQ = 1, apOpen = false;
-const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, sfx: true, routeDl: true, trees: true, lamps: true };
+const SET_DEF = { autoQ: true, detail: 'normal', dist: 'normal', smooth: 0.12, sens: 1, expo: 0.2, autoRud: true, compact: true, cam: 'free', fov: 62, pixH: 640, res: 1, fps: 60, saver: false, cruiseSave: true, sfx: true, routeDl: true, trees: true, lamps: true, fail: 'low' };
 const SS = k => (SV.settings[k] === undefined ? SET_DEF[k] : SV.settings[k]);
 const freeCam = { yaw: 0, pit: 0.3, dist: 1, init: false, user: false, min: 0.2, max: 8, sgn: 1 };
 const keys = {}, ctl = { pit: 0, rol: 0, yaw: 0, thr: 0, brk: 1, trim: 0, flapCmd: 0, gearCmd: 1 };
@@ -2522,10 +2533,10 @@ function freeHTML() {
   return `<div class="card" id="ffCard" style="margin-top:14px;padding:14px"><div class="jt"><span class="tag t-free">Free flight</span></div>
     <p class="lead" style="margin:8px 0">Fly on your own. No pay, no fuel or upkeep bill, no repair bill. Time and landings still go in your logbook.</p>
     <label>Route (you start at ${SV.at})</label>
-    <canvas id="ffMap" style="width:100%;height:360px;display:block;border-radius:10px;border:1px solid var(--line);background:#0c1422;touch-action:manipulation"></canvas>
+    <div style="position:relative"><canvas id="ffMap" style="width:100%;height:430px;display:block;border-radius:10px;border:1px solid var(--line);background:#0c1422;touch-action:none"></canvas><div style="position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px"><button id="ffZi" class="ffz">+</button><button id="ffZo" class="ffz">&minus;</button><button id="ffZr" class="ffz" style="font-size:12px">All</button></div></div>
     <div id="ffSum" class="sub" style="margin:8px 0">${ffSummary()}</div>
     <div><button id="ffUndo" ${bs}>Undo last</button><button id="ffClear" ${bs}>Clear</button></div>
-    <div class="sub" style="margin-top:6px">The last airport you tap is where you land. If the last tap is a landmark, you fly back to ${SV.at}. White dots are airports and gold diamonds are landmarks.</div>
+    <div class="sub" style="margin-top:6px">The last airport you tap is where you land. If the last tap is a landmark, you fly back to ${SV.at}. White dots are airports and gold diamonds are landmarks. Pinch or use + and &minus; to zoom, drag to move. Zoom in to see runways and every airport name.</div>
     <label>Aircraft</label><select id="ffAc" ${st}>${acs.map(id => `<option value="${id}" ${id === FF.ac ? 'selected' : ''}>${AC[id].name}</option>`).join('')}</select>
     <div class="bar"><div class="sub">Live weather is used when it is available.</div><button class="go" id="ffGo2">Free flight plan</button></div></div>`;
 }
@@ -2553,6 +2564,7 @@ function drawFF() {
 document.addEventListener('click', e => {
   const t = e.target; if (!t) return;
   if (t.id === 'ffMap' && FFM.v) {
+    if (FFM.moved) { FFM.moved = false; e.stopPropagation(); return; }
     const r = t.getBoundingClientRect(), mx = (e.clientX - r.left) * 2, my = (e.clientY - r.top) * 2, v = FFM.v; let best = null, bd = 44;
     for (const p of v.it) { const d = Math.hypot(v.W / 2 + (p.x - v.cx) * v.sc - mx, v.H / 2 + (p.z - v.cz) * v.sc - my); if (d < bd) { bd = d; best = p; } }
     if (!best) return; e.stopPropagation(); const R = FFM.R, last = R[R.length - 1], from = apOf(SV.at);
@@ -2645,6 +2657,7 @@ function hangarHTML() {
     ${sg('smooth', 'Control smoothing', [[0.05, 'Snappy'], [0.12, 'Smooth'], [0.24, 'Silky']])}
     ${sg('sens', 'Wheel sensitivity', [[0.7, 'Gentle'], [1, 'Normal'], [1.3, 'Sharp']])}
     ${sg('detail', 'Scenery detail (restart the app to apply)', [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']])}
+    ${sg('fail', 'Failures (equipment problems in flight)', [['off', 'Off'], ['low', 'Low'], ['med', 'Medium'], ['high', 'High'], ['max', 'Extreme']])}
     ${sg('dist', 'Draw distance (more can run hotter)', [['short', 'Short'], ['normal', 'Normal'], ['far', 'Far']])}
     ${sg('res', 'Resolution', [[1, 'Full'], [0.8, 'Balanced'], [0.6, 'Low']])}
     ${sg('fps', 'Frame rate', [[60, '60'], [30, '30']])}
@@ -2946,7 +2959,7 @@ function buildRoute(pts, y) {
   g.visible = !!G.set.guide; G.routeGrp = g; scene.add(g);
 }
 function say(who, text) {
-  if (!G) return; G.atc.push({ who, text, t: performance.now() }); if (G.atc.length > 40) G.atc.shift(); renderAtc();
+  if (!G) return; if (FX.on.radio || FX.on.elec) { if (who !== G.plan.tail) return; } G.atc.push({ who, text, t: performance.now() }); if (G.atc.length > 40) G.atc.shift(); renderAtc();
 }
 function renderAtc() {
   const now = performance.now();
@@ -3163,7 +3176,7 @@ function assistTakeoffLanding(out, tp, ty) {
     const e = toEnd(P.arr, s.p[0], s.p[2]), he = ((P.arr.hdg - at.hdg + 540) % 360) - 180; if (Math.abs(e.lat) < P.arr.rw.W) out.yaw = clamp(he * 0.035 - e.lat * 0.02, -0.45, 0.45);
   }
 }
-function apAvail() { const s = G.s; return s.air && G.agl > 250 && ['ENROUTE', 'DESCENT', 'FINAL'].includes(G.phase); }
+function apAvail() { if (FX.on.elec || FX.on.gyro) return false; const s = G.s; return s.air && G.agl > 250 && ['ENROUTE', 'DESCENT', 'FINAL'].includes(G.phase); }
 const NAVAIDS = RG.id === 'nyc' ? [
   { id: 'DPK', name: 'Deer Park', f: '117.7', lat: 40.79177, lon: -73.30368 }, { id: 'JFK', name: 'Kennedy', f: '115.9', lat: 40.6329, lon: -73.7714 },
   { id: 'CCC', name: 'Calverton', f: '117.2', lat: 40.929, lon: -72.795 }, { id: 'HTO', name: 'Hampton', f: '113.6', lat: 40.914, lon: -72.314 },
@@ -3208,6 +3221,8 @@ function apApproach(ap, s, dt) {
 }
 function apAction(v) {
   const ap = G.ap, at = attitude(G.s);
+  if (v === 'more') { apMore = !apMore; renderApPanel(); return; }
+  if (v === 'fh' || v === 'fa' || v === 'fs') { APF[v[1]] = !APF[v[1]]; renderApPanel(); return; }
   if (v === 'on') {
     if (!ap.on) {
       if (!apAvail()) { toast(G.phase === 'FINAL' || G.phase === 'DESCENT' && G.agl < 300 ? 'Autopilot is for cruise and descent above 1,000 ft AGL.' : 'Autopilot needs: airborne, above 1,000 ft AGL, flaps and gear up, and past the climb-out.', 3200); return; }
@@ -3334,7 +3349,174 @@ function updateApPanel() {
   $('apT').textContent = 'Autothrottle ' + (ap.spdOn ? 'on' : 'off'); $('apE').textContent = ap.on ? 'Disengage autopilot' : 'Engage autopilot';
   if ($('apV')) { $('apV').textContent = ap.vsR ? ap.vsR + ' fpm' : 'auto'; $('apVs').textContent = 'VOR: ' + (NAVAIDS[ap.vi || 0] ? NAVAIDS[ap.vi || 0].id : 'none'); $('apVT').textContent = ap.vorOn ? 'Stop VOR track' : 'Track VOR'; $('apVor').textContent = vorText(ap, G.s); }
 }
+/* ======================= compact autopilot ======================= */
+let apMore = false; const APF = { h: false, a: false, s: false };
+function renderApPanel() {
+  const p = $('apPanel'); if (!p || !G) return; document.body.classList.toggle('apopen', apOpen); p.hidden = !apOpen; p.classList.toggle('more', apMore); if (!apOpen) return;
+  const b = (v, t) => `<button data-act="ap" data-v="${v}">${t}</button>`, cell = (lab, id, key, ch, fine, coarse) => { const st = APF[key] ? fine : coarse; return `<div class="apc"><span>${lab}${APF[key] ? ' fine' : ''}</span><b id="${id}" data-act="ap" data-v="f${key}"></b><div class="g">${b(ch + '-' + st, '&minus;')}${b(ch + '+' + st, '+')}</div></div>`; };
+  const nx = G.wpNext ? G.wpNext.n : G.plan.c.to;
+  p.innerHTML = `<div class="aph"><b>AP</b><span class="state" id="apState"></span><button data-act="ap" data-v="more" aria-label="More">${apMore ? '&#9650;' : '&#9660;'}</button><button data-act="ap" data-v="back" class="x" aria-label="Close">&#10005;</button></div>
+    <div class="apcols">${cell('HDG', 'apH', 'h', 'h', 1, 10)}${cell('ALT', 'apA', 'a', 'a', 100, 500)}${cell('SPD', 'apS', 's', 's', 2, 5)}</div>
+    <div class="apr2"><button class="go apE" data-act="ap" data-v="on" id="apE"></button><button data-act="ap" data-v="dest" style="flex:1.2">Next: ${nx}</button></div>
+    <div class="apm"><div class="apb">${b('sync', 'Match current')}<button data-act="ap" data-v="spd" id="apT"></button></div>
+    <div class="apb">${b('appr', 'Approach: runway ' + G.plan.arr.name)}</div>
+    <div class="apb">${b('vs-100', 'V/S &minus;')}<b id="apV" style="align-self:center;min-width:64px;text-align:center;font-size:12px"></b>${b('vs+100', 'V/S +')}</div>
+    <div class="apb"><button data-act="ap" data-v="vor" id="apVs"></button>${b('vorD', 'Course direct')}<button data-act="ap" data-v="vorT" id="apVT"></button></div>
+    <div class="apb">${b('ob-10', 'CRS &minus;10')}${b('ob-1', '&minus;1')}${b('ob+1', '+1')}${b('ob+10', '+10')}</div><p class="apn" id="apVor"></p></div>`;
+  updateApPanel();
+}
+function updateApPanel() {
+  if (!G) return; const ap = G.ap, bt = $('apBtn'); if (bt) bt.classList.toggle('on', !!ap.on);
+  if (!apOpen || !$('apState')) return; const ok = apAvail();
+  const st = $('apState'); st.textContent = ap.on ? (ap.appr ? ap.ann || 'APPR' : ap.vorOn ? 'VOR ' + (NAVAIDS[ap.vi || 0] || { id: '' }).id : ap.direct ? 'NAV' : 'HDG') + ' / ' + (Math.abs(ap.alt - G.s.p[1] / FT) < 80 ? 'ALT' : ap.alt > G.s.p[1] / FT ? 'CLIMB' : 'DESC') : ok ? 'READY' : (FX.on.elec ? 'ELEC FAIL' : FX.on.gyro ? 'GYRO FAIL' : 'NOT AVAILABLE'); st.className = 'state' + (ap.on ? ' on' : '');
+  $('apH').textContent = fmtHdg(ap.hdg); $('apA').textContent = Math.round(ap.alt).toLocaleString(); $('apS').textContent = ap.spd;
+  if ($('apT')) $('apT').textContent = 'Autothrottle ' + (ap.spdOn ? 'on' : 'off'); $('apE').textContent = ap.on ? 'Disengage' : 'Engage';
+  if ($('apV')) { $('apV').textContent = ap.vsR ? ap.vsR + ' fpm' : 'auto'; $('apVs').textContent = 'VOR: ' + (NAVAIDS[ap.vi || 0] ? NAVAIDS[ap.vi || 0].id : 'none'); $('apVT').textContent = ap.vorOn ? 'Stop VOR' : 'Track VOR'; $('apVor').textContent = vorText(ap, G.s); }
+}
+/* ======================= zoomable free-flight map ======================= */
+const FFC = [['New York', 40.7128, -74.006], ['Newark', 40.7357, -74.1724], ['Philadelphia', 39.9526, -75.1652], ['Allentown', 40.6084, -75.4902], ['Trenton', 40.2171, -74.7429], ['Atlantic City', 39.3643, -74.4229], ['Hartford', 41.7658, -72.6734], ['New Haven', 41.3083, -72.9279], ['Bridgeport', 41.1792, -73.1894], ['Stamford', 41.0534, -73.5387], ['Poughkeepsie', 41.7004, -73.921], ['Montauk', 41.0359, -71.9545], ['Islip', 40.7298, -73.2104], ['White Plains', 41.034, -73.7629]];
+Object.assign(FFM, { z: 1, cx: null, cz: null, ptr: new Map(), moved: false, raf: 0 });
+function ffRedraw() { if (!FFM.raf) FFM.raf = requestAnimationFrame(() => { FFM.raf = 0; drawFF(); }); }
+function drawFF() {
+  const c = document.getElementById('ffMap'); if (!c) return; const W = c.width = Math.max(2, c.clientWidth * 2), H = c.height = Math.max(2, c.clientHeight * 2), x = c.getContext('2d'), it = ffItems(), from = apOf(SV.at);
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of it) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); }
+  const pad = 0.08 * Math.max(x1 - x0, z1 - z0, 20000); x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
+  const sc0 = Math.min(W / (x1 - x0), H / (z1 - z0)), cx0 = (x0 + x1) / 2, cz0 = (z0 + z1) / 2;
+  if (FFM.cx === null) { FFM.cx = cx0; FFM.cz = cz0; }
+  const sc = sc0 * FFM.z, cx = FFM.cx, cz = FFM.cz, P = (px, pz) => [W / 2 + (px - cx) * sc, H / 2 + (pz - cz) * sc];
+  FFM.v = { sc, cx, cz, W, H, it, sc0, cx0, cz0 };
+  x.fillStyle = '#16314a'; x.fillRect(0, 0, W, H);
+  try { if (!mapBase) mapBase = makeMapBase(); x.imageSmoothingEnabled = true; x.drawImage(mapBase, W / 2 + (TB.x0 - cx) * sc, H / 2 + (TB.z0 - cz) * sc, (TB.x1 - TB.x0) * sc, (TB.z1 - TB.z0) * sc); } catch (e) { }
+  const R = FFM.R, last = R[R.length - 1], pts = [[from.x, from.z]].concat(R.map(r => [r.x, r.z])); if (last && last.k !== 'a') pts.push([from.x, from.z]);
+  const used = []; x.textBaseline = 'middle';
+  const free = (rx, ry, w, h) => { for (const u of used) if (rx < u[0] + u[2] && rx + w > u[0] && ry < u[1] + u[3] && ry + h > u[1]) return false; used.push([rx, ry, w, h]); return true; };
+  if (FFM.z > 1.4) { x.font = '500 20px "Barlow Condensed", sans-serif'; x.fillStyle = 'rgba(255,255,255,.55)'; for (const q of FFC) { const p = P(...llxz(q[1], q[2])); if (p[0] < 0 || p[1] < 0 || p[0] > W || p[1] > H) continue; if (free(p[0] - 4, p[1] - 10, x.measureText(q[0]).width + 8, 20)) x.fillText(q[0], p[0], p[1]); } }
+  if (pts.length > 1) { x.strokeStyle = '#4fd6e8'; x.lineWidth = 4; x.setLineDash([16, 10]); x.beginPath(); pts.forEach((q, i) => { const p = P(q[0], q[1]); i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); }); x.stroke(); x.setLineDash([]); }
+  const pri = p => { const inR = R.some(r => r.k === p.k && r.id === p.id) ? 1000 : 0, isO = p.k === 'a' && p.id === from.id ? 2000 : 0, a = p.k === 'a' ? apOf(p.id) : null, big = a ? Math.max.apply(null, a.rw.map(r => r.len || 0)) / 100 : 20; return inR + isO + big; };
+  const order = it.slice().sort((p, q) => pri(q) - pri(p));
+  for (const p of order) {
+    const q = P(p.x, p.z); if (q[0] < -40 || q[1] < -40 || q[0] > W + 40 || q[1] > H + 40) continue;
+    const idx = R.findIndex(r => r.k === p.k && r.id === p.id), isO = p.k === 'a' && p.id === from.id, a = p.k === 'a' ? apOf(p.id) : null;
+    if (a && FFM.z > 6) { x.strokeStyle = isO ? '#45d483' : '#e8eef7'; x.lineWidth = 5; for (const rw of a.rw) { x.beginPath(); x.moveTo(...P(rw.cx - rw.ux * rw.L / 2, rw.cz - rw.uz * rw.L / 2)); x.lineTo(...P(rw.cx + rw.ux * rw.L / 2, rw.cz + rw.uz * rw.L / 2)); x.stroke(); } }
+    const r0 = isO ? 12 : 9;
+    x.fillStyle = isO ? '#45d483' : p.k === 'a' ? '#ffffff' : '#f2c14e'; x.strokeStyle = '#000'; x.lineWidth = 3; x.beginPath();
+    if (p.k === 'a') x.arc(q[0], q[1], r0, 0, 7); else { x.moveTo(q[0], q[1] - 11); x.lineTo(q[0] + 10, q[1]); x.lineTo(q[0], q[1] + 11); x.lineTo(q[0] - 10, q[1]); x.closePath(); }
+    x.stroke(); x.fill();
+    x.font = '600 22px "Barlow Condensed", sans-serif'; const lab = p.k === 'a' ? p.id : p.n, w = x.measureText(lab).width;
+    if (idx >= 0 || isO || free(q[0] + 14, q[1] - 30, w + 6, 22)) { x.fillStyle = '#fff'; x.strokeStyle = 'rgba(0,0,0,.85)'; x.lineWidth = 4; x.strokeText(lab, q[0] + 16, q[1] - 18); x.fillText(lab, q[0] + 16, q[1] - 18); }
+    if (idx >= 0) { x.fillStyle = '#4fd6e8'; x.beginPath(); x.arc(q[0] - 18, q[1] + 18, 12, 0, 7); x.fill(); x.fillStyle = '#000'; x.textAlign = 'center'; x.fillText(String(idx + 1), q[0] - 18, q[1] + 19); x.textAlign = 'start'; }
+  }
+  { const nm = [5, 10, 20, 50, 100].find(n => n * 1852 * sc > 140) || 100, px = nm * 1852 * sc; x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(14, H - 40, px + 16, 28); x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.moveTo(22, H - 20); x.lineTo(22 + px, H - 20); x.moveTo(22, H - 28); x.lineTo(22, H - 14); x.moveTo(22 + px, H - 28); x.lineTo(22 + px, H - 14); x.stroke(); x.fillStyle = '#fff'; x.font = '600 20px "Barlow Condensed", sans-serif'; x.fillText(nm + ' nm', 28, H - 30); }
+  const s = document.getElementById('ffSum'); if (s) s.textContent = ffSummary() + (R.length ? '   ' + (ffDist() / 1852).toFixed(0) + ' nm' : '');
+}
+function ffZoom(f, mx, my) { const v = FFM.v; if (!v) return; const nz = clamp(FFM.z * f, 1, 90), sc2 = v.sc0 * nz; if (mx == null) { mx = v.W / 2; my = v.H / 2; } const wx = v.cx + (mx - v.W / 2) / v.sc, wz = v.cz + (my - v.H / 2) / v.sc; FFM.z = nz; FFM.cx = wx - (mx - v.W / 2) / sc2; FFM.cz = wz - (my - v.H / 2) / sc2; ffRedraw(); }
+document.addEventListener('pointerdown', e => { if (e.target.id !== 'ffMap') return; FFM.ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); FFM.moved = false; try { e.target.setPointerCapture(e.pointerId); } catch (_) { } }, true);
+document.addEventListener('pointermove', e => {
+  const o = FFM.ptr.get(e.pointerId); if (!o || !FFM.v) return; const v = FFM.v, r = document.getElementById('ffMap').getBoundingClientRect();
+  if (FFM.ptr.size === 1) { const dx = e.clientX - o.x, dy = e.clientY - o.y; if (Math.abs(dx) + Math.abs(dy) > 0) { if (FFM.moved || Math.hypot(dx, dy) > 4) { FFM.moved = true; FFM.cx -= dx * 2 / v.sc; FFM.cz -= dy * 2 / v.sc; o.x = e.clientX; o.y = e.clientY; ffRedraw(); } } }
+  else if (FFM.ptr.size === 2) { const ps = [...FFM.ptr.entries()], other = ps.find(q => q[0] !== e.pointerId)[1], d0 = Math.hypot(o.x - other.x, o.y - other.y), d1 = Math.hypot(e.clientX - other.x, e.clientY - other.y); o.x = e.clientX; o.y = e.clientY; FFM.moved = true; if (d0 > 4 && d1 > 4) ffZoom(d1 / d0, ((e.clientX + other.x) / 2 - r.left) * 2, ((e.clientY + other.y) / 2 - r.top) * 2); }
+}, true);
+for (const ev of ['pointerup', 'pointercancel']) document.addEventListener(ev, e => { FFM.ptr.delete(e.pointerId); }, true);
+document.addEventListener('wheel', e => { if (e.target.id !== 'ffMap') return; e.preventDefault(); const r = e.target.getBoundingClientRect(); ffZoom(e.deltaY < 0 ? 1.25 : 0.8, (e.clientX - r.left) * 2, (e.clientY - r.top) * 2); }, { passive: false, capture: true });
+document.addEventListener('click', e => { const t = e.target; if (!t || !t.id) return; if (t.id === 'ffZi') { e.stopPropagation(); ffZoom(1.6); } else if (t.id === 'ffZo') { e.stopPropagation(); ffZoom(1 / 1.6); } else if (t.id === 'ffZr') { e.stopPropagation(); FFM.z = 1; FFM.cx = null; ffRedraw(); } }, true);
+function makeMapBase() {
+  const big = !!window.REAL_TERR && RG.id === 'nyc', w = big ? 560 : 232, h = big ? 560 : 346, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'), im = x.createImageData(w, h), dx = (TB.x1 - TB.x0) / w, dz = (TB.z1 - TB.z0) / h;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const px = TB.x0 + (i + 0.5) * dx, pz = TB.z0 + (j + 0.5) * dz, y = big ? terrH(px, pz) : groundH(px, pz), k = (j * w + i) * 4; let r, g, b;
+    if (y <= (big ? 1.1 : 0.4)) { r = 30; g = 72; b = 98; }
+    else { const f = clamp(y / (big ? 450 : 700), 0, 1), sh = big ? clamp(1 + (terrH(px - dx, pz - dz) - terrH(px + dx, pz + dz)) * 0.004, 0.75, 1.25) : 1;
+      if (y > 1500) { r = 235; g = 240; b = 245; } else if (y > 800) { r = 130; g = 128; b = 118; } else { r = (60 + f * 50) * sh; g = (98 + f * 14) * sh; b = (58 + f * 22) * sh; } }
+    im.data[k] = r; im.data[k + 1] = g; im.data[k + 2] = b; im.data[k + 3] = 255;
+  }
+  x.putImageData(im, 0, 0); return cv;
+}
+/* ======================= equipment failures ======================= */
+const FX = { on: {}, flt: null, t: 0, cool: 0, n: 0, groundPlan: null, frozen: {}, gT: 0 };
+const FXT = {
+  eng: { n: 'ENGINE OUT', w: 3, ok: A => true, sev: 1, tip: 'Engine failure. Pitch for best glide, pick a field, then try a restart.' },
+  fire: { n: 'ENGINE FIRE', w: 1, ok: A => true, sev: 1, tip: 'Engine fire. No restart. Get the airplane on the ground now.' },
+  pwr: { n: 'POWER LOSS', w: 4, ok: A => true, sev: 0, tip: 'The engine is running rough and makes only part power. Land at the nearest airport.' },
+  carb: { n: 'CARB ICE', w: 3, ok: A => A.prop && A.light, sev: 0, tip: 'Carburetor ice is robbing power. Tap to apply carb heat.', fix: 12 },
+  oil: { n: 'OIL PRESS LOW', w: 2, ok: A => A.prop, sev: 0, tip: 'Oil pressure is dropping. Reduce power below 60% and land soon, or the engine will seize.' },
+  leak: { n: 'FUEL LEAK', w: 2, ok: A => true, sev: 0, tip: 'Fuel is leaking. Check your range and land soon.' },
+  elec: { n: 'ALTERNATOR FAIL', w: 3, ok: A => true, sev: 0, tip: 'Electrical failure. Autopilot, radio calls and VOR are lost. Tap to try resetting the breaker.' },
+  gyro: { n: 'GYRO FAIL', w: 2, ok: A => A.light, sev: 0, tip: 'The heading indicator has failed and the autopilot is lost. Steer by the compass and the ground.' },
+  pitot: { n: 'PITOT BLOCKED', w: 3, ok: A => true, sev: 0, tip: 'The airspeed reading is frozen. Tap for pitot heat, or fly by pitch and power.', fix: 14 },
+  stat: { n: 'STATIC BLOCKED', w: 2, ok: A => true, sev: 0, tip: 'Altitude and climb rate are frozen. Tap for the alternate static source.', fix: 4 },
+  radio: { n: 'RADIO FAIL', w: 3, ok: A => true, sev: 0, tip: 'Radio failure. Squawk 7600 and continue to your destination.' },
+  flap: { n: 'FLAPS JAMMED', w: 2, ok: A => true, sev: 0, tip: 'The flaps are stuck where they are. Plan a faster approach.' },
+  gear: { n: 'GEAR STUCK UP', w: 2, ok: A => A.retract, sev: 0, tip: 'The landing gear will not extend. Tap to use the emergency extension.', fix: 20 },
+  trim: { n: 'TRIM RUNAWAY', w: 2, ok: A => true, sev: 0, tip: 'The pitch trim is running away. Tap to pull the trim breaker.' },
+  ctl: { n: 'STIFF CONTROLS', w: 2, ok: A => true, sev: 0, tip: 'Control movement is jammed to half. Fly gently.' },
+  bird: { n: 'BIRD STRIKE', w: 1, ok: A => true, sev: 0, tip: 'Bird strike. The engine is damaged and makes half power.' },
+  brake: { n: 'BRAKES FAIL', w: 2, ok: A => true, ground: true, sev: 0, tip: 'Brake failure. Use the full runway and steer straight.' },
+  tire: { n: 'TYRE BURST', w: 2, ok: A => true, ground: true, sev: 0, tip: 'A tyre has burst. Keep the airplane straight with rudder and brake.' }
+};
+const FXR = { off: 0, low: 0.4, med: 1.1, high: 2.4, max: 6 }, FXG = { off: 0, low: 0.03, med: 0.09, high: 0.2, max: 0.45 };
+function fxStart(id) {
+  if (FX.on[id] || !G) return; const s = G.s, T = FXT[id], o = { t: 0 }; FX.on[id] = o; FX.n++;
+  if (id === 'eng' || id === 'fire') { s.eng = false; o.noRestart = id === 'fire'; }
+  else if (id === 'pwr') o.f = 0.35 + Math.random() * 0.3; else if (id === 'bird') { o.f = 0.5; if (Math.random() < 0.35) fxStart('pitot'); }
+  else if (id === 'carb') o.p = 0; else if (id === 'oil') o.life = 120 + Math.random() * 120; else if (id === 'leak') o.r = G.A.ffMax * 0.9;
+  else if (id === 'elec') { G.ap.on = false; G.ap.appr = false; G.ap.vorOn = false; o.cool = 0; } else if (id === 'gyro') { G.ap.on = false; o.h = G.at ? G.at.hdg : 0; o.t0 = 0; }
+  else if (id === 'pitot') o.v = G.ias; else if (id === 'stat') { o.a = s.p[1] / FT; } else if (id === 'trim') o.v = 0;
+  else if (id === 'tire') o.side = Math.random() < 0.5 ? -1 : 1;
+  try { toast(T.n + '. ' + T.tip, 6500); } catch (e) { } fxBar();
+}
+function fxEnd(id) { delete FX.on[id]; fxBar(); }
+function fxBar() {
+  let el = $('fxBar'); if (!el) { el = document.createElement('div'); el.id = 'fxBar'; document.body.appendChild(el); }
+  el.innerHTML = Object.keys(FX.on).map(id => `<button class="${FXT[id].sev ? '' : 'w'}" data-fx="${id}">${FXT[id].n}${FX.on[id].fixing ? ' ...' : ''}</button>`).join(''); el.style.display = Object.keys(FX.on).length ? 'flex' : 'none';
+}
+document.addEventListener('click', e => {
+  const b = e.target && e.target.closest && e.target.closest('[data-fx]'); if (!b || !G) return; e.stopPropagation(); const id = b.dataset.fx, o = FX.on[id], T = FXT[id]; if (!o) return;
+  if (id === 'eng') { if (o.noRestart) return; if (G.s.fuel <= 0) { toast('No fuel. A restart is not possible.', 3000); return; } if (G.agl < 300) { toast('Too low to restart.', 2500); return; } o.tries = (o.tries || 0) + 1; if (Math.random() < 0.4) { G.s.eng = true; fxEnd(id); toast('Engine restarted.', 3000); } else toast('No start. Try again, or set up for a forced landing.', 3000); }
+  else if (id === 'fire') toast(T.tip, 3500); else if (T.fix) { if (o.fixing) return; o.fixing = true; fxBar(); setTimeout(() => { if (FX.on[id]) { fxEnd(id); try { toast(T.n + ' cleared.', 2500); } catch (_) { } } }, T.fix * 1000); toast('Working on it...', 2000); }
+  else if (id === 'trim') { fxEnd(id); toast('Trim breaker pulled. Trim is fixed where it is.', 3000); }
+  else if (id === 'elec') { if ((o.cool || 0) > G.s.time) { toast('Wait before trying again.', 2000); return; } o.cool = G.s.time + 15; if (Math.random() < 0.3) { fxEnd(id); toast('Breaker reset. Electrical power is back.', 3500); } else toast('The breaker trips again. Fly by hand.', 3000); }
+  else toast(T.tip, 4000);
+}, true);
+function fxCtl(s, c, dt) {
+  const on = FX.on; let c2 = null; const get = () => c2 || (c2 = Object.assign({}, c));
+  if (on.flap) get().flapCmd = s.flaps;
+  if (on.brake) get().brk = (c.brk || 0) * 0.2;
+  if (on.tire && !s.air && G.at && G.at.gs > 2) get().yaw = clamp((c.yaw || 0) + 0.5 * on.tire.side, -1, 1);
+  let f = 1; if (on.pwr) f *= on.pwr.f; if (on.bird) f *= on.bird.f; if (on.carb) f *= 1 - 0.6 * clamp(on.carb.p, 0, 1); if (f < 0.999) get().thr = (c.thr || 0) * f;
+  if (on.trim) get().trim = clamp((c.trim || 0) + on.trim.v, -1, 1);
+  if (on.ctl) { const q = get(); q.pit = (c.pit || 0) * 0.5; q.rol = (c.rol || 0) * 0.5; }
+  if (on.gear && !on.gear.fixing) get().gearCmd = s.gear > 0.5 ? 1 : 0;
+  return c2 || c;
+}
+function fxTick(s, dt) {
+  if (!G || G.s !== s || mode !== 'fly' || paused) return;
+  if (FX.flt !== G) { FX.flt = G; FX.on = {}; FX.t = 0; FX.cool = 120; FX.n = 0; FX.groundPlan = null; const gp = FXG[SS('fail')] || 0; if (Math.random() < gp) { const g = ['brake', 'tire']; FX.groundPlan = g[(Math.random() * 2) | 0]; FX.gDone = false; } fxBar(); }
+  const lv = SS('fail'); if (lv === 'off') { if (Object.keys(FX.on).length) { FX.on = {}; fxBar(); } return; }
+  const on = FX.on;
+  for (const id in on) { const o = on[id]; o.t += dt;
+    if (id === 'carb') o.p = o.fixing ? Math.max(0, o.p - dt / 12) : Math.min(1, o.p + dt / 70);
+    else if (id === 'oil') { o.life -= dt * (G.s.thr < 0.6 ? 0.3 : 1); if (o.life <= 0) { fxEnd(id); s.eng = false; FX.on.eng = { t: 0, noRestart: true }; try { toast('The engine has seized.', 5000); } catch (_) { } fxBar(); } }
+    else if (id === 'trim') o.v = Math.min(0.55, o.v + dt * 0.012);
+    else if (id === 'pitot' && o.t > 360 && !o.fixing) fxEnd(id); else if (id === 'stat' && o.t > 360 && !o.fixing) fxEnd(id);
+  }
+  if (on.leak) s.fuel = Math.max(0, s.fuel - on.leak.r * dt);
+  // ground failures: once per flight, on the takeoff run or on the landing rollout
+  if (FX.groundPlan && !FX.gDone && !s.air && G.at) { const gs = G.at.gs, ph = G.phase, want = FX.groundPlan === 'tire' ? (ph === 'ROLL' && gs > 25) : (ph === 'ROLLOUT' && gs > 18); if (want) { FX.gDone = true; fxStart(FX.groundPlan); } }
+  if (!s.air || G.agl < 250 || !['CLIMB', 'ENROUTE', 'DESCENT'].includes(G.phase) || s.time < 60) return;
+  FX.t += dt; FX.cool -= dt; const act = Object.keys(on).length; if (FX.cool > 0 || act >= (lv === 'max' ? 3 : 2)) return;
+  let wear = 0; try { wear = Math.min(2, wearH(G.A.id) / 10); } catch (e) { }
+  if (Math.random() >= (FXR[lv] || 0) * (1 + wear) / 3600 * dt) return;
+  const L = Object.keys(FXT).filter(id => !FXT[id].ground && FXT[id].ok(G.A) && !on[id] && !((id === 'eng' || id === 'fire' || id === 'pwr' || id === 'bird' || id === 'carb' || id === 'oil') && (on.eng || on.fire)));
+  let tot = 0; for (const id of L) tot += FXT[id].w; let r = Math.random() * tot, pick = L[0]; for (const id of L) { r -= FXT[id].w; if (r <= 0) { pick = id; break; } }
+  FX.cool = lv === 'max' ? 40 : 100; if (pick) fxStart(pick);
+}
+function step(s, c, dt, env) { try { c = fxCtl(s, c, dt); } catch (e) { } step0(s, c, dt, env); try { fxTick(s, dt); } catch (e) { } }
 function updateHUD() {
+  updateHUD0(); const on = FX.on; if (!G || (!on.pitot && !on.stat && !on.gyro && !on.elec)) return;
+  if (on.pitot) $('rSpd').textContent = Math.round(on.pitot.v) + '*'; if (on.stat) { $('rAlt').textContent = (Math.round(on.stat.a / 10) * 10).toLocaleString() + '*'; $('rVs').textContent = '0*'; }
+  if (on.gyro) { const o = on.gyro, drift = o.h + Math.sin(o.t / 25) * 12 + o.t * 0.02; $('rHdg').textContent = fmtHdg(((drift % 360) + 360) % 360) + '*'; }
+  if (on.elec) { const e = $('rMisc'); if (e) e.textContent = e.textContent + '   ELEC FAIL'; }
+}
+function updateHUD0() {
   const s = G.s, at = G.at; if (!at) return;
   const wp = G.route, nr = routeDist(wp, s.p[0], s.p[2]);
   const show = G.set.guide && ['TAXI', 'HOLD', 'CLEARED', 'TAXI_IN'].includes(G.phase) && !s.air;
@@ -3402,7 +3584,7 @@ document.addEventListener('click', e => { if (e.target && e.target.id === 'mapX'
 function toggleMap() {
   mapOpen = !mapOpen; $('mapwrap').hidden = !mapOpen; if (mapOpen) { if (!mapBase) mapBase = makeMapBase(); drawMap(); }
 }
-function makeMapBase() {
+function makeMapBase0() {
   const w = 232, h = 346, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'), im = x.createImageData(w, h);
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     const px = TB.x0 + (i + 0.5) / w * (TB.x1 - TB.x0), pz = TB.z0 + (j + 0.5) / h * (TB.z1 - TB.z0), y = groundH(px, pz), k = (j * w + i) * 4;

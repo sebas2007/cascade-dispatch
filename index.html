@@ -3695,6 +3695,59 @@ function drawRoutePv(c) {
   (c.wps || []).forEach(w => { const q = wpXZ(w); dot(q[0], q[1], w.n, '#f2c14e'); }); dot(from.x, from.z, from.id, '#45d483'); if (!c.rt) dot(to.x, to.z, to.id, '#fff');
 }
 
+/* ======================= fix42: banner tow visual + away autopilot follows the real route ======================= */
+function bannerMake() {
+  const g = new THREE.Group(), A = G.A, z0 = A.tail + 0.6, line = 7, len = 15, H = 3.8, W = 18;
+  const tl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, line + 0.4), new THREE.MeshBasicMaterial({ color: 0x1b1d22 })); tl.position.set(0, -0.2, z0 + line / 2); g.add(tl);
+  const msgs = ['CASCADE AIR  FLY WITH US', 'BEACH SALE TODAY', 'FRESH CLAMS AT THE PIER', 'HAPPY BIRTHDAY SAM', 'SUMMER AT JONES BEACH'], txt = (SV.co && SV.co.name ? SV.co.name.toUpperCase() + '  NOW HIRING' : msgs[Math.abs(hsh(G.c.id || 'b')) % msgs.length]);
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#f8f4e8'; x.fillRect(0, 0, 512, 128); x.strokeStyle = '#c8261f'; x.lineWidth = 8; x.strokeRect(5, 5, 502, 118); x.fillStyle = '#c8261f'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  let fs = 76; do { x.font = '800 ' + fs + 'px Arial, sans-serif'; fs -= 4; } while (x.measureText(txt).width > 460 && fs > 20); x.fillText(txt, 256, 68);
+  const tex = new THREE.CanvasTexture(cv), mats = [new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide }), new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide })], meshes = [];
+  for (let k = 0; k < 2; k++) { const geo = new THREE.PlaneGeometry(len, H, W, 1), m = new THREE.Mesh(geo, mats[k]); m.rotation.y = k ? -Math.PI / 2 : Math.PI / 2; m.frustumCulled = false; m.userData.o = Float32Array.from(geo.attributes.position.array); g.add(m); meshes.push(m); }
+  g.position.set(0, 0, z0 + line + len / 2); return { g, meshes, cid: G.c.id, len, H, line, z0 };
+}
+function bannerAnim(b, t) {
+  for (let k = 0; k < 2; k++) { const m = b.meshes[k], p = m.geometry.attributes.position, o = m.userData.o, sg = k ? -1 : 1;
+    for (let i = 0; i < p.count; i++) { const ox = o[i * 3], oy = o[i * 3 + 1], u = (ox + b.len / 2) / b.len, e = 1 - u, d = sg * (Math.pow(e, 1.2) * 1.5 * Math.sin(6.5 * e - 4.2 * t) + 0.25 * e * Math.sin(11 * e - 6 * t));
+      p.array[i * 3 + 2] = d; p.array[i * 3 + 1] = oy - 0.4 - 1.2 * e + 0.12 * e * Math.sin(7 * e - 5 * t); }
+    p.needsUpdate = true; m.geometry.computeBoundingSphere && m.geometry.computeBoundingSphere(); }
+}
+function bannerFx() {
+  const m = G.model; if (!m) return; const on = !!(G.c && G.c.type === 'banner'); let b = m.userData.banner;
+  if (b && (b.cid !== (G.c && G.c.id) || !on)) { if (!on || b.cid !== G.c.id) { m.remove(b.g); m.userData.banner = b = null; } }
+  if (on && !b) { b = m.userData.banner = bannerMake(); m.add(b.g); }
+  if (b) bannerAnim(b, G.s.time);
+}
+function bannerDrag(s, dt) {
+  if (!G || G.s !== s || !G.c || G.c.type !== 'banner' || !s.air) return; const V = Math.hypot(s.v[0], s.v[1], s.v[2]); if (V < 3) return;
+  const a = 0.5 * airDensity(s.p[1]) * V * V * 1.0 / mass(s), k = Math.max(0, 1 - a / V * dt); s.v[0] *= k; s.v[1] *= k; s.v[2] *= k;
+}
+function awayApply(sec) {
+  if (!G || mode !== 'fly') return null;
+  sec = Math.min(sec, AWAY_CAP); const s = G.s, A = G.A, c = G.c;
+  if (!s.air) return { kind: 'ground' };
+  const dest = apOf(c.to), burn = A.ffMax * 0.72, hs = Math.hypot(s.v[0], s.v[2]), gs = Math.max(hs, G.ap.spd * KT, A.cruise * KT * 0.8);
+  if (c.wps && !G.wps) G.wps = c.wps.map(w => Object.assign({ xz: wpXZ(w), hit: false, warn: false }, w));
+  const left = (G.wps || []).filter(w => !w.hit), pts = [[s.p[0], s.p[2]]].concat(left.map(w => w.xz)), lp = pts[pts.length - 1];
+  let ex = dest.x - lp[0], ez = dest.z - lp[1]; const el = Math.hypot(ex, ez) || 1, cut = Math.min(G.dFin || 8500, el * 0.9); pts.push([dest.x - ex / el * cut, dest.z - ez / el * cut]);
+  const segs = []; let L = 0; for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(d); L += d; }
+  const tArr = L / gs, tFuel = s.fuel / burn;
+  if (tFuel < tArr && tFuel < sec) { s.fuel = 0; s.time += tFuel; finishFlight('Out of fuel while you were away'); return { kind: 'fuel' }; }
+  let held = false; if (sec >= tArr) { held = true; sec = tArr; }
+  let run = gs * sec, i = 0; while (i < segs.length - 1 && run > segs[i]) { run -= segs[i]; i++; }
+  const a = pts[i], b = pts[i + 1], sl = segs[i] || 1, f = Math.min(1, run / sl), nx = a[0] + (b[0] - a[0]) * f, nz = a[1] + (b[1] - a[1]) * f, ux = (b[0] - a[0]) / sl, uz = (b[1] - a[1]) / sl;
+  for (let q = 0; q < left.length; q++) if (q < i || (q === i && f >= 0.999)) left[q].hit = true;
+  const remPath = Math.max(0, L - gs * sec) + cut, rem = held ? cut : remPath;
+  let alt = Math.min(Math.max(s.p[1], s.p[1] + 3 * sec), Math.max(s.p[1], G.plan.alt * FT));
+  if (rem < G.dDesc) { const fr = clamp((rem - G.dFin) / Math.max(1, G.dDesc - G.dFin), 0, 1), floor = dest.elevM + 1500 * FT; alt = Math.min(alt, lerp(floor, Math.max(alt, floor), fr)); }
+  alt = Math.max(alt, groundH(nx, nz) + 1150 * FT);
+  s.p = [nx, alt, nz]; s.f = [ux, 0, uz]; s.u = [0, 1, 0]; s.r = vnorm(cross(s.f, [0, 1, 0])); s.v = [ux * gs, 0, uz * gs]; s.pr = s.qr = s.rr = 0; s.flaps = 0;
+  s.fuel = Math.max(0, s.fuel - burn * sec); s.time += sec;
+  const ap = G.ap; ap.on = true; ap.hdg = ((Math.atan2(ux, -uz) / DEG) + 360) % 360; ap.alt = Math.round(alt / FT / 100) * 100; ap.bank = 0; ap.iv = 0; ap.it = s.thr;
+  G.phase = 'ENROUTE'; setPhase('ENROUTE'); try { placeModel(); } catch (e) { }
+  return { kind: held ? 'held' : 'cont', remNm: rem / NM };
+}
+
 /* ======================= compact autopilot ======================= */
 let apMore = false; const APF = { h: false, a: false, s: false };
 function renderApPanel() {
@@ -3855,7 +3908,7 @@ function fxTick(s, dt) {
   let tot = 0; for (const id of L) tot += FXT[id].w; let r = Math.random() * tot, pick = L[0]; for (const id of L) { r -= FXT[id].w; if (r <= 0) { pick = id; break; } }
   FX.cool = lv === 'max' ? 40 : 100; if (pick) fxStart(pick);
 }
-function step1(s, c, dt, env) { try { c = fxCtl(s, c, dt); } catch (e) { } step0(s, c, dt, env); try { fxTick(s, dt); } catch (e) { } }
+function step1(s, c, dt, env) { try { c = fxCtl(s, c, dt); } catch (e) { } step0(s, c, dt, env); try { bannerDrag(s, dt); } catch (e) { } try { fxTick(s, dt); } catch (e) { } }
 const TRB = { p: [Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28] };
 const trbN = (t, k) => (Math.sin(0.9 * t + TRB.p[k]) + 0.6 * Math.sin(2.3 * t + TRB.p[(k + 1) % 6]) + 0.4 * Math.sin(4.1 * t + TRB.p[(k + 2) % 6])) / 2;
 function step(s, c, dt, env) {
@@ -4125,6 +4178,7 @@ function placeModel() {
   const fast = s.eng && s.thr > 0.22, ud = m.userData; if (ud.wgs && s.wheels) for (let q = 0; q < ud.wgs.length; q++) { const wq = s.wheels[q]; if (wq) ud.wgs[q].o.position.y = ud.wgs[q].y0 + Math.min(0.5, wq.cv); } ud.prop.rotation.z = s.spin; ud.prop.visible = !fast; if (ud.disc) ud.disc.visible = fast; ud.gear.visible = !G.A.retract || s.gear > 0.05; m.visible = camMode !== 1;
   if (ud.spot) { const on = !!G.lights && curTod() !== 'day'; ud.spot.intensity = on ? 2 : 0; }
   const blink = Math.floor(s.time * 1.8) % 2 === 0 && s.time % 1.8 < 0.2 + 0.9 * (Math.floor(s.time * 1.8) % 2 === 0 ? 1 : 0); if (ud.strobes) for (const o of ud.strobes) o.visible = !!G.lights && (Math.floor(s.time * 2.2) % 3 === 0 || (s.time * 2.2) % 3 < 1.2 && Math.floor(s.time * 8.8) % 2 === 0); if (ud.landing) ud.landing.visible = !!G.lights;
+  try { bannerFx(); } catch (e) { }
 }
 const SFX = { ctx: null };
 addEventListener('pointerdown', () => { if (SFX.ctx) { if (SFX.ctx.state === 'suspended') SFX.ctx.resume(); return; } try { SFX.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } }, { passive: true });

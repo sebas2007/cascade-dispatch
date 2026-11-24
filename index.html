@@ -307,6 +307,11 @@ const ALL_AP = [
     park: [-100, 250],
     bld: [[-200, 330, 160, 60, 10, 2], [60, 330, 160, 60, 10, 2], [0, 250, 70, 40, 9, 1]] }
 ];
+if (RG.id === 'nyc' && window.REAL_APS) for (const id in window.REAL_APS) { // airports found in the OSM data that the table does not list
+  const d = window.REAL_APS[id]; if (ALL_AP.some(a => a.id === id) || !d.rw || !d.rw.length || !d.ll) continue;
+  ALL_AP.push({ id, region: 'nyc', name: d.name || id, city: d.city || '', lat: d.ll[0], lon: d.ll[1], elev: d.elev || 0, hdg0: d.rw[0].hdg || 0, tower: [-100, 200],
+    rw: [{ a: d.rw[0].a, b: d.rw[0].b, len: d.rw[0].len, wid: 150, al: 0, lat: 0, tw: 150, dep: true }], park: [-100, 250], bld: [] });
+}
 const AIRPORTS = ALL_AP.filter(a => a.region === RG.id);
 
 /* ---------- streaming world tiles (built by pipeline/tools/tile_osm.py) ---------- */
@@ -330,6 +335,24 @@ function tileMesh(pos, nor, col, idx, off) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1)); g.computeVertexNormals();
   return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -off, polygonOffsetUnits: -off }));
 }
+function pip(x, z, p) { let c = false; for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) { const xi = p[i], zi = p[i + 1], xj = p[j], zj = p[j + 1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; }
+function pbb(p) { let a = 1e9, b = 1e9, c = -1e9, e = -1e9; for (let i = 0; i < p.length; i += 2) { a = Math.min(a, p[i]); c = Math.max(c, p[i]); b = Math.min(b, p[i + 1]); e = Math.max(e, p[i + 1]); } return [a, b, c, e]; }
+function faaMerge(blds, ix, iz, T, cen) { // FAA diagram buildings: where OSM already has a building at that spot, keep ONE (the OSM outline); otherwise add the FAA one
+  const F = window.FAA_APS; if (!F) return; const x0 = ix * T, x1 = x0 + T, z0 = iz * T, z1 = z0 + T; let osmBB = null;
+  for (const id in F) for (const fb of (F[id].bld || [])) {
+    if (!fb._p) { fb._p = [].concat.apply([], fb.p); fb._bb = pbb(fb._p); fb._c = cen(fb._p); }
+    const c = fb._c; if (c[0] < x0 || c[0] >= x1 || c[1] < z0 || c[1] >= z1) continue;
+    if (!osmBB) osmBB = blds.map(b => pbb(b.p));
+    const q = fb._bb; let hit = false;
+    for (let k = 0; k < osmBB.length; k++) {
+      const o = osmBB[k]; if (o[0] > q[2] || o[2] < q[0] || o[1] > q[3] || o[3] < q[1]) continue;
+      const b = blds[k], oc = cen(b.p), ix_ = Math.min(o[2], q[2]) - Math.max(o[0], q[0]), iz_ = Math.min(o[3], q[3]) - Math.max(o[1], q[1]);
+      const small = Math.min((o[2] - o[0]) * (o[3] - o[1]), (q[2] - q[0]) * (q[3] - q[1])) || 1;
+      if (pip(oc[0], oc[1], fb._p) || pip(c[0], c[1], b.p) || ix_ * iz_ > 0.35 * small) { hit = true; if (b.h <= 8 && fb.h >= 14) b.h = Math.max(b.h, fb.h * 0.8); break; }
+    }
+    if (!hit) blds.push({ c: fb.h >= 20 ? 2 : 1, h: fb.h, p: fb._p, tri: undefined });
+  }
+}
 function tileBuild(d, far) {
   const o = { grp: new THREE.Group(), pts: [], cars: null, far: !!far }, g = o.grp, rng = mulberry((d.ix * 73856093) ^ (d.iz * 19349663) ^ 77);
   const keep = (x, z) => !inKfrgBox(x, z, 0), cen = p => { let cx = 0, cz = 0; const n = p.length / 2; for (let i = 0; i < p.length; i += 2) { cx += p[i]; cz += p[i + 1]; } return [cx / n, cz / n]; };
@@ -350,6 +373,7 @@ function tileBuild(d, far) {
     if (idx.length) { const m = tileMesh(pos, nor, col, idx, 3); m.renderOrder = 3; g.add(m); }
   }
   const blds = d.bld.filter(b => { const c = cen(b[2]); return keep(c[0], c[1]); }).map(b => ({ c: b[0], h: b[1], p: b[2], tri: b[3] }));
+  if (!far) faaMerge(blds, d.ix, d.iz, TL.T, cen);
   if (blds.length && !far) { const m = buildBuildingsMesh(blds); scene.remove(m); g.add(m); }
   { // trees: forests, tree rows, yards
     const spots = [];
@@ -610,9 +634,15 @@ function rawH(x, z) {
   if (wd < 600) h = lerp(-30, h, sstep(-100, 600, wd));
   return h;
 }
+const APN = new Map();
+function apNear(x, z) { // only the airports that can affect this 8 km cell
+  const cx = Math.floor(x / 8000), cz = Math.floor(z / 8000), k = cx + ',' + cz; let l = APN.get(k);
+  if (!l) { const mx = (cx + 0.5) * 8000, mz = (cz + 0.5) * 8000; l = AIRPORTS.filter(ap => ap.flatR !== undefined && Math.hypot(mx - ap.x, mz - ap.z) < ap.flatR + 3000 + 5700); if (AIRPORTS.every(ap => ap.flatR !== undefined)) APN.set(k, l); }
+  return l;
+}
 function groundH(x, z) {
   let h = rawH(x, z);
-  for (const ap of AIRPORTS) {
+  for (const ap of apNear(x, z)) {
     const dx = x - ap.x, dz = z - ap.z, R = ap.flatR;
     if (dx * dx + dz * dz > (R + 3000) * (R + 3000)) continue;
     h = lerp(ap.elevM, h, sstep(R, R + 3000, Math.hypot(dx, dz)));

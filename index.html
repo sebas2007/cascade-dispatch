@@ -801,8 +801,9 @@ function step0(s, c, dt, env) {
   if (s.crashed) { s.v = [0, 0, 0]; return; }
   const A = s.ac; s.time += dt; const RL = SS('phys') !== 'arcade';
   const wind = env.wind || [0, 0, 0];
-  { const sp = !RL ? 1.0 : A.prop ? (A.P > 3e5 ? 0.6 : 1.5) : 0.3; s.thr += clamp(c.thr - s.thr, -sp * dt, sp * dt); }
+  { let sp = !RL ? 1.0 : A.prop ? (A.P > 3e5 ? 0.6 : 1.5) : 0.3; if (RL && !A.prop && c.thr > s.thr) sp *= 0.35 + 0.65 * Math.max(s.thr, 0.25); s.thr += clamp(c.thr - s.thr, -sp * dt, sp * dt); }
   s.flaps += clamp(c.flapCmd - s.flaps, -0.5 * dt, 0.5 * dt);
+  { const stg = Math.max(c.spoil || 0, (RL && A.spoil && !s.air && s.thr < 0.15 && Math.hypot(s.v[0], s.v[2]) > 25) ? 1 : 0); s.spoil = (s.spoil || 0) + clamp(stg - (s.spoil || 0), -2 * dt, 2 * dt); }
   if (A.retract) s.gear += clamp((c.gearCmd ? 1 : 0) - s.gear, -dt / 6, dt / 6);
   const fN = s.flaps, m = mass(s), rho = airDensity(s.p[1]) * (RL ? (env.rhoK || 1) : 1), dens = rho / 1.225;
   const f = s.f, up = s.u, right = s.r;
@@ -814,21 +815,22 @@ function step0(s, c, dt, env) {
     alpha = clamp(Math.atan2(-w, u), -1.4, 1.4); beta = Math.atan2(sv, Math.max(Math.hypot(u, w), 0.3));
     const vh = vmul(va, 1 / V), q = 0.5 * rho * V * V;
     const hw = RL ? Math.max(0.2, s.p[1] - surfH(s.p[0], s.p[2])) : 99, x16 = 16 * hw / A.span, gef = x16 * x16 / (1 + x16 * x16), asnd = 340.3 - 0.004 * Math.max(0, s.p[1]);
-    const CL = clOf(A, alpha, fN) * (1 + 0.10 * (1 - gef));
+    const CL = clOf(A, alpha, fN) * (1 + 0.10 * (1 - gef)) * (1 - 0.3 * (s.spoil || 0));
     const ab = Math.abs(alpha);
-    const CD = A.CD0 + A.k * gef * CL * CL + (RL && !A.prop ? 12 * Math.pow(Math.max(0, V / asnd - 0.78), 2) : 0) + A.cdFlap * fN + (A.retract ? 0.014 * s.gear : 0) + 1.2 * sstep(A.as, 0.9, ab) + 0.5 * beta * beta;
+    const CD = A.CD0 + A.k * gef * CL * CL + (RL && !A.prop ? 12 * Math.pow(Math.max(0, V / asnd - 0.78), 2) : 0) + A.cdFlap * fN + (A.retract ? 0.014 * s.gear : 0) + 1.2 * sstep(A.as, 0.9, ab) + 0.5 * beta * beta + (RL ? 0.07 * (s.spoil || 0) + (A.prop && !(s.eng && s.fuel > 0) ? 0.016 * (A.P > 3e5 ? 0.6 : 1) : (s.engOut && A.prop ? (s.eFeath ? 0 : 0.008) : 0)) : 0);
     let ld = cross(right, vh); const ll = vlen(ld); ld = ll > 0.05 ? vmul(ld, 1 / ll) : up;
     const Fa = vadd(vadd(vmul(ld, q * A.S * CL), vmul(vh, -q * A.S * CD)), vmul(right, -q * A.S * 0.6 * beta));
-    F = vadd(F, Fa);
+    F = vadd(F, Fa); s.nz = dot(Fa, up) / (m * GRAV);
   }
   // thrust
   let T = 0;
   if (s.eng && s.fuel > 0) {
     const tf = s.thr;
-    if (A.prop) T = tf * Math.min(A.Tstat * Math.pow(dens, 0.7), A.P * 0.8 * Math.pow(dens, 0.9) / Math.max(V, 6));
+    if (A.prop) { const pf = !RL ? Math.pow(dens, 0.9) : A.P > 3e5 ? Math.min(1, dens / 0.62) : A.turbo ? Math.min(1, dens / 0.6) : clamp((dens - 0.12) / 0.88, 0.1, 1); T = tf * Math.min(A.Tstat * Math.pow(dens, 0.7), A.P * 0.8 * pf / Math.max(V, 6)); }
     else T = tf * A.Tmax * Math.pow(dens, 0.75) * Math.max(0.1, 1 - V / A.vT);
     s.fuel = Math.max(0, s.fuel - (A.ffIdle + (A.ffMax - A.ffIdle) * s.thr) * dt);
   }
+  if (RL && s.engOut) T *= 0.5;
   F = vadd(F, vmul(f, T));
   s.spin = (s.spin + dt * (s.eng ? 20 + 60 * s.thr : 0)) % (Math.PI * 2);
 
@@ -867,25 +869,27 @@ function step0(s, c, dt, env) {
   // ---- angular dynamics ----
   const eff = clamp(V * V / (A.Vref * A.Vref), 0, 1.6);
   const effE = grounded ? eff : Math.max(eff, s.eng ? s.thr * 0.35 : 0);
-  const aEq = A.a0 + (c.trim || 0) * 0.08 - (grounded ? 0.035 : 0) - (RL ? 0.007 * fN : 0);
+  const cgv = RL ? cgOf(s) : 0.27, aEq = A.a0 + (c.trim || 0) * 0.08 - (grounded ? 0.035 : 0) - (RL ? 0.007 * fN : 0) + (RL ? (cgv - 0.27) * 0.9 : 0), ksE = A.ks * clamp(1 - 3 * (cgv - 0.27), 0.8, 1.2);
   const stallPush = alpha > A.as ? (alpha - A.as) * 14 : 0;
   const kmE = A.ks * 0.30;
-  let qd = effE * (kmE * c.pit - A.ks * (alpha - aEq)) - A.kd * s.qr * (0.3 + 0.7 * Math.min(1, effE)) - stallPush * Math.min(1, eff * 1.5);
+  let qd = effE * (kmE * c.pit - ksE * (alpha - aEq)) - A.kd * s.qr * (0.3 + 0.7 * Math.min(1, effE)) - stallPush * Math.min(1, eff * 1.5);
   qd += tauR / A.Iy;
   s.qr += qd * dt;
   if (grounded && noseC && mainC) s.qr *= Math.exp(-dt * 6);
   const effR = Math.min(1, eff * 1.3);
-  const pt = c.rol * A.pmax * effR;
-  s.pr += ((pt - s.pr) * 4.5 + tauF / A.Ix) * dt;
+  const stF0 = RL && !grounded ? clamp((alpha - A.as * 0.9) / 0.12, 0, 1) : 0, pt = c.rol * A.pmax * effR * (1 - 0.65 * stF0);
+  s.pr += ((pt - s.pr) * (RL ? (A.rd || 4.5) : 4.5) + tauF / A.Ix) * dt;
   // adverse/dihedral: bank + sideslip couple
-  s.pr += -beta * 0.8 * effR * dt;
+  s.pr += -beta * 0.8 * (RL ? (A.dih || 1) : 1) * effR * dt;
+  if (stF0 > 0 && eff > 0.1) { s.qr += (Math.sin(s.time * 37) + Math.sin(s.time * 53.3)) * 0.04 * stF0 * dt * 20; s.pr += Math.sin(s.time * 41.7) * 0.16 * stF0 * dt * 20; }
   if (RL && !grounded) {
     const stF = clamp((alpha - A.as * 0.97) / 0.08, 0, 1);
     if (stF > 0 && eff > 0.15) { if (!s.stSide) s.stSide = Math.random() < 0.5 ? -1 : 1; s.pr += s.stSide * stF * 1.6 * dt; const sg = Math.sign(s.rr) || s.stSide; s.pr += sg * stF * Math.min(1, Math.abs(s.rr) * 3) * 1.2 * dt; s.rr += sg * stF * Math.min(1, Math.abs(s.rr) * 3) * 0.5 * dt; }
     else if (alpha < A.as * 0.85) s.stSide = 0;
     if (A.prop && s.eng) { const pf = s.thr * (1 - Math.min(1, V / 45)); s.pr -= 0.03 * pf * dt; }
   }
-  let rd = effE * (1.1 * c.yaw + 3.0 * beta) - A.kd * 0.8 * s.rr * (0.3 + 0.7 * Math.min(1, effE)) + (RL ? -0.10 * s.pr * effR - (A.prop && s.eng ? 0.12 * s.thr * (1 - Math.min(1, V / 45)) * (grounded ? 0.4 : 1) : 0) : (s.pr * 0.03) * effR);
+  let rd = effE * (1.1 * c.yaw + 3.0 * (RL ? (A.wc || 1) : 1) * beta) - A.kd * 0.8 * s.rr * (0.3 + 0.7 * Math.min(1, effE)) + (RL ? -0.10 * s.pr * effR - (A.prop && s.eng ? 0.12 * s.thr * (1 - Math.min(1, V / 45)) * (grounded ? 0.4 : 1) : 0) : (s.pr * 0.03) * effR);
+  if (RL && s.engOut && s.eng && !grounded) { const Te = Math.min(A.Tstat || 0, (A.Tmax || A.Tstat || 0)) * 0.5 * s.thr, Iz = (A.Ix || 1000) + (A.Iy || 1500); rd += s.engOut * Te * (A.span * 0.14) / Iz * 0.9; }
   s.rr += rd * dt;
   if (noseC) s.rr = 0;
 
@@ -895,16 +899,16 @@ function step0(s, c, dt, env) {
 
   // ground friction / steering
   if (grounded) {
-    const gN = clamp(Fy / (m * GRAV), 0, 1.5);
+    const gN = clamp(Fy / (m * GRAV), 0, 1.5), MU = RL ? surfMu(s, A) : null;
     let fh = vnorm([f[0], 0, f[2]]); const rh = [-fh[2], 0, fh[0]];
     let vf = s.v[0] * fh[0] + s.v[2] * fh[2], vl = s.v[0] * rh[0] + s.v[2] * rh[2];
-    vl *= Math.exp(-dt * 9 * Math.min(1, gN * 2));
-    const decel = GRAV * (0.025 + 0.55 * (c.brk || 0)) * Math.min(1, gN * 1.5);
+    if (RL) { const want = Math.abs(vl) * (1 - Math.exp(-dt * 9 * Math.min(1, gN * 2))), lim = MU.lat * GRAV * Math.min(gN, 1.2) * dt; vl -= Math.sign(vl) * Math.min(want, lim); } else vl *= Math.exp(-dt * 9 * Math.min(1, gN * 2));
+    const decel = GRAV * ((RL ? MU.roll : 0.025) + (RL ? MU.brk : 0.55) * (c.brk || 0)) * Math.min(1, gN * 1.5);
     const dv = Math.min(Math.abs(vf), decel * dt); vf -= Math.sign(vf) * dv;
     if ((c.brk || 0) > 0.9 && Math.abs(vf) < 4 && s.thr < 0.35) vf *= Math.max(0, 1 - dt * 6);
     s.v[0] = fh[0] * vf + rh[0] * vl; s.v[2] = fh[2] * vf + rh[2] * vl;
     if (noseC) {
-      const Vg = Math.abs(vf), yr = c.yaw * A.steerRate * Math.min(1, Vg / 3) / (1 + Vg / 14) + c.yaw * 0.08 * (Vg < 3 ? 1 : 0) * (1 - Math.min(1, Vg / 3)) - (RL && A.prop && s.eng ? 0.03 * s.thr * (1 - Math.min(1, Vg / 35)) * Math.min(1, Vg / 4) : 0);
+      const Vg = Math.abs(vf), yr = c.yaw * A.steerRate * Math.min(1, Vg / 3) / (1 + Vg / 14) + (RL ? c.yaw * (c.brk || 0) * 0.22 * (1 - Math.min(1, Vg / 20)) : 0) + c.yaw * 0.08 * (Vg < 3 ? 1 : 0) * (1 - Math.min(1, Vg / 3)) - (RL && A.prop && s.eng ? 0.03 * s.thr * (1 - Math.min(1, Vg / 35)) * Math.min(1, Vg / 4) : 0);
       const ax2 = [0, -1, 0];
       s.f = rotAxis(s.f, ax2, yr * dt); s.u = rotAxis(s.u, ax2, yr * dt); s.r = rotAxis(s.r, ax2, yr * dt);
     }
@@ -3016,7 +3020,7 @@ function beginFlight() {
     set: useSettings, lights: false, parking: true, atc: [], t0: 0, tdDone: false, reached: false, apCt: 0, altT: 0, camT: 0, descSaid: false, finalSaid: false, apMsgT: 0,
     log: { maxTaxi: 0, startup: false, incursion: false, noClr: false, toFlaps: false, toLights: false, liftIas: null, cleanUp: false, speedBust: false, altN: 0, altOk: 0, appCfg: false, stable: null, stableNote: '', tdAlong: null, tdLat: null, tdVs: null, vacated: false, parked: false },
     route: P.route.pts, routeSide: 'out', model: null, routeGrp: null, dDesc: A.light ? 17000 : A.id === 'heron' ? 24000 : 40000, dFin: A.light ? 8500 : A.id === 'heron' ? 11000 : 16000, flapsPrev: 0 };
-  s.eng = false; ctl.pit = ctl.rol = ctl.yaw = 0; ctl.thr = 0; ctl.brk = 1; ctl.flapCmd = 0; ctl.gearCmd = 1; ctl.trim = 0;
+  s.eng = false; ctl.pit = ctl.rol = ctl.yaw = 0; ctl.thr = 0; ctl.brk = 1; ctl.flapCmd = 0; ctl.gearCmd = 1; ctl.trim = 0; ctl.spoil = 0;
   G.model = buildPlane(P.c.ac); scene.add(G.model);
   setWeather(P.ifr); setSockWind(P.wind);
   const dest = apOf(P.c.to); beacon.position.set(dest.x, dest.elevM, dest.z); beacon.visible = true;
@@ -3234,7 +3238,7 @@ function readControls(dt) {
   }
   ctl.thr = clamp(ctl.thr, 0, 1);
   ctl.brk = G.parking ? 1 : (keys[' '] ? 1 : 0);
-  const out = { pit: ctl.pit, rol: ctl.rol, yaw: ctl.yaw, thr: ctl.thr, brk: ctl.brk, flapCmd: ctl.flapCmd, gearCmd: ctl.gearCmd, trim: ctl.trim };
+  const out = { pit: ctl.pit, rol: ctl.rol, yaw: ctl.yaw, thr: ctl.thr, brk: ctl.brk, flapCmd: ctl.flapCmd, gearCmd: ctl.gearCmd, trim: ctl.trim, spoil: ctl.spoil || 0 };
   if (G.ap.on) {
     if (G.ap.appr && G.phase !== 'ROLLOUT') apApproach(G.ap, s, dt); else if (G.ap.vorOn) apVor(G.ap, s, dt);
     const o = apStep(G.ap, s, G.windV, dt); out.pit = o.pit; out.rol = o.rol; if (G.ap.spdOn) { out.thr = o.thr; ctl.thr = o.thr; }
@@ -3333,7 +3337,7 @@ function apAction(v) {
 }
 function hudAction(v) {
   if (v === 'cam') cycleCam(); else if (v === 'ap') { apOpen = !apOpen; renderApPanel(); } else if (v === 'map') toggleMap(); else if (v === 'pause') setPause(!paused); else if (v === 'plan') toast('Plan: ' + G.plan.c.from + ' to ' + G.plan.c.to + ' at ' + G.plan.alt.toLocaleString() + ' ft, runway ' + G.plan.dep.name + ' / ' + G.plan.arr.name, 5000);
-  else if (v === 'thr+') ctl.thr = clamp(ctl.thr + 0.1, 0, 1); else if (v === 'thr-') ctl.thr = clamp(ctl.thr - 0.1, 0, 1); else if (v === 'thr0') ctl.thr = 0; else if (v === 'thr1') ctl.thr = 1; else if (v === 'flap+') setFlaps(1); else if (v === 'flap-') setFlaps(-1); else if (v === 'gear') toggleGear(); else if (v === 'lights') toggleLights(); else if (v === 'brake') toggleParking(); else if (v === 'radio') radioPress(); else if (v === 'cl') clNext(); else if (v === 'ap') apAction('on');
+  else if (v === 'thr+') ctl.thr = clamp(ctl.thr + 0.1, 0, 1); else if (v === 'thr-') ctl.thr = clamp(ctl.thr - 0.1, 0, 1); else if (v === 'thr0') ctl.thr = 0; else if (v === 'thr1') ctl.thr = 1; else if (v === 'flap+') setFlaps(1); else if (v === 'flap-') setFlaps(-1); else if (v === 'gear') toggleGear(); else if (v === 'lights') toggleLights(); else if (v === 'spoil') toggleSpoil(); else if (v === 'brake') toggleParking(); else if (v === 'radio') radioPress(); else if (v === 'cl') clNext(); else if (v === 'ap') apAction('on');
 }
 function setFlaps(d) { ctl.flapCmd = clamp(ctl.flapCmd + d, 0, 3); renderSide(); }
 function toggleGear() { if (!G.A.retract) { toast('Fixed landing gear'); return; } ctl.gearCmd = ctl.gearCmd ? 0 : 1; renderSide(); }
@@ -3361,7 +3365,7 @@ window.addEventListener('keydown', e => {
   keys[k] = true;
   if (mode !== 'fly' || !G) return;
   if (k === 'Escape') setPause(!paused); if (paused) return;
-  if (k === 'f') setFlaps(1); else if (k === 'v') setFlaps(-1); else if (k === 'g') toggleGear(); else if (k === 'l') toggleLights(); else if (k === 'b') toggleParking();
+  if (k === 'f') setFlaps(1); else if (k === 'v') setFlaps(-1); else if (k === 'g') toggleGear(); else if (k === 'l') toggleLights(); else if (k === 'x') toggleSpoil(); else if (k === 'b') toggleParking();
   else if (k === 'r') radioPress(); else if (k === 'e') clNext(); else if (k === 'c') cycleCam(); else if (k === 'm') toggleMap(); else if (k === 'p') apAction('on');
   else if (k === ',') keys.g2 = true; else if (k === '.') keys.t = true; else if (k === 'h') { G.set.hints = !G.set.hints; renderSide(); }
 });
@@ -3388,7 +3392,7 @@ function renderSide() {
   e.innerHTML = cl + radio;
   $('cfgBar').innerHTML = `<button data-act="hud" data-v="flap-" title="Flaps up (V)">&minus;</button><span>Flaps ${A.flapDeg[ctl.flapCmd]}&deg;</span><button data-act="hud" data-v="flap+" title="Flaps down (F)">+</button>
     ${A.retract ? `<button class="${ctl.gearCmd ? 'lit' : ''}" data-act="hud" data-v="gear" title="Gear (G)">Gear ${ctl.gearCmd ? 'DN' : 'UP'}</button>` : ''}
-    <button class="${G.lights ? 'lit' : ''}" data-act="hud" data-v="lights" title="Lights (L)">Lights</button><button class="${G.parking ? 'warn' : ''}" data-act="hud" data-v="brake" title="Parking brake (B)">Brake</button>`;
+    <button class="${G.lights ? 'lit' : ''}" data-act="hud" data-v="lights" title="Lights (L)">Lights</button><button class="${G.parking ? 'warn' : ''}" data-act="hud" data-v="brake" title="Parking brake (B)">Brake</button>${A.spoil ? `<button class="${ctl.spoil ? 'lit' : ''}" data-act="hud" data-v="spoil" title="Speedbrakes (X)">Spoil</button>` : ''}`;
   $('hintTxt').textContent = ''; $('nextHint').style.display = (G.set.hints && G.phase !== 'COLD') ? 'flex' : 'none';
   $('tPhase').textContent = { COLD: 'Cold and dark', CLR: 'Ready to taxi', TAXI: 'Taxi', HOLD: 'Hold short', CLEARED: 'Cleared for takeoff', ROLL: 'Takeoff roll', CLIMB: 'Departure', ENROUTE: 'En route', DESCENT: 'Arrival', FINAL: 'Final approach', ROLLOUT: 'Rollout', TAXI_IN: 'Taxi to ramp' }[G.phase];
   $('tRoute').textContent = G.plan.c.from + ' > ' + G.plan.c.to; $('tWind').textContent = 'Wind ' + windText(G.wind) + '  RWY ' + (['TAXI_IN', 'ROLLOUT', 'FINAL', 'DESCENT'].includes(G.phase) ? G.plan.arr.name : G.plan.dep.name);
@@ -4003,7 +4007,8 @@ function helpHTML() {
     + dt('Autopilot basics', `<p>Open the AP panel with the AP button (or <b>P</b> to engage). The three boxes are heading, altitude and speed. Tap a box to switch between fine and coarse steps. Press Engage and it holds what you set.</p><ul><li>It works after takeoff, once you are above about 800 ft and out of the climb-out.</li><li>Moving the stick or wheel disengages it.</li><li><b>Next:</b> turns the aircraft direct to the next landmark or the destination.</li><li><b>Match current</b> copies your present heading, altitude and speed.</li><li>An electrical or gyro failure takes the autopilot away. You fly it by hand.</li><li>Tapping the tail ▼ arrow opens more controls: autothrottle, V/S, VOR tracking. Which ones you get depends on the aircraft.</li></ul>`)
     + dt('APR: approach mode', `<p>APR flies an instrument-style approach to the runway you are landing on: it captures the runway centreline (localizer) and then the 3 degree glidepath (glideslope), and sets approach speeds.</p><ul><li><b>Intercept:</b> if you are off to the side, it turns you to meet the centreline. If you are too close to intercept, it sends you out and around first.</li><li><b>Descent:</b> it comes down to about 2,600 ft above the airport and levels, then rides the glideslope down. If you are high it descends to catch it.</li><li><b>Speed:</b> it slows you in steps as you get close (reference speed plus 45, 32, 22, 15, then 8 knots).</li><li><b>Decision height:</b> at the aircraft's minimum height it turns itself off and calls "Minimums". You land by hand from there. Autoland aircraft keep going.</li><li><b>Single-engine piston aircraft:</b> APR only turns on once you are lined up on final, within about 8 nm of the runway. You get there yourself.</li><li><b>Better aircraft:</b> you can press APR any time after takeoff. It flies to the final approach, intercepts, and descends to the decision height.</li><li><b>Landing configuration:</b> aircraft without auto config tell you to set gear, flaps and lights. Turboprops and jets do it for you.</li><li>Press APR again to cancel. It then holds your heading and altitude.</li></ul>`)
     + dt('Autopilot by aircraft', `<table><tr><th>Aircraft</th><th>System</th><th>What you get</th></tr>${rows}</table><h4>Autoland (Atlas)</h4><p>Press APR and it flies to final, captures the glidepath, flares at about 50 ft, cuts power, touches down, brakes and steers along the centreline until it stops. It needs a working autopilot and electrics. Wind and visibility still matter, so watch it. If you move the controls it lets go.</p>`)
-    + dt('Controls', `<p>Touch: the left wheel is pitch and roll, the throttle slider is on the right, and the buttons above the instruments are flaps, gear, lights and brake. Keyboard: arrows pitch and roll, <b>W</b>/<b>S</b> throttle, <b>A</b>/<b>D</b> rudder and nose wheel, <b>Space</b> brakes, <b>B</b> parking brake, <b>F</b>/<b>V</b> flaps, <b>G</b> gear, <b>L</b> lights, <b>R</b> radio, <b>E</b> checklist, <b>C</b> camera, <b>M</b> map, <b>P</b> autopilot, <b>Esc</b> pause.</p><p>The Cam button cycles chase, cockpit, free and wing views. In free view, drag to orbit and pinch to zoom.</p>`)
+    + dt('Realistic physics', helpPhys())
+    + dt('Controls', `<p>Touch: the left wheel is pitch and roll, the throttle slider is on the right, and the buttons above the instruments are flaps, gear, lights and brake. Keyboard: arrows pitch and roll, <b>W</b>/<b>S</b> throttle, <b>A</b>/<b>D</b> rudder and nose wheel, <b>Space</b> brakes, <b>B</b> parking brake, <b>F</b>/<b>V</b> flaps, <b>G</b> gear, <b>L</b> lights, <b>R</b> radio, <b>E</b> checklist, <b>C</b> camera, <b>M</b> map, <b>P</b> autopilot, <b>X</b> speedbrakes, <b>Esc</b> pause.</p><p>The Cam button cycles chase, cockpit, free and wing views. In free view, drag to orbit and pinch to zoom.</p>`)
     + dt('Jobs, pay and your company', `<ul><li>Longer jobs and better aircraft pay more. Jobs scale to the range of the aircraft you pick.</li><li>Pay is reduced by fuel and maintenance cost, a hard landing on passenger jobs, and by the Assist settings. Turning assists off pays more.</li><li><b>Timed jobs</b> have a limit. <b>Route and tour jobs</b> need you to fly through each landmark. <b>Banner jobs</b> tow a banner, which adds drag, so keep your speed up.</li><li>The Company tab lets you hire pilots who fly jobs for you while you are in the game. Larger aircraft need more experienced pilots.</li><li>Licences unlock aircraft. Study at the Flight school and pass the written and checkride.</li></ul>`)
     + dt('If you leave the game', `<p>Your flight is saved when you close the app. When you come back you get a loading screen with time left and the plane's position. The aircraft flies on at cruise along the route for up to 6 hours, then holds on approach. The landing is yours. If it lands for you, pay is cut 40%. If it runs out of fuel while you are away, the flight ends. An aircraft that is still on the ground does not move.</p>`)
     + dt('Failures, weather and graphics', `<ul><li><b>Failures</b> (Settings, Gameplay): equipment can fail in flight. Higher settings fail more often. Electrical and gyro failures disable the autopilot.</li><li>Wind shear, gusts, turbulence and temperature change how the aircraft flies. Turn Realistic physics off in Settings for an arcade feel.</li><li>If it looks blurry or runs slowly, use the pause menu Graphics row: Sharp, Balanced or Saver.</li></ul>`)
@@ -4018,6 +4023,72 @@ PAGE_T.help = 'Help';
 function menuPageHTML() {
   const row = (v, t, d) => `<button class="mrow" data-act="tab" data-v="${v}"><b>${t}</b><small>${d}</small><i>›</i></button>`;
   return row('help', 'Help', 'How flights work, autopilot by aircraft, approach mode, tips') + row('settings', 'Settings', 'Assists, graphics, failures, camera, world and keys') + row('log', 'Logbook', 'Your flights, scores and landings') + row('school', 'Flight school', 'Licences, written exams and checkrides') + row('career', 'Career', 'Goals, reputation and progress') + row('free', 'World map', 'Free flight and landmark routes') + `<p class="lead" style="margin:14px 4px 0">${RG.name} · ${AIRPORTS.length} airports</p>`;
+}
+
+/* ======================= fix45: physics v2 ======================= */
+const TWINS = ['voyager', 'regent', 'kestrel', 'sovereign', 'atlas'];
+/* per-aircraft handling: dih = dihedral roll, wc = weathercock yaw stability, rd = roll response, nlim = g limit */
+const HANDLING = { cub: { dih: 1.5, wc: 1.3, rd: 3.4, nlim: 3.8 }, wren: { dih: 1, wc: 1, rd: 4.5, nlim: 3.8 }, skylark: { dih: 1.15, wc: 1.1, rd: 4.2, nlim: 3.8 }, falcon: { dih: 0.35, wc: 0.85, rd: 6.5, nlim: 6 },
+  meridian: { dih: 0.6, wc: 0.9, rd: 5.2, nlim: 3.8 }, voyager: { dih: 0.9, wc: 1.2, rd: 4.2, nlim: 3.8, vmc: 0.82 }, heron: { dih: 0.8, wc: 1.1, rd: 4, nlim: 3.5 }, regent: { dih: 0.8, wc: 1.2, rd: 3.8, nlim: 3.5, vmc: 0.8 },
+  kestrel: { dih: 0.4, wc: 0.85, rd: 5, nlim: 3.2, vmc: 0.8 }, sovereign: { dih: 0.4, wc: 0.85, rd: 4.6, nlim: 3, vmc: 0.8 }, atlas: { dih: 1, wc: 1.4, rd: 3, nlim: 2.5, vmc: 0.8 } };
+for (const k in HANDLING) if (AC[k]) Object.assign(AC[k], HANDLING[k]);
+for (const k of ['kestrel', 'sovereign', 'atlas']) if (AC[k]) AC[k].spoil = true;
+if (AC.meridian) AC.meridian.turbo = true;
+ctl.spoil = 0;
+function surfKind(x, z) {
+  for (const ap of AIRPORTS) {
+    const d = Math.hypot(ap.x - x, ap.z - z); if (d > 2800 || !ap.ends) continue;
+    for (const e of ap.ends) { const rw = e.rw; if (!rw) continue; const st = toRw(rw, x, z); if (Math.abs(st[0]) < rw.L / 2 + 40 && Math.abs(st[1]) < rw.W / 2 + 4) return 0; }
+    if (d < 800) { let margin = false; for (const e of ap.ends) { const rw = e.rw; if (!rw) continue; const st = toRw(rw, x, z); if (Math.abs(st[0]) < rw.L / 2 && Math.abs(st[1]) > rw.W / 2 + 4 && Math.abs(st[1]) < rw.W / 2 + 45) { margin = true; break; } } if (!margin) return 0; }
+  }
+  return 1;
+}
+function surfMu(s, A) {
+  const g = surfKind(s.p[0], s.p[2]), wet = !!(typeof G !== 'undefined' && G && G.plan && G.plan.c && G.plan.c.wx === 'ifr');
+  s.surf = g; s.wet = wet;
+  if (!g) return wet ? { roll: 0.03, brk: 0.32, lat: 0.55 } : { roll: 0.025, brk: 0.55, lat: 0.9 };
+  const r = A.id === 'cub' ? 0.05 : A.light ? 0.07 : 0.1; return wet ? { roll: r + 0.04, brk: 0.2, lat: 0.35 } : { roll: r, brk: 0.32, lat: 0.55 };
+}
+function cgOf(s) { const A = s.ac; return clamp(0.26 + 0.075 * (s.payload / Math.max(1, A.payloadMax)) - 0.012 * (s.fuel / Math.max(1, A.fuelCap)), 0.2, 0.36); }
+function envLim(A) { const v = A.vref || 65; return { vfe: A.vfe || v * 1.55, vle: A.vle || v * 2.1, vne: A.vne || Math.max(v * 2.3, (A.cruise || 100) * 1.25), nl: A.nlim || 3.8 }; }
+function envCheck(s, dt, env) {
+  if (SS('phys') === 'arcade' || !G || G.s !== s || mode !== 'fly' || s.crashed || !s.air) return;
+  const A = s.ac, L = envLim(A), ias = iasOf(s, env.wind), t = s.time, say1 = (k, m) => { if (t - (s['w_' + k] || -99) > 6) { s['w_' + k] = t; try { toast(m, 3200); } catch (e) { } } };
+  if (s.flaps > 0.6 && ias > L.vfe) { s.ovF = (s.ovF || 0) + dt; say1('f', 'Flap overspeed. Slow below ' + Math.round(L.vfe) + ' kt.'); if (s.ovF > 5 && !FX.on.flap) { try { fxStart('flap'); } catch (e) { } } } else s.ovF = Math.max(0, (s.ovF || 0) - dt);
+  if (A.retract && s.gear > 0.1 && ias > L.vle) { s.ovG = (s.ovG || 0) + dt; say1('g', 'Gear overspeed. Slow below ' + Math.round(L.vle) + ' kt.'); if (s.ovG > 5 && !FX.on.gear) { try { fxStart('gear'); } catch (e) { } } } else s.ovG = Math.max(0, (s.ovG || 0) - dt);
+  if (ias > L.vne) { s.ovN = (s.ovN || 0) + dt; say1('n', 'Overspeed! Reduce power now.'); if (ias > L.vne * 1.18 && s.ovN > 2.5) s.crashed = 'Structural failure: overspeed'; } else s.ovN = Math.max(0, (s.ovN || 0) - dt);
+  const nz = s.nz || 0; if (nz > L.nl) { say1('z', 'G limit! Ease off the controls.'); } if (nz > L.nl * 1.5 || nz < -0.6 * L.nl * 1.5) { s.ovZ = (s.ovZ || 0) + dt; if (s.ovZ > 0.35) s.crashed = 'Structural failure: overloaded the wings'; } else s.ovZ = 0;
+}
+function thermalW(s, env, agl) {
+  let w = 0; if (agl > 2300) return 0; let tod = 'day'; try { tod = curTod(); } catch (e) { } if (tod !== 'day') return 0;
+  const x = s.p[0], z = s.p[2], t = s.time, T = (G && G.plan && G.plan.wind && typeof G.plan.wind.temp === 'number') ? G.plan.wind.temp : 15;
+  if (isWater(x, z)) return -0.15; const k = clamp((T - 4) / 18, 0, 1.2);
+  const n = Math.sin(x / 2600 + 0.8 * Math.sin(z / 3300) + t * 0.004) * Math.sin(z / 2900 + 0.7 * Math.sin(x / 3700) - t * 0.003);
+  const h = clamp(1 - agl / 2300, 0, 1) * clamp(agl / 80, 0.2, 1); w = (n > 0.25 ? (n - 0.25) * 2.4 : n < -0.2 ? (n + 0.2) * 0.9 : 0) * k * h * 1.8; return w;
+}
+function ridgeW(s, env, agl) {
+  const wx = env.wind[0], wz = env.wind[2], ws = Math.hypot(wx, wz); if (ws < 3 || agl > 500) return 0;
+  const ux = wx / ws, uz = wz / ws, d = 160, h1 = surfH(s.p[0] + ux * d, s.p[2] + uz * d), h0 = surfH(s.p[0] - ux * d, s.p[2] - uz * d), slope = (h1 - h0) / (2 * d);
+  return clamp(slope, -0.4, 0.5) * ws * Math.exp(-agl / 240);
+}
+function toggleSpoil() { if (!G || !G.A.spoil) { toast('No speedbrakes on this aircraft'); return; } ctl.spoil = ctl.spoil ? 0 : 1; renderSide(); }
+function rpmTxt() {
+  if (!G || !G.s || !G.A.prop) return ''; const s = G.s, A = G.A; let o = '';
+  if (A.P < 3e5) { const V = Math.hypot(s.v[0], s.v[2]), rpm = s.eng && s.fuel > 0 ? 700 + 2000 * s.thr * (0.78 + 0.22 * clamp(V / (A.cruise * KT), 0, 1.3)) : (s.air ? 600 + 3 * V * 8 : 0); o += 'RPM ' + (Math.round(rpm / 10) * 10) + '   '; }
+  if (!s.air) { const T = (G.plan && G.plan.wind && typeof G.plan.wind.temp === 'number') ? G.plan.wind.temp : 15, da = s.p[1] / FT + 120 * (T - 15); if (da > 1500) o += 'DA ' + (Math.round(da / 100) * 100).toLocaleString() + '   '; }
+  return o;
+}
+function wbText(s) { const c = cgOf(s); return 'CG ' + Math.round(c * 100) + '% MAC'; }
+function helpPhys() {
+  return `<p>Realistic physics (Settings, Gameplay) adds the following. Turn it off for the simple arcade feel.</p><ul>
+  <li><b>Ground:</b> runways give grip. Grass and soft ground roll slowly and brake poorly, and a wet runway (low visibility weather) cuts braking and sideways grip. A crabbed landing or a hard crosswind makes the tires scrub and skid. Use the brake button with rudder at low speed to turn tighter.</li>
+  <li><b>Engines:</b> piston engines lose power with height and heat. Check the DA (density altitude) on the ground. Above about 5,000 ft DA, expect a long takeoff roll. The Meridian is turbocharged and holds power higher. Turboprops hold power to about 15,000 ft. Jets spool up slowly from idle, so plan power changes early.</li>
+  <li><b>Stalls:</b> close to the stall you get buffet and the ailerons weaken. Stall hard and a wing drops, and a yawing stall can turn into a spin. Recover with nose down, wings level, and opposite rudder.</li>
+  <li><b>Weight and balance:</b> passengers and cargo move the centre of gravity aft, and burning fuel moves it back as well. An aft CG makes the nose lighter and less stable. A forward CG needs more back pressure to flare.</li>
+  <li><b>Speed limits:</b> each aircraft has flap and gear speed limits and a never-exceed speed. Go over the flap limit for 5 seconds and the flaps jam. Go well over the never-exceed speed, or pull too many g, and the wings fail.</li>
+  <li><b>Speedbrakes (jets and Atlas):</b> the Spoil button or <b>X</b> adds drag and dumps lift. They deploy by themselves on the landing roll. The autopilot uses them on approach when you are fast.</li>
+  <li><b>Twins:</b> an engine failure takes out one engine. The nose swings toward the dead side. Use rudder, keep the speed above the minimum control speed (about 80% of rotation speed), and the dead engine feathers after a few seconds.</li>
+  <li><b>Air:</b> on sunny days thermals lift you over land and sink over water. Wind over ridges gives lift on the windward side. Wind shear, gusts and turbulence are still on.</li></ul>`;
 }
 
 /* ======================= zoomable free-flight map ======================= */
@@ -4102,7 +4173,8 @@ const FXT = {
 const FXR = { off: 0, low: 0.4, med: 1.1, high: 2.4, max: 6 }, FXG = { off: 0, low: 0.03, med: 0.09, high: 0.2, max: 0.45 };
 function fxStart(id) {
   if (FX.on[id] || !G) return; const s = G.s, T = FXT[id], o = { t: 0 }; FX.on[id] = o; FX.n++;
-  if (id === 'eng' || id === 'fire') { s.eng = false; o.noRestart = id === 'fire'; }
+  if ((id === 'eng' || id === 'fire') && TWINS.includes(G.A.id)) { s.engOut = Math.random() < 0.5 ? -1 : 1; o.noRestart = id === 'fire'; o.single = true; setTimeout(() => { if (G && G.s === s && s.engOut) s.eFeath = true; }, 8000); }
+  else if (id === 'eng' || id === 'fire') { s.eng = false; o.noRestart = id === 'fire'; }
   else if (id === 'pwr') o.f = 0.35 + Math.random() * 0.3; else if (id === 'bird') { o.f = 0.5; if (Math.random() < 0.35) fxStart('pitot'); }
   else if (id === 'carb') o.p = 0; else if (id === 'oil') o.life = 120 + Math.random() * 120; else if (id === 'leak') o.r = G.A.ffMax * 0.9;
   else if (id === 'elec') { G.ap.on = false; G.ap.appr = false; G.ap.vorOn = false; o.cool = 0; } else if (id === 'gyro') { G.ap.on = false; o.h = G.at ? G.at.hdg : 0; o.t0 = 0; }
@@ -4110,7 +4182,7 @@ function fxStart(id) {
   else if (id === 'tire') o.side = Math.random() < 0.5 ? -1 : 1;
   try { toast(T.n + '. ' + T.tip, 6500); } catch (e) { } fxBar();
 }
-function fxEnd(id) { delete FX.on[id]; fxBar(); }
+function fxEnd(id) { if ((id === 'eng' || id === 'fire') && G && G.s) { G.s.engOut = 0; G.s.eFeath = false; } delete FX.on[id]; fxBar(); }
 function fxBar() {
   let el = $('fxBar'); if (!el) { el = document.createElement('div'); el.id = 'fxBar'; document.body.appendChild(el); }
   el.innerHTML = Object.keys(FX.on).map(id => `<button class="${FXT[id].sev ? '' : 'w'}" data-fx="${id}">${FXT[id].n}${FX.on[id].fixing ? ' ...' : ''}</button>`).join(''); el.style.display = Object.keys(FX.on).length ? 'flex' : 'none';
@@ -4156,7 +4228,7 @@ function fxTick(s, dt) {
   let tot = 0; for (const id of L) tot += FXT[id].w; let r = Math.random() * tot, pick = L[0]; for (const id of L) { r -= FXT[id].w; if (r <= 0) { pick = id; break; } }
   FX.cool = lv === 'max' ? 40 : 100; if (pick) fxStart(pick);
 }
-function step1(s, c, dt, env) { try { c = fxCtl(s, c, dt); } catch (e) { } step0(s, c, dt, env); try { bannerDrag(s, dt); } catch (e) { } try { fxTick(s, dt); } catch (e) { } }
+function step1(s, c, dt, env) { try { c = fxCtl(s, c, dt); } catch (e) { } step0(s, c, dt, env); try { envCheck(s, dt, env); } catch (e) { } try { bannerDrag(s, dt); } catch (e) { } try { fxTick(s, dt); } catch (e) { } }
 const TRB = { p: [Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28] };
 const trbN = (t, k) => (Math.sin(0.9 * t + TRB.p[k]) + 0.6 * Math.sin(2.3 * t + TRB.p[(k + 1) % 6]) + 0.4 * Math.sin(4.1 * t + TRB.p[(k + 2) % 6])) / 2;
 function step(s, c, dt, env) {
@@ -4168,6 +4240,7 @@ function step(s, c, dt, env) {
     const turb = clamp(spd / 4, 0, 1.6), sig = turb * 0.9 * Math.exp(-agl / 900) + 0.12 * (agl < 3000 ? 1 : 0.4);
     const T = (G && G.plan && G.plan.wind && typeof G.plan.wind.temp === 'number') ? G.plan.wind.temp : 15;
     e = { wind: [(w[0] * ca - w[2] * sa) * k + sig * 0.6 * trbN(t, 0), sig * trbN(t, 2), (w[0] * sa + w[2] * ca) * k + sig * 0.6 * trbN(t, 1)], rhoK: 288.15 / (288.15 + (T - 15)) };
+    if (s.air) { try { e.wind[1] += thermalW(s, e, agl) + ridgeW(s, e, agl); } catch (e2) { } }
     if (s.air) { const ti = turb * Math.exp(-agl / 1500); s.pr += 0.22 * ti * trbN(t * 1.3, 3) * dt * 3; s.qr += 0.08 * ti * trbN(t * 1.1, 4) * dt * 3; }
   } catch (er) { e = env; }
   step1(s, c, dt, e);
@@ -4191,7 +4264,7 @@ function updateHUD0() {
   $('rAltL').textContent = low ? 'AGL' : 'ALT'; $('rAlt').textContent = low ? Math.max(0, Math.round(G.agl / FT / 5) * 5).toLocaleString() : (Math.round(alt / 10) * 10).toLocaleString();
   $('rVs').textContent = (at.vs > 0 ? '+' : '') + Math.round(at.vs / 50) * 50; $('rHdg').textContent = fmtHdg(at.hdg);
   { const dd = G.plan && G.c && apOf(G.c.to) ? Math.hypot(apOf(G.c.to).x - s.p[0], apOf(G.c.to).z - s.p[2]) : 0, gsk = Math.hypot(s.v[0], s.v[2]) / KT, ete = gsk > 25 ? dd / (gsk * KT) : 0; G.gsTxt = s.air ? 'GS ' + Math.round(gsk) + ' kt   DIST ' + (dd / NM).toFixed(1) + ' nm' + (ete ? '   ETE ' + Math.floor(ete / 60) + ':' + String(Math.floor(ete % 60)).padStart(2, '0') : '') + '   ' : ''; }
-  $('rMisc').textContent = (G.gsTxt || '') + 'PWR ' + Math.round(s.thr * 100) + '%   FUEL ' + Math.round(s.fuel) + ' kg' + (G.ap.on ? '   AP ' + fmtHdg(G.ap.hdg) + ' / ' + Math.round(G.ap.alt) : '');
+  $('rMisc').textContent = (G.gsTxt || '') + rpmTxt() + 'PWR ' + Math.round(s.thr * 100) + '%   FUEL ' + Math.round(s.fuel) + ' kg' + (G.ap.on ? '   AP ' + fmtHdg(G.ap.hdg) + ' / ' + Math.round(G.ap.alt) : '');
   drawADI(); drawApproach();
   const k = $('thrK'); if (k) k.style.bottom = (ctl.thr * 89) + '%';
 }

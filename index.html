@@ -389,6 +389,7 @@ function tileCovered(x, z) { return !!TL.idx && !!TL.idx.tiles[Math.floor(x / TL
 async function tileInit() { try { const r = await fetch('world/index.json'); if (r.ok) { const j = await r.json(); if (j && j.tiles) { TL.idx = j; TL.T = j.tile || 4000; } } } catch (e) { } }
 function afClr(x, z) { // true if a tree here would stand on a runway, taxiway or approach path
   for (const ap of AIRPORTS) {
+    if (Math.abs(ap.x - x) > 4800 || Math.abs(ap.z - z) > 4800) continue;
     for (const rw of ap.rw) { const q = toRw(rw, x, z); if (Math.abs(q[0]) < rw.L / 2 + 140 && Math.abs(q[1]) < rw.W / 2 + 75) return true; }
     const tw = ap.osm && ap.osm.tw; if (tw) for (const w of tw) { const fl = w[1], hw = Math.max(7, (w[0] || 18) / 2) + 22; for (let i = 0; i + 3 < fl.length; i += 2) { const ax = fl[i], az = fl[i + 1], bx = fl[i + 2] - ax, bz = fl[i + 3] - az, L2 = bx * bx + bz * bz || 1, t = clamp(((x - ax) * bx + (z - az) * bz) / L2, 0, 1); if (Math.hypot(x - ax - bx * t, z - az - bz * t) < hw) return true; } }
   }
@@ -422,12 +423,20 @@ function faaMerge(blds, ix, iz, T, cen) { // FAA diagram buildings: where OSM al
     if (!hit) blds.push({ c: fb.h >= 20 ? 2 : 1, h: fb.h, p: fb._p, tri: undefined });
   }
 }
-function tileBuild(d, far) {
+const TBQ = { dl: Infinity, q: Promise.resolve(), fast: false };
+function tileBuild(d, far) { TBQ.dl = Infinity; const g = tileBuildG(d, far); let r; while (!(r = g.next()).done); return r.value; }
+async function tileBuildAsync(d, far) { // one tile at a time, a few milliseconds per frame, so flying stays smooth
+  const prev = TBQ.q; let rel; TBQ.q = new Promise(r => { rel = r; }); await prev;
+  try { const g = tileBuildG(d, far); for (;;) { TBQ.dl = performance.now() + (TBQ.fast ? 28 : 4); const r = g.next(); if (r.done) return r.value; await new Promise(res => TBQ.fast ? setTimeout(res, 0) : requestAnimationFrame(() => res())); } }
+  finally { TBQ.dl = Infinity; rel(); }
+}
+function tileNear(k, px, pz) { const i = k.indexOf('_'), ix = +k.slice(0, i), iz = +k.slice(i + 1); return Math.hypot((ix + 0.5) * TL.T - px, (iz + 0.5) * TL.T - pz) < 9000; }
+function* tileBuildG(d, far) {
   const o = { grp: new THREE.Group(), pts: [], cars: null, far: !!far }, g = o.grp, rng = mulberry((d.ix * 73856093) ^ (d.iz * 19349663) ^ 77);
   const keep = (x, z) => !inKfrgBox(x, z, 0), cen = p => { let cx = 0, cz = 0; const n = p.length / 2; for (let i = 0; i < p.length; i += 2) { cx += p[i]; cz += p[i + 1]; } return [cx / n, cz / n]; };
   { // land cover
     const pos = [], nor = [], col = [], idx = [];
-    for (const [cl, p, bt] of d.land) {
+    for (const [cl, p, bt] of d.land) { if (performance.now() > TBQ.dl) yield;
       if (cl === 10 || p.length < 6) continue; const c0 = cen(p); if (!keep(c0[0], c0[1])) continue;
       const cc = LAND_COL[cl] || LAND_COL[0], y = Math.max(0, groundH(c0[0], c0[1])) + 0.08 + cl * 0.004, n = p.length / 2, contour = []; for (let i = 0; i < n; i++) contour.push(new THREE.Vector2(p[2 * i], p[2 * i + 1]));
       let tri = []; if (bt && bt.length) { for (let k = 0; k + 2 < bt.length; k += 3) tri.push([bt[k], bt[k + 1], bt[k + 2]]); } else { try { tri = THREE.ShapeUtils.triangulateShape(contour, []); } catch (e) { } } if (!tri.length) continue;
@@ -437,17 +446,18 @@ function tileBuild(d, far) {
   }
   { // roads and rails
     const pos = [], nor = [], col = [], idx = [];
-    for (const r of d.roads) { if (far && r[0] > 2) continue; const p = r[2], c = ROAD_COL[r[0]] || ROAD_COL[3], hw = r[1] / 2; for (let i = 0; i + 3 < p.length; i += 2) if (keep((p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2)) tileFlat(pos, nor, col, idx, c, p[i], p[i + 1], p[i + 2], p[i + 3], hw, 0.2); }
+    for (const r of d.roads) { if (far && r[0] > 2) continue; if (performance.now() > TBQ.dl) yield; const p = r[2], c = ROAD_COL[r[0]] || ROAD_COL[3], hw = r[1] / 2; for (let i = 0; i + 3 < p.length; i += 2) if (keep((p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2)) tileFlat(pos, nor, col, idx, c, p[i], p[i + 1], p[i + 2], p[i + 3], hw, 0.2); }
     for (const p of d.rails) for (let i = 0; i + 3 < p.length; i += 2) if (keep(p[i], p[i + 1])) tileFlat(pos, nor, col, idx, [0.27, 0.25, 0.23], p[i], p[i + 1], p[i + 2], p[i + 3], 1.5, 0.22);
     if (idx.length) { const m = tileMesh(pos, nor, col, idx, 3); m.renderOrder = 3; g.add(m); }
   }
+  if (performance.now() > TBQ.dl) yield;
   const blds = d.bld.filter(b => { const c = cen(b[2]); return keep(c[0], c[1]); }).map(b => ({ c: b[0], h: b[1], p: b[2], tri: b[3] }));
   if (!far) faaMerge(blds, d.ix, d.iz, TL.T, cen);
-  if (blds.length && !far) { const m = buildBuildingsMesh(blds); scene.remove(m); g.add(m); }
+  if (!far) for (let q = 0; q < blds.length; q += 200) { const m = buildBuildingsMesh(blds.slice(q, q + 200)); scene.remove(m); g.add(m); if (performance.now() > TBQ.dl) yield; }
   { // trees: forests, tree rows, yards
     const spots = [];
     if (d.trees && d.trees.length) { for (let i = 0; i + 2 < d.trees.length; i += 3) if (keep(d.trees[i], d.trees[i + 1]) && !afClr(d.trees[i], d.trees[i + 1])) spots.push([d.trees[i], d.trees[i + 1], d.trees[i + 2] / 100]); }
-    else for (const [cl, p] of d.land) { if (cl !== 3) continue; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); } for (let x = x0; x < x1; x += 13) for (let z = z0; z < z1; z += 13) { const jx = x + (rng() - 0.5) * 9, jz = z + (rng() - 0.5) * 9; if (keep(jx, jz) && !afClr(jx, jz) && realInPoly(jx, jz, p)) spots.push([jx, jz, 0.55 + rng() * 0.5]); } }
+    else for (const [cl, p] of d.land) { if (cl !== 3) continue; if (performance.now() > TBQ.dl) yield; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); } for (let x = x0; x < x1; x += 13) for (let z = z0; z < z1; z += 13) { const jx = x + (rng() - 0.5) * 9, jz = z + (rng() - 0.5) * 9; if (keep(jx, jz) && !afClr(jx, jz) && realInPoly(jx, jz, p)) spots.push([jx, jz, 0.55 + rng() * 0.5]); } }
     if (!(d.trees && d.trees.length)) for (const r of d.rows) for (let i = 0; i + 3 < r.length; i += 2) { const dx = r[i + 2] - r[i], dz = r[i + 3] - r[i + 1], n = Math.floor(Math.hypot(dx, dz) / 8); for (let k = 0; k <= n; k++) if (keep(r[i], r[i + 1]) && !afClr(r[i], r[i + 1])) spots.push([r[i] + dx * k / Math.max(1, n), r[i + 1] + dz * k / Math.max(1, n), 0.5 + rng() * 0.4]); }
     if (!(d.trees && d.trees.length)) for (const b of blds) if (b.c === 0 && rng() < 0.55) { const c = cen(b.p), a = rng() * 6.283, r = 9 + rng() * 8; spots.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, 0.4 + rng() * 0.4]); }
     if (far) spots.length = 0;
@@ -455,21 +465,21 @@ function tileBuild(d, far) {
     while (spots.length > 3500) spots.splice((rng() * spots.length) | 0, 1);
     if (spots.length) {
       const cg = new THREE.ConeGeometry(3.6, 15, 5, 1, true); cg.translate(0, 7.5, 0); const tr = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ color: 0xffffff }), spots.length), m4 = new THREE.Matrix4(), cl = new THREE.Color(); let n = 0;
-      for (const s of spots) { const y = groundH(s[0], s[1]); if (y < 1) continue; m4.compose(new THREE.Vector3(s[0], y - 0.4, s[1]), new THREE.Quaternion(), new THREE.Vector3(s[2] * 1.5, s[2] * 1.2, s[2] * 1.5)); tr.setMatrixAt(n, m4); tr.setColorAt(n, cl.setRGB(0.10 + rng() * 0.08, 0.22 + rng() * 0.12, 0.09 + rng() * 0.05)); n++; }
+      for (const s of spots) { const y = groundH(s[0], s[1]); if (performance.now() > TBQ.dl) yield; if (y < 1) continue; m4.compose(new THREE.Vector3(s[0], y - 0.4, s[1]), new THREE.Quaternion(), new THREE.Vector3(s[2] * 1.5, s[2] * 1.2, s[2] * 1.5)); tr.setMatrixAt(n, m4); tr.setColorAt(n, cl.setRGB(0.10 + rng() * 0.08, 0.22 + rng() * 0.12, 0.09 + rng() * 0.05)); n++; }
       tr.count = n; tr.frustumCulled = false; g.add(tr);
     }
   }
   scene.add(g);
   { // night lights: windows and street lamps
     const lb = new LB();
-    for (const b of blds) { const c = cen(b.p), y0 = groundH(c[0], c[1]); if (b.c === 0) { if (rng() < (far ? 0.12 : 0.4)) lb.add(c[0], y0 + 3, c[1], rng() < 0.2 ? LC.white : LC.warm, 0.6 + rng() * 0.4); } else if (b.c !== 4) for (let k = 0; k < 1 + Math.min(4, (b.h / 8) | 0); k++) { const q = (rng() * b.p.length / 2) | 0; lb.add(b.p[2 * q], y0 + b.h * (0.3 + rng() * 0.5), b.p[2 * q + 1], LC.warm, 0.7); } }
-    for (const r of d.roads) { if (r[0] > (far ? 1 : 3)) continue; const p = r[2], sp = (r[0] <= 2 ? 45 : 65) * (far ? 2 : 1); let dd = 0, side = 1; for (let i = 0; i + 3 < p.length; i += 2) { const dx = p[i + 2] - p[i], dz = p[i + 3] - p[i + 1], L = Math.hypot(dx, dz); if (L < 0.01) continue; while (dd < L) { const x = p[i] + dx * dd / L, z = p[i + 1] + dz * dd / L; side = -side; if (keep(x, z)) lb.add(x - dz / L * (r[1] / 2 + 1.5) * side, groundH(x, z) + 7, z + dx / L * (r[1] / 2 + 1.5) * side, LC.amber, 0.85); dd += sp; } dd -= L; }
+    for (const b of blds) { const c = cen(b.p), y0 = groundH(c[0], c[1]); if (performance.now() > TBQ.dl) yield; if (b.c === 0) { if (rng() < (far ? 0.12 : 0.4)) lb.add(c[0], y0 + 3, c[1], rng() < 0.2 ? LC.white : LC.warm, 0.6 + rng() * 0.4); } else if (b.c !== 4) for (let k = 0; k < 1 + Math.min(4, (b.h / 8) | 0); k++) { const q = (rng() * b.p.length / 2) | 0; lb.add(b.p[2 * q], y0 + b.h * (0.3 + rng() * 0.5), b.p[2 * q + 1], LC.warm, 0.7); } }
+    for (const r of d.roads) { if (r[0] > (far ? 1 : 3)) continue; if (performance.now() > TBQ.dl) yield; const p = r[2], sp = (r[0] <= 2 ? 45 : 65) * (far ? 2 : 1); let dd = 0, side = 1; for (let i = 0; i + 3 < p.length; i += 2) { const dx = p[i + 2] - p[i], dz = p[i + 3] - p[i + 1], L = Math.hypot(dx, dz); if (L < 0.01) continue; while (dd < L) { const x = p[i] + dx * dd / L, z = p[i + 1] + dz * dd / L; side = -side; if (keep(x, z)) lb.add(x - dz / L * (r[1] / 2 + 1.5) * side, groundH(x, z) + 7, z + dx / L * (r[1] / 2 + 1.5) * side, LC.amber, 0.85); dd += sp; } dd -= L; }
     }
     if (lb.p.length) { const m = mkPoints(lb, 2); const t = curTod(); m.visible = t !== 'day'; m.material.opacity = t === 'dusk' ? 0.8 : 1; o.pts.push(m); }
   }
   { // moving cars: red tail lights going away, white headlights coming toward you
     const gap = { 0: 40, 1: 45, 2: 55, 3: 90, 4: 170 }, cars = [];
-    for (const r of d.roads) { if (r[0] > (far ? 0 : 4)) continue; const p = r[2], cum = [0]; for (let i = 0; i + 3 < p.length; i += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[i + 2] - p[i], p[i + 3] - p[i + 1])); const Lt = cum[cum.length - 1]; if (Lt < 40) continue; const n = Math.floor(Lt / gap[r[0]]) + (rng() < (Lt / gap[r[0]]) % 1 ? 1 : 0); for (let k = 0; k < n; k++) cars.push({ p, cum, Lt, d: rng() * Lt, dir: rng() < 0.5 ? 1 : -1, spd: (r[0] <= 2 ? 14 : r[0] === 3 ? 10 : 7) * (0.8 + rng() * 0.5), lane: r[1] * 0.22, vx: 0, vz: 0 }); }
+    for (const r of d.roads) { if (r[0] > (far ? 0 : 4)) continue; if (performance.now() > TBQ.dl) yield; const p = r[2], cum = [0]; for (let i = 0; i + 3 < p.length; i += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[i + 2] - p[i], p[i + 3] - p[i + 1])); const Lt = cum[cum.length - 1]; if (Lt < 40) continue; const n = Math.floor(Lt / gap[r[0]]) + (rng() < (Lt / gap[r[0]]) % 1 ? 1 : 0); for (let k = 0; k < n; k++) cars.push({ p, cum, Lt, d: rng() * Lt, dir: rng() < 0.5 ? 1 : -1, spd: (r[0] <= 2 ? 14 : r[0] === 3 ? 10 : 7) * (0.8 + rng() * 0.5), lane: r[1] * 0.22, vx: 0, vz: 0 }); }
     if (cars.length > 900) { for (let q = cars.length - 1; q > 0; q--) { const w = Math.floor(rng() * (q + 1)), tmp = cars[q]; cars[q] = cars[w]; cars[w] = tmp; } cars.length = 900; }
     cars.forEach((c, q) => { c.cc = DAYCAR[q % DAYCAR.length]; });
     if (cars.length) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cars.length * 3), 3)); geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cars.length * 3), 3));
@@ -527,11 +537,11 @@ async function tileGet(k) {
 }
 async function tileLoad(k, far) {
   TL.busy.add(k);
-  try { const d = await tileGet(k); TL.got.set(k, tileBuild(d, far)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [], retry: performance.now() + 12000 }); console.warn('tile', k, e); if (TL.fail === 3 && typeof toast === 'function') toast('Some map tiles did not load. Retrying.', 3500); }
+  try { const d = await tileGet(k); TL.got.set(k, await tileBuildAsync(d, far)); } catch (e) { TL.fail++; TL.got.set(k, { grp: null, pts: [], retry: performance.now() + 12000 }); console.warn('tile', k, e); if (TL.fail === 3 && typeof toast === 'function') toast('Some map tiles did not load. Retrying.', 3500); }
   TL.busy.delete(k);
 }
 function tileTick(dt, px, pz, py) {
-  if (!TL.idx) return; for (const o of TL.got.values()) if (o.cars) tileCars(o, dt);
+  if (!TL.idx) return; for (const [k0, o] of TL.got) if (o.cars && tileNear(k0, px, pz)) tileCars(o, dt);
   TL.t -= dt; if (TL.t > 0) return; TL.t = (frame.ema || 16) > 45 ? 2.5 : 0.5;
   for (const [k, o] of TL.got) if (o.retry && performance.now() > o.retry) TL.got.delete(k);
   const T = TL.T, NEAR = (SS('saver') || cruiseSave()) ? 4800 : 6500, mult = { short: 0.7, normal: 1, far: 1.5 }[SS('saver') ? 'short' : SS('dist')] || 1, FAR = clamp(10000 + Math.max(0, py || 0) * 5, 10000, 20000) * mult;
@@ -1490,6 +1500,7 @@ function rebuildIndex() {
 const PATCH = {}, PATCH_HALF = 8000;
 function roadAngle(x, z) { return 0.35 + 0.55 * Math.floor(fbm(x / 7000 + 11, z / 7000 - 4, 2) * 4.2); }
 function ensureDetail(ap) {
+  if (ap && !PATCH[ap.id] && CT && farOut(ap.x, ap.z) > 0) { try { farNeed(ap.x, ap.z); ensureDetailFar(ap); } catch (e) { console.warn(e); } return; }
   if (!ap || PATCH[ap.id] || !CT) return; PATCH[ap.id] = true;
   const { nx, nz, dx, dz } = CT, cx = Math.round((ap.x - TB.x0) / dx), cz = Math.round((ap.z - TB.z0) / dz);
   const hi = Math.ceil(PATCH_HALF / dx), hj = Math.ceil(PATCH_HALF / dz);
@@ -1548,7 +1559,7 @@ function buildScatter() {
   const houses = new THREE.InstancedMesh(boxG, new THREE.MeshLambertMaterial({ color: 0xffffff }), NH);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), cc = new THREE.Color();
   const pal = [0xd9d6cf, 0xb9b4aa, 0xcfc3b0, 0xa9aeb5, 0x9a8f86, 0xe2e0da, 0x8c6f5c, 0xc2b08f];
-  const around = (R) => { const a = AIRPORTS[Math.floor(rng() * AIRPORTS.length)], r = R * Math.sqrt(rng()), t = rng() * 6.283; return [a.x + Math.cos(t) * r, a.z + Math.sin(t) * r]; };
+  const around = (R) => { const a = apIn()[Math.floor(rng() * apIn().length)], r = R * Math.sqrt(rng()), t = rng() * 6.283; return [a.x + Math.cos(t) * r, a.z + Math.sin(t) * r]; };
   let n = 0, tries = 0;
   while (n < NH && tries++ < 260000) {
     const p = around(15000), x = p[0], z = p[1];
@@ -2374,7 +2385,7 @@ function buildTraffic() {
   }
 }
 function newRoute(tr, rng, rand) {
-  const a = AIRPORTS[Math.floor(rng() * AIRPORTS.length)]; let b = a; while (b === a) b = AIRPORTS[Math.floor(rng() * AIRPORTS.length)];
+  const a = apIn()[Math.floor(rng() * apIn().length)]; let b = a; while (b === a) b = apIn()[Math.floor(rng() * apIn().length)];
   tr.a = a; tr.b = b; tr.dist = Math.hypot(a.x - b.x, a.z - b.z); tr.t = rand ? rng() * tr.dist : 0; tr.hdg = Math.atan2(b.x - a.x, -(b.z - a.z));
 }
 const trafficRng = mulberry(5);
@@ -2990,7 +3001,8 @@ async function maybeResume() {
 async function tilePreload(px, pz) {
   if (!TL.idx) return; const T = TL.T, ix0 = Math.floor(px / T), iz0 = Math.floor(pz / T), want = [];
   for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const k = (ix0 + a) + '_' + (iz0 + b); if (!TL.idx.tiles[k] || TL.got.has(k) || TL.busy.has(k)) continue; want.push([Math.hypot((ix0 + a + 0.5) * T - px, (iz0 + b + 0.5) * T - pz), k]); }
-  want.sort((a, b) => a[0] - b[0]); await Promise.all(want.slice(0, 4).map(w => tileLoad(w[1])));
+  want.sort((a, b) => a[0] - b[0]); TBQ.fast = true; try { await Promise.all(want.slice(0, 4).map(w => tileLoad(w[1]))); } finally { TBQ.fast = false; }
+  try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) { }
 }
 addEventListener('pagehide', saveFlight);
 let hiddenAt = 0;
@@ -4177,7 +4189,7 @@ function longHauls(sv, from, own, rng, tb, idn0) {
   return res;
 }
 /* ---- real terrain outside the detailed map (AWS terrain tiles, kept on the phone) ---- */
-const FAR = { T: new Map(), P: new Map(), ver: 0, fail: 0, n: 512 };
+const FAR = { T: new Map(), P: new Map(), bad: new Map(), ver: 0, fail: 0, n: 256 };
 function farXY(lat, lon) { const la = lat * DEG; return [(lon + 180) / 360 * FAR.n, (1 - Math.log(Math.tan(la) + 1 / Math.cos(la)) / Math.PI) / 2 * FAR.n]; }
 function farOut(x, z) { const T = window.REAL_TERR; if (!T) return 0; const x1 = T.x0 + (T.nx - 1) * T.d, z1 = T.z0 + (T.nz - 1) * T.d; return Math.hypot(Math.max(T.x0 - x, 0, x - x1), Math.max(T.z0 - z, 0, z - z1)); }
 function farH(x, z) {
@@ -4192,12 +4204,12 @@ function farMix(x, z, h0) { // blend the detailed terrain into the wide one outs
 async function farLoad(tx, ty) {
   const key = tx + '_' + ty; if (FAR.T.has(key)) return; if (FAR.P.has(key)) return FAR.P.get(key);
   const pr = (async () => {
-    const url = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/9/' + tx + '/' + ty + '.png'; let blob = null, cache = null;
+    const url = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/8/' + tx + '/' + ty + '.png'; let blob = null, cache = null;
     try { cache = await caches.open('cd-far-v1'); const m = await cache.match(url); if (m) blob = await m.blob(); } catch (e) { }
     if (!blob) { const r = await fetch(url, { mode: 'cors' }); if (!r.ok) throw new Error('far ' + r.status); try { if (cache) cache.put(url, r.clone()); } catch (e) { } blob = await r.blob(); }
     const bm = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }), cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d', { willReadFrequently: true }); c.drawImage(bm, 0, 0);
     const d = c.getImageData(0, 0, 256, 256).data, u = new Float32Array(65536); for (let i = 0; i < 65536; i++) u[i] = d[i * 4] * 256 + d[i * 4 + 1] + d[i * 4 + 2] / 256 - 32768; FAR.T.set(key, u); FAR.ver++;
-  })().catch(() => { FAR.fail++; }).then(() => { FAR.P.delete(key); }); FAR.P.set(key, pr); return pr;
+  })().catch(() => { FAR.fail++; FAR.bad.set(key, performance.now()); }).then(() => { FAR.P.delete(key); }); FAR.P.set(key, pr); return pr;
 }
 async function farRoute(pts, onProg) { // fetch the wide terrain along a route and a little to each side
   if (!window.REAL_TERR || !pts || pts.length < 2) return 0; const want = new Map();
@@ -4213,6 +4225,99 @@ function helpFar() {
 }
 
 window.__farOn = true;
+
+/* ======================= fix48: terrain outside the detailed map ======================= */
+const OT = { D: 1500, N: 281, mesh: null, water: null, k: 0, m: 0, gen: null, ver: -1, holes: [], t: 0, dl: 0 };
+function farReady(x, z) { return farH(x, z) !== null; }
+function farKey(x, z) { const p = farXY(LAT0 - z / KZ, LON0 + x / KX); return [Math.floor(p[0]), Math.floor(p[1])]; }
+function farNeed(x, z) { const t = farKey(x, z), key = t[0] + '_' + t[1]; if (FAR.T.has(key) || FAR.P.has(key)) return; const b = FAR.bad.get(key); if (b && performance.now() - b < 60000) return; if (FAR.P.size < 4) farLoad(t[0], t[1]); }
+function otScan(k, m, load) { // true when every tile the outer mesh needs is here (or failed)
+  let all = true; const R = (OT.N - 1) / 2 * OT.D, st = 40000;
+  for (let x = -R; x <= R + 1; x += st) for (let z = -R; z <= R + 1; z += st) {
+    const X = k * OT.D + x, Z = m * OT.D + z; if (farOut(X, Z) <= 0) continue; const t = farKey(X, Z), key = t[0] + '_' + t[1]; if (FAR.T.has(key)) continue;
+    const b = FAR.bad.get(key); if (b && performance.now() - b < 60000) continue; all = false; if (load) farNeed(X, Z);
+  }
+  return all;
+}
+const inTB = (x, z) => x >= TB.x0 && x <= TB.x1 && z >= TB.z0 && z <= TB.z1;
+function otReindex() {
+  if (!OT.mesh) return; const N = OT.N, h = (N - 1) / 2, D = OT.D, idx = OT.mesh.geometry.index.array; let q = 0;
+  for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) {
+    const k = OT.k - h + i, m = OT.m - h + j, x0 = k * D, z0 = m * D, x1 = x0 + D, z1 = z0 + D;
+    if (inTB(x0, z0) && inTB(x1, z0) && inTB(x0, z1) && inTB(x1, z1)) continue;
+    let hole = false; for (const H of OT.holes) if (k >= H[0] && k < H[2] && m >= H[1] && m < H[3]) { hole = true; break; } if (hole) continue;
+    const a = j * N + i, b = a + 1, c = a + N, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d;
+  }
+  OT.mesh.geometry.setDrawRange(0, q); OT.mesh.geometry.index.needsUpdate = true;
+}
+function* otBuild(kc, mc) {
+  const D = OT.D, N = OT.N, h = (N - 1) / 2, pos = new Float32Array(N * N * 3), nor = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), Y = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) { for (let i = 0; i < N; i++) { const x = (kc - h + i) * D, z = (mc - h + j) * D, y = groundH(x, z), k = (j * N + i) * 3; Y[j * N + i] = y; pos[k] = x; pos[k + 1] = inTB(x, z) ? y - 1.5 : y; pos[k + 2] = z; } if (performance.now() > OT.dl) yield; }
+  for (let j = 0; j < N; j++) { for (let i = 0; i < N; i++) {
+    const k = (j * N + i) * 3, x = pos[k], y = Y[j * N + i], hl = Y[j * N + Math.max(0, i - 1)], hr = Y[j * N + Math.min(N - 1, i + 1)], hu = Y[Math.max(0, j - 1) * N + i], hd = Y[Math.min(N - 1, j + 1) * N + i];
+    let nx = (hl - hr) / (2 * D), nz = (hu - hd) / (2 * D); const nl = Math.hypot(nx, 1, nz); nor[k] = nx / nl; nor[k + 1] = 1 / nl; nor[k + 2] = nz / nl;
+    const z = pos[k + 2], c = landColor(x, y, nor[k + 1], fbm(x / 700, z / 700, 2), urban(x, z), y > 1.5 ? waterDist(x, z) : 0); col[k] = c[0]; col[k + 1] = c[1]; col[k + 2] = c[2];
+  } if (performance.now() > OT.dl) yield; }
+  if (!OT.mesh) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(new THREE.BufferAttribute(new Uint32Array((N - 1) * (N - 1) * 6), 1));
+    OT.mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true })); OT.mesh.frustumCulled = false; scene.add(OT.mesh);
+    const wg = new THREE.PlaneGeometry(1.6e6, 1.6e6); wg.rotateX(-Math.PI / 2); OT.water = new THREE.Mesh(wg, waterMesh.material); OT.water.position.set((TB.x0 + TB.x1) / 2, -0.4, (TB.z0 + TB.z1) / 2); OT.water.frustumCulled = false; scene.add(OT.water);
+  } else { const g = OT.mesh.geometry; g.attributes.position.array.set(pos); g.attributes.normal.array.set(nor); g.attributes.color.array.set(col); g.attributes.position.needsUpdate = g.attributes.normal.needsUpdate = g.attributes.color.needsUpdate = true; }
+  OT.k = kc; OT.m = mc; otReindex();
+}
+function otTick(dt, px, pz) {
+  if (!window.__farOn || !CT || !scene || RG.id !== 'nyc' || !window.REAL_TERR || typeof waterMesh === 'undefined' || !waterMesh) return;
+  if (OT.gen) { OT.dl = performance.now() + 5; const r = OT.gen.next(); if (r.done) OT.gen = null; return; }
+  OT.t -= dt; if (OT.t > 0) return; OT.t = 0.5;
+  for (const ap of AIRPORTS) { if (PATCH[ap.id] || Math.abs(ap.x - px) > 40000 || Math.abs(ap.z - pz) > 40000 || farOut(ap.x, ap.z) <= 0) continue; farNeed(ap.x, ap.z); if (OT.mesh) { ensureDetailFar(ap); } }
+  const k = Math.round(px / OT.D), m = Math.round(pz / OT.D), moved = !OT.mesh || Math.hypot(k - OT.k, m - OT.m) * OT.D > 45000, fresh = OT.ver !== FAR.ver;
+  if (!moved && !fresh) return; if (!otScan(k, m, true)) return;
+  OT.ver = FAR.ver; OT.gen = otBuild(moved ? k : OT.k, moved ? m : OT.m);
+}
+function ensureDetailFar(ap) { // airports outside the detailed map get their own fine patch, lined up with the outer terrain grid
+  if (PATCH[ap.id] || !OT.mesh) return; const D = OT.D, k0 = Math.floor(ap.x / D) - 5, m0 = Math.floor(ap.z / D) - 5, k1 = k0 + 11, m1 = m0 + 11;
+  const X0 = k0 * D, X1 = k1 * D, Z0 = m0 * D, Z1 = m1 * D, spanX = X1 - X0, spanZ = Z1 - Z0;
+  for (const q of [[X0, Z0], [X1, Z0], [X0, Z1], [X1, Z1], [ap.x, ap.z]]) if (!farReady(q[0], q[1]) && farOut(q[0], q[1]) > 0) { farNeed(q[0], q[1]); return; }
+  PATCH[ap.id] = true; const sub = 4, gx = (k1 - k0) * sub, gz = (m1 - m0) * sub, vx = gx + 1, vz = gz + 1, nh = (k, m) => groundH(k * D, m * D);
+  const pos = new Float32Array(vx * vz * 3), uv = new Float32Array(vx * vz * 2), H = new Float32Array(vx * vz);
+  for (let j = 0; j < vz; j++) for (let i = 0; i < vx; i++) {
+    const x = X0 + spanX * i / gx, z = Z0 + spanZ * j / gz, k = j * vx + i; let y;
+    if (i === 0 || i === gx || j === 0 || j === gz) { const fi = i / sub, fj = j / sub, a0 = Math.min(Math.floor(fi), k1 - k0 - 1), b0 = Math.min(Math.floor(fj), m1 - m0 - 1), ta = fi - a0, tb = fj - b0; y = lerp(lerp(nh(k0 + a0, m0 + b0), nh(k0 + a0 + 1, m0 + b0), ta), lerp(nh(k0 + a0, m0 + b0 + 1), nh(k0 + a0 + 1, m0 + b0 + 1), ta), tb); } else y = groundH(x, z);
+    H[k] = y; pos[k * 3] = x; pos[k * 3 + 1] = y; pos[k * 3 + 2] = z; uv[k * 2] = i / gx; uv[k * 2 + 1] = j / gz;
+  }
+  const ind = new Uint32Array(gx * gz * 6); let q = 0;
+  for (let j = 0; j < gz; j++) for (let i = 0; i < gx; i++) { const a = j * vx + i, b = a + 1, c = a + vx, d = c + 1; ind[q++] = a; ind[q++] = c; ind[q++] = b; ind[q++] = b; ind[q++] = c; ind[q++] = d; }
+  // paint
+  const TS = 1024, cv = document.createElement('canvas'); cv.width = cv.height = TS; const cx2 = cv.getContext('2d'), im = cx2.createImageData(TS, TS), px = im.data;
+  const hp = HWY_W.filter(pl => pl.some(p => p[0] > X0 - 2500 && p[0] < X1 + 2500 && p[1] > Z0 - 2500 && p[1] < Z1 + 2500)); // highways touching this patch
+  for (let py = 0; py < TS; py++) for (let pxl = 0; pxl < TS; pxl++) {
+    const x = X0 + spanX * (pxl + 0.5) / TS, z = Z0 + spanZ * (py + 0.5) / TS, fx = (x - X0) / spanX * gx, fz = (z - Z0) / spanZ * gz, ii = Math.min(gx - 1, fx | 0), jj = Math.min(gz - 1, fz | 0);
+    const y = lerp(lerp(H[jj * vx + ii], H[jj * vx + ii + 1], fx - ii), lerp(H[(jj + 1) * vx + ii], H[(jj + 1) * vx + ii + 1], fx - ii), fz - jj);
+    let c;
+    if (y <= 1.2) c = PAL.water;
+    else {
+      const n = fbm(x / 700, z / 700, 2), u = urban(x, z), wd = waterDist(x, z);
+      if (wd < 240 && y < 7) c = mix3(PAL.sand, PAL.grass, sstep(120, 240, wd));
+      else if (u > BUILT_T) {
+        const th = roadAngle(x, z), cs = Math.cos(th), sn = Math.sin(th), uu = x * cs + z * sn, vv = -x * sn + z * cs;
+        const fu = ((uu % 118) + 118) % 118, fv = ((vv % 168) + 168) % 168, h = hash2((uu / 22) | 0, (vv / 22) | 0);
+        if (fu < 8 || fv < 7) c = PAL.road;
+        else if (h > 0.55) { const t = 0.7 + 0.3 * hash2((uu / 11) | 0, (vv / 11) | 0); c = mix3(PAL.lawn, PAL.roof, t * 0.6); }
+        else c = mix3(PAL.lawn, PAL.urb, 0.18);
+        if (u > 0.78 && h > 0.35) c = mix3(c, PAL.urb, 0.6);
+      } else c = n > 0.56 ? mix3(PAL.grass, PAL.forest, sstep(0.56, 0.72, n)) : mix3(PAL.farm, PAL.grass, sstep(0.28, 0.56, n));
+      for (const pl of hp) { const d = lineDist(x, z, pl); if (d < 16) { c = d < 3 && ((x * 0.37 + z * 0.21) % 40 < 20) ? [0.65, 0.62, 0.45] : (d < 14 ? [0.30, 0.31, 0.34] : PAL.road); break; } }
+    }
+    const sh = 0.94 + 0.12 * hash2(pxl >> 1, py >> 1), k = (py * TS + pxl) * 4;
+    px[k] = Math.min(255, c[0] * sh * 255); px[k + 1] = Math.min(255, c[1] * sh * 255); px[k + 2] = Math.min(255, c[2] * sh * 255); px[k + 3] = 255;
+  }
+  cx2.putImageData(im, 0, 0);
+  const tex = new THREE.CanvasTexture(cv); tex.flipY = false; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 8;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(new THREE.BufferAttribute(ind, 1)); g.computeVertexNormals();
+  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex })); scene.add(mesh);
+  OT.holes.push([k0, m0, k1, m1]); otReindex();
+}
+function apIn() { return window.__apin || (window.__apin = AIRPORTS.filter(a => farOut(a.x, a.z) <= 0)); }
 
 /* ======================= zoomable free-flight map ======================= */
 const FFC = [['New York', 40.7128, -74.006], ['Newark', 40.7357, -74.1724], ['Philadelphia', 39.9526, -75.1652], ['Allentown', 40.6084, -75.4902], ['Trenton', 40.2171, -74.7429], ['Atlantic City', 39.3643, -74.4229], ['Hartford', 41.7658, -72.6734], ['New Haven', 41.3083, -72.9279], ['Bridgeport', 41.1792, -73.1894], ['Stamford', 41.0534, -73.5387], ['Poughkeepsie', 41.7004, -73.921], ['Montauk', 41.0359, -71.9545], ['Islip', 40.7298, -73.2104], ['White Plains', 41.034, -73.7629]];
@@ -4692,6 +4797,7 @@ function frame(ts) {
   const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016); lastTs = ts;
   const w = innerWidth, h = innerHeight, rs = renderScale(); if (Math.abs(rs - (frame.rs || 0)) > 0.001 || frame.w !== w || frame.h !== h) { frame.rs = rs; frame.w = w; frame.h = h; renderer.setPixelRatio(1); renderer.setSize(Math.max(2, Math.floor(w * rs)), Math.max(2, Math.floor(h * rs)), false); camera.aspect = w / h; camera.updateProjectionMatrix(); $('gl').classList.toggle('pix', !!SV.settings.pixel); }
   if (SV.settings.tod === 'real' && ts - (window._todT || 0) > 30000) { window._todT = ts; const c = curTod(); if (c !== window._todC) { window._todC = c; setWeather(false); } }
+  try { otTick(dt, camera.position.x, camera.position.z); } catch (e) { console.warn('otTick', e); }
   tileTick(dt, camera.position.x, camera.position.z, camera.position.y);
   { const fv = SS('fov'); if (camera.fov !== fv) { camera.fov = fv; camera.updateProjectionMatrix(); } }
   { const hi = camera.position.y < 2600 || mode !== 'fly'; if (frame.hiOn === undefined) frame.hiOn = true; hiDetail(hi); }

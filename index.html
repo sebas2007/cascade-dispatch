@@ -196,7 +196,7 @@ body.apopen #atc,body.apopen #nextHint,body.apopen #side{display:none}
 #apBtn.on{background:var(--ok);color:#06210f}
 @media (max-width:560px){#topbar #tWind,#topbar .grow{display:none}#topbar #tRoute{flex:1 1 auto;min-width:64px}#topbar{gap:5px}#topbar button{padding:5px 6px}}
 #topbar{flex-wrap:nowrap;overflow:hidden}#topbar>*{flex-shrink:0}#topbar #tRoute{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}#topbar .chip{font-size:11px;padding:3px 7px}#topbar button{padding:5px 8px}
-body.compact #thrB{display:none}
+body.compact #thrB{display:none}.aprb{border-color:#5de08a!important;color:#5de08a}.aprb.on{background:#17402a!important;color:#fff}.aprb.dim{opacity:.45}
 #loader{background:#0f1726!important;font-family:ui-monospace,Menlo,monospace}#loader .ldTop{margin-bottom:6px}.ldLoad{font-size:22px;color:#9aa8bd;letter-spacing:.04em}.ldDots i{display:inline-block;width:5px;height:5px;background:#9aa8bd;margin:0 4px;animation:ldd 1.2s infinite}.ldDots i:nth-child(2){animation-delay:.2s}.ldDots i:nth-child(3){animation-delay:.4s}@keyframes ldd{0%,80%,100%{opacity:.2}40%{opacity:1}}
 #ldTxt{font-size:11px;color:#5d7090;min-height:14px}.ldRoute{font-size:30px;font-weight:700;letter-spacing:.06em;margin-top:18px}.ldRoute span{color:#e8eef7}.ldSub{font-size:13px;color:#8fa3c0;text-align:center;max-width:90vw}
 .ldBarW{width:min(420px,86vw);height:16px;background:#232b3d;margin-top:8px}#ldBar{height:100%;width:2%;background:#f5a623;transition:width .4s}.ldEta{font-size:22px;color:#f5a623;font-weight:600}
@@ -229,7 +229,7 @@ body.compact #rMisc{font-size:10px}
 <div id="exam" class="modal" hidden></div>
 <div id="debrief" class="modal" hidden></div>
 <div id="instr" class="modal" hidden><div class="sheet wide"><div class="eh">Instructions</div><div id="instrBody"></div><div class="btns"><button class="go" id="instrBack">Back</button></div></div></div>
-<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="eh" style="margin-top:6px">Graphics</div><div class="btns" id="gfxRow" style="margin-bottom:8px"><button data-act="gfx" data-v="sharp">Sharp</button><button data-act="gfx" data-v="bal">Balanced</button><button data-act="gfx" data-v="save">Saver</button></div><p class="lead" id="gfxNote" style="margin:0 auto 12px;font-size:12px"></p><div class="btns"><button class="go" data-act="resume">Resume</button><button data-act="instr" id="instrBtn">Instructions</button><button id="endHere" hidden>End flight here</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
+<div id="pause" class="modal" hidden><div class="sheet"><div class="eh">Paused</div><h2>Flight paused</h2><p class="lead" style="margin:0 auto 14px">Controls: arrows pitch and roll, W and S throttle, A and D rudder and steering, Space brakes, B parking brake, F and V flaps, G gear, L lights, R radio, C camera, M map.</p><div class="eh" style="margin-top:6px">Graphics</div><div class="btns" id="gfxRow" style="margin-bottom:8px"><button data-act="gfx" data-v="sharp">Sharp</button><button data-act="gfx" data-v="bal">Balanced</button><button data-act="gfx" data-v="save">Saver</button></div><p class="lead" id="gfxNote" style="margin:0 auto 12px;font-size:12px"></p><div class="btns"><button class="go" data-act="resume">Resume</button><button data-act="instr" id="instrBtn">Instructions</button><button data-act="helpOpen">Help</button><button id="endHere" hidden>End flight here</button><button class="ghost" data-act="abort">Abort flight</button></div></div></div>
 <div id="toast"></div>
 <script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => { }));</script>
 <script src="three.min.js"></script>
@@ -1350,9 +1350,9 @@ function apStep(ap, s, wind, dt) {
   ap.bank += clamp(bankT - ap.bank, -6 * dt, 6 * dt);
   const rol = clamp((ap.bank - at.bank) * 0.035, -1, 1);
   // vertical: feed-forward angle of attack for the load factor, feedback on flight-path angle
-  const lim = A.id === 'kestrel' ? 2200 : A.id === 'heron' ? 1400 : 750, limD = A.id === 'kestrel' ? 2600 : A.id === 'heron' ? 1700 : 1000;
+  const lim = apLim(A)[0], limD = apLim(A)[1];
   const rt = ap.vsR && !ap.appr ? ap.vsR : 0, vsT = clamp((ap.alt - alt) * 4, -(rt ? Math.min(limD, rt) : limD), rt ? Math.min(lim, rt) : lim);
-  const gT = Math.asin(clamp(vsT * FT / 60 / V, -0.25, 0.25));
+  const gT = Math.asin(clamp((ap.flare != null ? ap.flare : vsT) * FT / 60 / V, -0.25, 0.25));
   const gam = Math.asin(clamp(s.v[1] / V, -0.5, 0.5));
   const rho = airDensity(s.p[1]), q = 0.5 * rho * V * V, W = mass(s) * GRAV;
   const CLreq = W / Math.max(0.55, Math.cos(at.bank * DEG)) / (q * A.S);
@@ -3148,7 +3148,7 @@ function procUpdate(dt) {
       break;
     }
     case 'FINAL': {
-      if (G.ap.on && agl < 250) { G.ap.on = false; G.ap.appr = false; toast('Autopilot disconnected. Landing is manual.', 3500); say('Cascade Tower', 'Autopilot off. Landing is yours.'); }
+      if (G.ap.on && agl < apDiscAgl()) { G.ap.on = false; G.ap.appr = false; toast('Autopilot disconnected. Landing is manual.', 3500); say('Cascade Tower', 'Autopilot off. Landing is yours.'); }
       const e = toEnd(arr, s.p[0], s.p[2]), dthr = Math.hypot(s.p[0] - endPt(arr, 0, 0)[0], s.p[2] - endPt(arr, 0, 0)[1]);
       if (!G.cfgDone && dthr < 7400) {
         G.cfgDone = true; L.appCfg = (!A.retract || ctl.gearCmd === 1) && ctl.flapCmd >= A.landFlaps - 1 && G.lights;
@@ -3238,6 +3238,7 @@ function readControls(dt) {
   if (G.ap.on) {
     if (G.ap.appr && G.phase !== 'ROLLOUT') apApproach(G.ap, s, dt); else if (G.ap.vorOn) apVor(G.ap, s, dt);
     const o = apStep(G.ap, s, G.windV, dt); out.pit = o.pit; out.rol = o.rol; if (G.ap.spdOn) { out.thr = o.thr; ctl.thr = o.thr; }
+    if (G.ap.roll && !s.air) apRoll(out, s, dt);
   } else if (G.set.stab && s.air && Math.abs(tr) < 0.05 && Math.abs(G.at.bank) < 42) out.rol = clamp(-G.at.bank * 0.05, -0.5, 0.5);
   if (G.set.stab && !G.ap.on) assistTakeoffLanding(out, tp, ty);
   G.surf = out;
@@ -3672,7 +3673,7 @@ function renderMenu() {
     body = tab === 'dispatch' ? dispatchHTML() : tab === 'hangar' ? hangarHTML() : tab === 'shop' ? shopHTML() : coHTML();
   } else {
     $('mHead').innerHTML = `<div class="pgh"><button class="back" data-act="tab" data-v="${tab === 'menu' ? 'dispatch' : 'menu'}">‹ Back</button><b>${PAGE_T[tab] || ''}</b></div>`; $('mTabs').innerHTML = '';
-    body = tab === 'menu' ? menuPageHTML() : tab === 'settings' ? settingsHTML() : tab === 'career' ? careerHTML() + dailyHTML() : tab === 'log' ? logHTML() : tab === 'school' ? schoolHTML() : freeHTML().replace('margin-top:14px', 'margin-top:0');
+    body = tab === 'menu' ? menuPageHTML() : tab === 'help' ? helpHTML() : tab === 'settings' ? settingsHTML() : tab === 'career' ? careerHTML() + dailyHTML() : tab === 'log' ? logHTML() : tab === 'school' ? schoolHTML() : freeHTML().replace('margin-top:14px', 'margin-top:0');
   }
   $('mBody').innerHTML = body; setTimeout(drawFF, 30);
 }
@@ -3862,6 +3863,163 @@ function updateApPanel() {
   if ($('apT')) $('apT').textContent = 'Autothrottle ' + (ap.spdOn ? 'on' : 'off'); $('apE').textContent = ap.on ? 'Disengage' : 'Engage';
   if ($('apV')) { $('apV').textContent = ap.vsR ? ap.vsR + ' fpm' : 'auto'; $('apVs').textContent = 'VOR: ' + (NAVAIDS[ap.vi || 0] ? NAVAIDS[ap.vi || 0].id : 'none'); $('apVT').textContent = ap.vorOn ? 'Stop VOR' : 'Track VOR'; $('apVor').textContent = vorText(ap, G.s); }
 }
+/* ======================= fix44: autopilot tiers, APR approach mode, autoland, Help ======================= */
+const APTIER = { cub: 0, wren: 1, skylark: 1, falcon: 1, meridian: 2, voyager: 2, heron: 3, regent: 3, kestrel: 4, sovereign: 4, atlas: 5 };
+const APDEF = [
+  { name: 'Wing leveler', vs: 0, spd: 0, nav: 0, vor: 0, apr: 'none', dh: 0, cfg: 0, land: 0 },
+  { name: 'Basic autopilot', vs: 1, spd: 1, nav: 1, vor: 1, apr: 'final', dh: 250, cfg: 0, land: 0 },
+  { name: 'GPS autopilot', vs: 1, spd: 1, nav: 1, vor: 1, apr: 'any', dh: 200, cfg: 0, land: 0 },
+  { name: 'Flight director autopilot', vs: 1, spd: 1, nav: 1, vor: 1, apr: 'any', dh: 150, cfg: 1, land: 0 },
+  { name: 'Jet flight management autopilot', vs: 1, spd: 1, nav: 1, vor: 1, apr: 'any', dh: 100, cfg: 1, land: 0 },
+  { name: 'Autoland system', vs: 1, spd: 1, nav: 1, vor: 1, apr: 'any', dh: 0, cfg: 1, land: 1 }];
+function apCap(A) { A = A || G.A; const t = APTIER[A.id] == null ? 1 : APTIER[A.id]; return Object.assign({ t }, APDEF[t]); }
+function apLim(A) { const i = A.id; return i === 'kestrel' || i === 'sovereign' ? [2200, 2600] : i === 'atlas' ? [1800, 2400] : i === 'heron' || i === 'regent' ? [1400, 1700] : i === 'voyager' || i === 'meridian' ? [1000, 1200] : [750, 1000]; }
+function apDiscAgl() { return G.ap.appr ? -1e9 : 250; }
+function arrGeo(s) {
+  const arr = G.plan.arr, P0 = endPt(arr, 0, 0), P1 = endPt(arr, -6000, 0), u = [(P0[0] - P1[0]) / 6000, (P0[1] - P1[1]) / 6000], rx = s.p[0] - P0[0], rz = s.p[2] - P0[1];
+  return { arr, P0, P1, crs: bearingDeg({ x: P1[0], z: P1[1] }, { x: P0[0], z: P0[1] }), dist: -(rx * u[0] + rz * u[1]), cross: rx * -u[1] + rz * u[0] };
+}
+function aprGate() {
+  const cap = apCap(G.A), s = G.s;
+  if (cap.apr === 'none') return { ok: false, m: 'The ' + G.A.name + ' has no approach mode. Fly the approach by hand.' };
+  if (FX.on.elec || FX.on.gyro) return { ok: false, m: 'Autopilot failed. Fly it by hand.' };
+  if (!s.air || G.agl < 250) return { ok: false, m: 'Approach mode needs you airborne and above about 800 ft.' };
+  if (!['ENROUTE', 'DESCENT', 'FINAL'].includes(G.phase)) return { ok: false, m: 'Approach mode is for the arrival. Finish the departure first.' };
+  if (cap.apr === 'final') { const g = arrGeo(s); if (!(G.phase === 'FINAL' || (g.dist > 0 && g.dist < 15000 && Math.abs(g.cross) < 2500))) return { ok: false, m: 'On the ' + G.A.name + ' approach mode only works once you are lined up on final, within about 8 nm of runway ' + g.arr.name + '. Fly to the runway first, then press APR.' }; }
+  return { ok: true };
+}
+function apApproach(ap, s, dt) {
+  const A = G.A, cap = apCap(A), g = arrGeo(s), arr = g.arr, dist = g.dist, cross = g.cross, crs = g.crs, el = apOf(G.plan.c.to).elev, altFt = s.p[1] / FT, agl = G.agl / FT, gsm = Math.max(20, Math.hypot(s.v[0], s.v[2])), tn3 = Math.tan(3 * DEG);
+  const wide = Math.max(350, dist * 0.12), loc0 = ap.loc, dmin = cap.land ? -1500 : -200;
+  ap.loc = dist > dmin && Math.abs(cross) < (ap.loc ? wide * 1.8 : wide);
+  if (ap.loc && !loc0) { toast('Localizer captured', 2200); ap.fix = false; }
+  const pos = { x: s.p[0], z: s.p[2] };
+  if (!ap.loc) {
+    const dI = dist - 1.9 * Math.abs(cross);
+    if (!ap.fix && dI < 12000 && dist > 3000) { ap.fix = true; ap.xi = 0; } else if (ap.fix && (dI >= 16000 || dist < 3000)) ap.fix = false;
+    if (dist < -300 || (dist < 2200 && Math.abs(cross) > 900)) ap.hdg = bearingDeg(pos, { x: g.P1[0], z: g.P1[1] });
+    else if (ap.fix) { const T = endPt(arr, -Math.max(22000, dist + 3000), 0); ap.hdg = bearingDeg(pos, { x: T[0], z: T[1] }); }
+    else { ap.xi = clamp(ap.xi + cross * dt * 0.0012, -12, 12); ap.hdg = ((crs - clamp(cross * 0.075, -30, 30) - ap.xi) % 360 + 360) % 360; }
+  } else if (dist < 600 && !cap.land) { ap.hdg = crs; ap.xi = 0; }
+  else { ap.xi = clamp(ap.xi + cross * dt * 0.0012, -12, 12); ap.hdg = ((crs - clamp(cross * (cap.land && dist < 800 ? 0.03 : 0.075), -30, 30) - ap.xi) % 360 + 360) % 360; }
+  const path = el + 50 + Math.max(0, dist) * tn3 / FT, lead = gsm * tn3 * 60 / FT / 4, gs0 = ap.gs;
+  if (!ap.loc || dist > 22000 || dist < (cap.land ? -1500 : 100)) ap.gs = false;
+  else if (!ap.gs) ap.gs = altFt >= path - 50 && altFt <= path + 350;
+  else if (Math.abs(altFt - path) > 450 && agl > 120) ap.gs = false;
+  if (ap.gs && !gs0) toast('Glideslope captured', 2200);
+  if (ap.cr == null) ap.cr = Math.round(altFt / 100) * 100;
+  if (ap.gs) { ap.ah = null; ap.alt = Math.max(el + (cap.land ? -100 : Math.max(0, cap.dh - 60)), path - lead); }
+  else {
+    const AIA = el + 2600; let tgt;
+    if (ap.loc && dist < 22000 && altFt > path + 350) { tgt = path + 200 - lead; if (!ap.hiW) { ap.hiW = true; toast('High on the glidepath. Descending to intercept.', 3500); } ap.ah = null; }
+    else if (ap.loc && dist < 22000 && altFt < path - 50) { if (ap.ah == null) ap.ah = Math.round(altFt / 50) * 50; tgt = ap.ah; }
+    else { ap.ah = null; const vsP = cap.t >= 4 ? 1800 : cap.t >= 3 ? 1200 : 800, dInt = Math.max(0, dist - (AIA - el - 50) * FT / tn3); tgt = Math.min(ap.cr, AIA + dInt / gsm * (vsP / 60)); if (altFt < AIA - 100) tgt = Math.round(altFt / 50) * 50; }
+    ap.alt = tgt;
+  }
+  ap.ann = cap.land && ap.gs ? 'LAND 3' : ap.gs ? 'LOC / GS' : ap.loc ? 'LOC / GS ARM' : ap.fix ? 'INTERCEPT' : 'APR ARMED';
+  ap.spdOn = true; if (dist < 40000) ap.spd = A.vref + (dist > 18000 ? 45 : dist > 12000 ? 32 : dist > 8000 ? 22 : dist > 4500 ? 15 : 8);
+  if (s.air) {
+    if (cap.cfg) {
+      let ch = false; const fl = Math.min(A.landFlaps, dist < 4200 ? 3 : dist < 7000 ? 2 : dist < 10500 ? 1 : 0);
+      if (ctl.flapCmd < fl) { ctl.flapCmd = fl; ch = true; } if (A.retract && dist < 9000 && ctl.gearCmd !== 1) { ctl.gearCmd = 1; ch = true; } if (dist < 14000 && !G.lights) { G.lights = true; ch = true; } if (ch) renderSide();
+    } else if (!G.apCfgSaid && dist < 10500) { G.apCfgSaid = true; toast('Configure for landing: gear, flaps and lights.', 4000); say('Cascade Approach', G.plan.tail + ', configure for landing.'); }
+  }
+  if (cap.land) {
+    if (ap.gs && agl < 55) ap.flare = -Math.min(450, Math.max(55, agl * 7 + 25)); else if (!ap.gs) ap.flare = null;
+    if (ap.gs && agl < 40) { ap.spdOn = false; ctl.thr = 0; }
+  } else if (!cap.land && cap.dh && (ap.gs ? altFt < el + cap.dh : agl < Math.max(100, cap.dh * 0.6))) {
+    ap.on = false; ap.appr = false; ap.gs = false; ap.loc = false; toast('Decision height. Autopilot off, you have the airplane.', 4500); say('Cascade Approach', 'Minimums. Autopilot off. Land the airplane.');
+  }
+}
+function apRoll(out, s, dt) {
+  const ap = G.ap, g = arrGeo(s), at = attitude(s), V = Math.hypot(s.v[0], s.v[2]); ap.rt = (ap.rt || 0) + dt;
+  const he = ((g.crs - at.hdg + 540) % 360) - 180;
+  out.rol = 0; out.pit = ap.rt < 5 ? -0.1 : 0; out.yaw = clamp(he * 0.05 - g.cross * 0.012, -0.6, 0.6); ctl.thr = 0; out.thr = 0; ap.spdOn = false;
+  out.brk = ap.rt < 3 ? 0 : V > 25 ? 0.7 : 1;
+  if (V < 2.5) { ap.on = false; ap.roll = false; ap.appr = false; ap.rt = 0; ap.flare = null; toast('Autoland complete. Taxi in.', 4000); }
+}
+function apAction(v) {
+  const ap = G.ap, at = attitude(G.s), cap = apCap(G.A);
+  if (v === 'more') { apMore = !apMore; renderApPanel(); return; }
+  if (v === 'fh' || v === 'fa' || v === 'fs') { APF[v[1]] = !APF[v[1]]; renderApPanel(); return; }
+  if (v === 'on') {
+    if (!ap.on) {
+      if (!apAvail()) { toast(FX.on.elec ? 'Electrical failure. No autopilot.' : FX.on.gyro ? 'Gyro failure. No autopilot.' : 'Autopilot needs: airborne, above about 800 ft, and past the climb-out.', 3200); return; }
+      ap.on = true; ap.bank = at.bank; ap.iv = 0; ap.it = G.s.thr; toast('Autopilot engaged');
+    } else { ap.on = false; ap.appr = false; ap.vorOn = false; ap.roll = false; ap.flare = null; toast('Autopilot off'); }
+  } else if (v === 'vor' && cap.vor) {
+    if (!NAVAIDS.length) { toast('No VOR data for this region', 2500); return; }
+    const L = NAVAIDS.map((n, i) => ({ i, d: Math.hypot(llxz(n.lat, n.lon)[0] - G.s.p[0], llxz(n.lat, n.lon)[1] - G.s.p[2]) })).sort((a, b) => a.d - b.d), k = L.findIndex(q => q.i === (ap.vi || 0));
+    ap.vi = L[(k + 1) % L.length].i; ap.xi = 0; const vi = vorInfo(ap, G.s); ap.obs = Math.round(magHdg(bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, { x: vi.st[0], z: vi.st[1] }))) % 360;
+  } else if (v === 'vorD' && cap.vor) {
+    const vi = vorInfo(ap, G.s); if (vi) { ap.obs = Math.round(magHdg(bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, { x: vi.st[0], z: vi.st[1] }))) % 360; ap.xi = 0; toast('Course set direct to ' + vi.n.id, 2200); }
+  } else if (v === 'vorT' && cap.vor) {
+    if (ap.vorOn) { ap.vorOn = false; toast('VOR tracking off'); }
+    else { if (!NAVAIDS.length) { toast('No VOR data for this region', 2500); return; } if (!ap.on) { if (!apAvail()) { toast('Autopilot is not available right now', 2500); return; } ap.on = true; ap.bank = at.bank; ap.iv = 0; ap.it = G.s.thr; } ap.vorOn = true; ap.appr = false; ap.direct = false; ap.xi = 0; toast('Tracking the VOR course', 2500); }
+  } else if (/^ob[+-]\d+$/.test(v) && cap.vor) { ap.obs = ((ap.obs || 0) + +v.slice(2) + 360) % 360; ap.xi = 0;
+  } else if (/^vs[+-]\d+$/.test(v) && cap.vs) { ap.vsR = clamp((ap.vsR || 0) + +v.slice(2), 0, 2000); if (ap.vsR && ap.vsR < 200) ap.vsR = 200;
+  } else if (v === 'appr') {
+    if (ap.appr) { ap.appr = false; ap.gs = false; ap.loc = false; ap.flare = null; ap.roll = false; ap.hdg = at.hdg; ap.alt = Math.round(G.s.p[1] / FT / 100) * 100; ap.direct = false; toast('Approach mode off. Holding heading and altitude.', 3000); updateApPanel(); return; }
+    const gt = aprGate(); if (!gt.ok) { toast(gt.m, 5500); return; }
+    ap.cr = ap.on ? ap.alt : Math.round(G.s.p[1] / FT / 100) * 100; ap.appr = true; ap.vorOn = false; ap.direct = false; ap.xi = 0; ap.loc = false; ap.gs = false; ap.ah = null; ap.hiW = false; ap.fix = false; ap.flare = null; ap.roll = !!cap.land; ap.rt = 0; G.apCfgSaid = false;
+    if (!ap.on) { ap.on = true; ap.bank = at.bank; ap.iv = 0; ap.it = G.s.thr; }
+    toast(cap.land ? 'Autoland armed for runway ' + G.plan.arr.name + '. It will fly the approach, land and brake.' : cap.apr === 'any' ? 'Approach armed. It will fly to final and down to ' + cap.dh + ' ft, then you land.' : 'Approach mode on final for runway ' + G.plan.arr.name + '. It flies down to ' + cap.dh + ' ft, then you land.', 5000);
+  } else if (v === 'dest' && cap.nav) { ap.appr = false; ap.vorOn = false; ap.hdg = bearingDeg({ x: G.s.p[0], z: G.s.p[2] }, G.wpNext ? { x: G.wpNext.xz[0], z: G.wpNext.xz[1] } : G.plan.ap1); ap.direct = true; toast('Tracking direct to ' + (G.wpNext ? G.wpNext.n : G.plan.c.to)); }
+  else if (v === 'sync') { ap.appr = false; ap.vorOn = false; ap.direct = false; ap.hdg = at.hdg; ap.alt = Math.round(G.s.p[1] / FT / 100) * 100; ap.spd = Math.round(G.ias / 5) * 5; }
+  else if (v === 'spd' && cap.spd) ap.spdOn = !ap.spdOn;
+  else if (v === 'back') { apOpen = false; renderApPanel(); }
+  else { const m = /^(h|a|s)([+-]\d+)$/.exec(v); if (m && !(m[1] === 's' && !cap.spd)) { const d = +m[2]; ap.appr = false; if (m[1] === 'h') ap.vorOn = false; if (m[1] === 'h') { ap.hdg = (ap.hdg + d + 360) % 360; ap.direct = false; } else if (m[1] === 'a') ap.alt = clamp(ap.alt + d, 500, 41000); else ap.spd = clamp(ap.spd + d, 60, 320); } }
+  updateApPanel();
+}
+function renderApPanel() {
+  const p = $('apPanel'); if (!p || !G) return; document.body.classList.toggle('apopen', apOpen); p.hidden = !apOpen; p.classList.toggle('more', apMore); if (!apOpen) return;
+  const cap = apCap(G.A), b = (v, t) => `<button data-act="ap" data-v="${v}">${t}</button>`, cell = (lab, id, key, ch, fine, coarse) => { const st = APF[key] ? fine : coarse; return `<div class="apc"><span>${lab}</span><b id="${id}" data-act="ap" data-v="f${key}"></b><div class="g">${b(ch + '-' + st, '&minus;')}${b(ch + '+' + st, '+')}</div></div>`; };
+  const nx = G.wpNext ? G.wpNext.n : G.plan.c.to;
+  p.innerHTML = `<div class="aph"><b>AP</b><span class="state" id="apState"></span><button data-act="ap" data-v="more" aria-label="More">${apMore ? '&#9650;' : '&#9660;'}</button><button data-act="ap" data-v="back" class="x" aria-label="Close">&#10005;</button></div>
+    <div class="apcols" style="grid-template-columns:repeat(${cap.spd ? 3 : 2},1fr)">${cell('HDG', 'apH', 'h', 'h', 1, 1)}${cell('ALT', 'apA', 'a', 'a', 100, 100)}${cap.spd ? cell('SPD', 'apS', 's', 's', 5, 5) : ''}</div>
+    <div class="apr2"><button class="go apE" data-act="ap" data-v="on" id="apE"></button>${cap.apr !== 'none' ? `<button class="aprb" data-act="ap" data-v="appr" id="apAp"></button>` : ''}${cap.nav ? `<button data-act="ap" data-v="dest" style="flex:1.1">Next: ${nx}</button>` : ''}</div>
+    <div class="apm"><div class="apb">${b('sync', 'Match current')}${cap.spd ? '<button data-act="ap" data-v="spd" id="apT"></button>' : ''}</div>
+    ${cap.vs ? `<div class="apb">${b('vs-100', 'V/S &minus;')}<b id="apV" style="align-self:center;min-width:64px;text-align:center;font-size:12px"></b>${b('vs+100', 'V/S +')}</div>` : ''}
+    ${cap.vor ? `<div class="apb"><button data-act="ap" data-v="vor" id="apVs"></button>${b('vorD', 'Course direct')}<button data-act="ap" data-v="vorT" id="apVT"></button></div><div class="apb">${b('ob-10', 'CRS &minus;10')}${b('ob-1', '&minus;1')}${b('ob+1', '+1')}${b('ob+10', '+10')}</div><p class="apn" id="apVor"></p>` : ''}
+    <p class="apn" style="display:block">${G.A.name}: ${cap.name}. ${cap.apr === 'none' ? 'Heading and altitude only.' : cap.apr === 'final' ? 'APR works on final only.' : cap.land ? 'APR arms any time and lands the airplane.' : 'APR arms any time, down to ' + cap.dh + ' ft.'}</p></div>`;
+  updateApPanel();
+}
+function updateApPanel() {
+  if (!G) return; const ap = G.ap, bt = $('apBtn'); if (bt) bt.classList.toggle('on', !!ap.on);
+  if (!apOpen || !$('apState')) return; const ok = apAvail(), cap = apCap(G.A);
+  const st = $('apState'); st.textContent = ap.on ? (ap.appr ? ap.ann || 'APR' : ap.vorOn ? 'VOR ' + (NAVAIDS[ap.vi || 0] || { id: '' }).id : ap.direct ? 'NAV' : 'HDG') + ' / ' + (Math.abs(ap.alt - G.s.p[1] / FT) < 80 ? 'ALT' : ap.alt > G.s.p[1] / FT ? 'CLIMB' : 'DESC') : ok ? 'READY' : (FX.on.elec ? 'ELEC FAIL' : FX.on.gyro ? 'GYRO FAIL' : 'NOT AVAILABLE'); st.className = 'state' + (ap.on ? ' on' : '');
+  $('apH').textContent = fmtHdg(ap.hdg); $('apA').textContent = Math.round(ap.alt).toLocaleString(); if ($('apS')) $('apS').textContent = ap.spd;
+  if ($('apT')) $('apT').textContent = 'Autothrottle ' + (ap.spdOn ? 'on' : 'off'); $('apE').textContent = ap.on ? 'Disengage' : 'Engage';
+  const ab = $('apAp'); if (ab) { const gt = aprGate(); ab.textContent = ap.appr ? (cap.land ? 'LAND ' : 'APR ') + (ap.gs ? 'GS' : ap.loc ? 'LOC' : ap.fix ? 'INT' : 'ARMED') : 'APR ' + G.plan.arr.name; ab.className = 'aprb' + (ap.appr ? ' on' : !gt.ok ? ' dim' : ''); }
+  if ($('apV')) { $('apV').textContent = ap.vsR ? ap.vsR + ' fpm' : 'auto'; if ($('apVs')) { $('apVs').textContent = 'VOR: ' + (NAVAIDS[ap.vi || 0] ? NAVAIDS[ap.vi || 0].id : 'none'); $('apVT').textContent = ap.vorOn ? 'Stop VOR' : 'Track VOR'; $('apVor').textContent = vorText(ap, G.s); } }
+}
+/* ---- Help page ---- */
+function helpHTML() {
+  const dt = (t, body, open) => `<details class="dt" ${open ? 'open' : ''}><summary>${t}</summary><div class="hlp">${body}</div></details>`, ids = ['cub', 'wren', 'skylark', 'falcon', 'meridian', 'voyager', 'heron', 'regent', 'kestrel', 'sovereign', 'atlas'].filter(i => AC[i]);
+  const feat = c => c.t === 0 ? 'Heading hold and altitude hold only. No speed hold, no V/S, no nav, no approach.' : c.t === 1 ? 'Heading, altitude, V/S, speed hold, direct-to and VOR tracking. APR only once you are lined up on final.' : c.t === 2 ? 'Everything above, and APR can be armed any time. You set gear, flaps and lights when it tells you.' : c.t === 3 ? 'APR arms any time and also lowers flaps, gear and lights for you.' : c.t === 4 ? 'Same as the turboprops with a lower decision height and a faster descent.' : 'APR arms any time and flies the whole approach, flares, lands, brakes and steers on the runway.';
+  const rows = ids.map(i => { const A = AC[i], c = apCap(A); return `<tr><td><b>${A.name}</b><br><small>${A.cls}</small></td><td>${c.name}<br><small>${c.apr === 'none' ? 'No APR' : c.land ? 'Autoland' : c.apr === 'final' ? 'APR on final, to ' + c.dh + ' ft' : 'APR any time, to ' + c.dh + ' ft'}</small></td><td>${feat(c)}</td></tr>`; }).join('');
+  return `<style>.hlp p{margin:6px 0;font-size:13px;line-height:1.5;color:#c9d4e6}.hlp h4{margin:10px 0 2px;font:700 13px var(--mono);color:var(--amber)}.hlp table{width:100%;border-collapse:collapse;font-size:12px}.hlp td,.hlp th{border-bottom:1px solid #1f2a40;padding:6px 4px;text-align:left;vertical-align:top}.hlp small{color:#8fa3c0}.hlp ul{margin:4px 0 4px 16px;padding:0;font-size:13px;line-height:1.5;color:#c9d4e6}</style>`
+    + dt('How a flight works', `<p>Every job is a flight from one airport to another, or a route through landmarks. Pick a job on the Jobs tab, check the plan, then fly it. The top panel shows time left, distance, when you land and the next thing to do.</p><ul><li><b>Cold and dark:</b> run the checklist (battery, avionics, fuel, start the engine).</li><li><b>Taxi:</b> follow the yellow line to the runway and hold short. Call the tower with the radio button.</li><li><b>Takeoff and climb:</b> full power, rotate at the speed shown, gear and flaps up, climb to the planned altitude.</li><li><b>Cruise, descent, final:</b> the game moves through the phases by distance. Radio calls are the prompts.</li><li><b>Landing:</b> touch down on the runway, brake, exit and taxi to the ramp. Your score and pay depend on the landing, the procedures and the job.</li></ul>`, true)
+    + dt('Autopilot basics', `<p>Open the AP panel with the AP button (or <b>P</b> to engage). The three boxes are heading, altitude and speed. Tap a box to switch between fine and coarse steps. Press Engage and it holds what you set.</p><ul><li>It works after takeoff, once you are above about 800 ft and out of the climb-out.</li><li>Moving the stick or wheel disengages it.</li><li><b>Next:</b> turns the aircraft direct to the next landmark or the destination.</li><li><b>Match current</b> copies your present heading, altitude and speed.</li><li>An electrical or gyro failure takes the autopilot away. You fly it by hand.</li><li>Tapping the tail ▼ arrow opens more controls: autothrottle, V/S, VOR tracking. Which ones you get depends on the aircraft.</li></ul>`)
+    + dt('APR: approach mode', `<p>APR flies an instrument-style approach to the runway you are landing on: it captures the runway centreline (localizer) and then the 3 degree glidepath (glideslope), and sets approach speeds.</p><ul><li><b>Intercept:</b> if you are off to the side, it turns you to meet the centreline. If you are too close to intercept, it sends you out and around first.</li><li><b>Descent:</b> it comes down to about 2,600 ft above the airport and levels, then rides the glideslope down. If you are high it descends to catch it.</li><li><b>Speed:</b> it slows you in steps as you get close (reference speed plus 45, 32, 22, 15, then 8 knots).</li><li><b>Decision height:</b> at the aircraft's minimum height it turns itself off and calls "Minimums". You land by hand from there. Autoland aircraft keep going.</li><li><b>Single-engine piston aircraft:</b> APR only turns on once you are lined up on final, within about 8 nm of the runway. You get there yourself.</li><li><b>Better aircraft:</b> you can press APR any time after takeoff. It flies to the final approach, intercepts, and descends to the decision height.</li><li><b>Landing configuration:</b> aircraft without auto config tell you to set gear, flaps and lights. Turboprops and jets do it for you.</li><li>Press APR again to cancel. It then holds your heading and altitude.</li></ul>`)
+    + dt('Autopilot by aircraft', `<table><tr><th>Aircraft</th><th>System</th><th>What you get</th></tr>${rows}</table><h4>Autoland (Atlas)</h4><p>Press APR and it flies to final, captures the glidepath, flares at about 50 ft, cuts power, touches down, brakes and steers along the centreline until it stops. It needs a working autopilot and electrics. Wind and visibility still matter, so watch it. If you move the controls it lets go.</p>`)
+    + dt('Controls', `<p>Touch: the left wheel is pitch and roll, the throttle slider is on the right, and the buttons above the instruments are flaps, gear, lights and brake. Keyboard: arrows pitch and roll, <b>W</b>/<b>S</b> throttle, <b>A</b>/<b>D</b> rudder and nose wheel, <b>Space</b> brakes, <b>B</b> parking brake, <b>F</b>/<b>V</b> flaps, <b>G</b> gear, <b>L</b> lights, <b>R</b> radio, <b>E</b> checklist, <b>C</b> camera, <b>M</b> map, <b>P</b> autopilot, <b>Esc</b> pause.</p><p>The Cam button cycles chase, cockpit, free and wing views. In free view, drag to orbit and pinch to zoom.</p>`)
+    + dt('Jobs, pay and your company', `<ul><li>Longer jobs and better aircraft pay more. Jobs scale to the range of the aircraft you pick.</li><li>Pay is reduced by fuel and maintenance cost, a hard landing on passenger jobs, and by the Assist settings. Turning assists off pays more.</li><li><b>Timed jobs</b> have a limit. <b>Route and tour jobs</b> need you to fly through each landmark. <b>Banner jobs</b> tow a banner, which adds drag, so keep your speed up.</li><li>The Company tab lets you hire pilots who fly jobs for you while you are in the game. Larger aircraft need more experienced pilots.</li><li>Licences unlock aircraft. Study at the Flight school and pass the written and checkride.</li></ul>`)
+    + dt('If you leave the game', `<p>Your flight is saved when you close the app. When you come back you get a loading screen with time left and the plane's position. The aircraft flies on at cruise along the route for up to 6 hours, then holds on approach. The landing is yours. If it lands for you, pay is cut 40%. If it runs out of fuel while you are away, the flight ends. An aircraft that is still on the ground does not move.</p>`)
+    + dt('Failures, weather and graphics', `<ul><li><b>Failures</b> (Settings, Gameplay): equipment can fail in flight. Higher settings fail more often. Electrical and gyro failures disable the autopilot.</li><li>Wind shear, gusts, turbulence and temperature change how the aircraft flies. Turn Realistic physics off in Settings for an arcade feel.</li><li>If it looks blurry or runs slowly, use the pause menu Graphics row: Sharp, Balanced or Saver.</li></ul>`)
+    + dt('Tips', `<ul><li>Fly the pattern at the speeds on the instruments. Approach speed is shown on final.</li><li>Use trim to take the pressure off the stick.</li><li>Fuel and weight matter. Check them in the plan before takeoff.</li><li>Use APR on the new aircraft to learn the approach path, then fly it by hand for a better landing score.</li></ul>`);
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-act="helpOpen"],[data-act="helpClose"]'); if (!t) return; e.stopImmediatePropagation(); e.preventDefault();
+  if (t.dataset.act === 'helpClose') { const m = $('hlpM'); if (m) m.remove(); return; }
+  let m = $('hlpM'); if (m) m.remove(); m = document.createElement('div'); m.id = 'hlpM'; m.className = 'modal'; m.style.zIndex = 9999; m.innerHTML = '<div class="sheet" style="max-height:88vh;overflow:auto;text-align:left"><h2 style="text-align:center;margin:0 0 8px">Help</h2>' + helpHTML() + '<div class="btns" style="margin-top:8px"><button class="go" data-act="helpClose">Close</button></div></div>'; document.body.appendChild(m);
+}, true);
+PAGE_T.help = 'Help';
+function menuPageHTML() {
+  const row = (v, t, d) => `<button class="mrow" data-act="tab" data-v="${v}"><b>${t}</b><small>${d}</small><i>›</i></button>`;
+  return row('help', 'Help', 'How flights work, autopilot by aircraft, approach mode, tips') + row('settings', 'Settings', 'Assists, graphics, failures, camera, world and keys') + row('log', 'Logbook', 'Your flights, scores and landings') + row('school', 'Flight school', 'Licences, written exams and checkrides') + row('career', 'Career', 'Goals, reputation and progress') + row('free', 'World map', 'Free flight and landmark routes') + `<p class="lead" style="margin:14px 4px 0">${RG.name} · ${AIRPORTS.length} airports</p>`;
+}
+
 /* ======================= zoomable free-flight map ======================= */
 const FFC = [['New York', 40.7128, -74.006], ['Newark', 40.7357, -74.1724], ['Philadelphia', 39.9526, -75.1652], ['Allentown', 40.6084, -75.4902], ['Trenton', 40.2171, -74.7429], ['Atlantic City', 39.3643, -74.4229], ['Hartford', 41.7658, -72.6734], ['New Haven', 41.3083, -72.9279], ['Bridgeport', 41.1792, -73.1894], ['Stamford', 41.0534, -73.5387], ['Poughkeepsie', 41.7004, -73.921], ['Montauk', 41.0359, -71.9545], ['Islip', 40.7298, -73.2104], ['White Plains', 41.034, -73.7629]];
 Object.assign(FFM, { z: 1, cx: null, cz: null, ptr: new Map(), moved: false, raf: 0 });

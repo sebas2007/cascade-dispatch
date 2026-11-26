@@ -1513,7 +1513,9 @@ function buildTerrain() {
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   terrainMesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true })); scene.add(terrainMesh);
   const wg = new THREE.PlaneGeometry(TB.x1 - TB.x0, TB.z1 - TB.z0); wg.rotateX(-Math.PI / 2);
-  waterMesh = new THREE.Mesh(wg, new THREE.MeshPhongMaterial({ color: 0x2a6684, specular: 0x9ab8d0, shininess: 90 }));
+  const rpl = document.createElement('canvas'); rpl.width = rpl.height = 64; { const x = rpl.getContext('2d'), im = x.createImageData(64, 64); let sd = 11; for (let i = 0; i < 64 * 64; i++) { sd = (sd * 16807) % 2147483647; const v = 90 + (sd / 2147483647) * 80 | 0; im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } x.putImageData(im, 0, 0); }
+  const rplT = new THREE.CanvasTexture(rpl); rplT.wrapS = rplT.wrapT = THREE.RepeatWrapping; rplT.repeat.set(9000, 9000); rplT.magFilter = THREE.NearestFilter; rplT.minFilter = THREE.LinearMipmapLinearFilter;
+  waterMesh = new THREE.Mesh(wg, new THREE.MeshPhongMaterial({ color: 0x2a6684, specular: 0x4a6478, shininess: 60, bumpMap: rplT, bumpScale: 2.2 }));
   waterMesh.position.set((TB.x0 + TB.x1) / 2, 0, (TB.z0 + TB.z1) / 2); scene.add(waterMesh);
 }
 function rebuildIndex() {

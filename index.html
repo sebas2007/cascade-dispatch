@@ -783,6 +783,14 @@ AC.husky = Object.assign({}, AC.wren, { id: 'husky', name: 'Husky A180', cls: 'T
 AC.swift = Object.assign({}, AC.kestrel, { id: 'swift', name: 'Swift VLJ', cls: 'Single-engine light jet', price: 450000, license: 'jet', blurb: 'Single-engine very light jet. Quick, pressurized and sleek, with a short and busy wing. Fast on final.',
   empty: 1700, fuelCap: 1100, payloadMax: 520, S: 17, span: 11.6, CL0: 0.2, CLa: 5.0, as: 14 * DEG, CD0: 0.024, k: 0.05, Tmax: 8500, vT: 720, ffMax: 0.24, ffIdle: 0.04, Ix: 3400, Iy: 6200, Vref: 58, vr: 85, vref: 92, vy: 120, cruise: 300, minRw: 1100, climbAlt: 28000, nose: 3.8, tail: 6.0,
   wheels: [[2.1, -1.35, 0, true], [-0.5, -1.35, -1.2], [-0.5, -1.35, 1.2]] });
+AC.hauler = Object.assign({}, AC.wren, { id: 'hauler', name: 'Hauler 206', cls: 'Six-seat utility single', price: 58000, license: 'private', blurb: 'Six seats, a big cargo door and a strong engine. The workhorse for people and freight on short and grass fields.',
+  empty: 930, fuelCap: 200, payloadMax: 500, S: 16.2, span: 10.9, CL0: 0.4, CLa: 4.7, dCLflap: 0.18, CD0: 0.034, k: 0.058, P: 167e3, Tstat: 3700, ffMax: 0.0145, ffIdle: 0.002, Ix: 1500, Iy: 2150, Vref: 38, vr: 56, vref: 68, vy: 80, cruise: 140, minRw: 520, climbAlt: 15000, nose: 2.8, tail: 4.9, takeoffFlaps: 1, landFlaps: 3 });
+AC.beacon = Object.assign({}, AC.wren, { id: 'beacon', name: 'Beacon B36', cls: 'Fast retractable single', price: 118000, license: 'private', blurb: 'Six seats, retractable gear and a big engine. Cruises fast and carries a family. Remember the gear.',
+  empty: 1020, fuelCap: 260, payloadMax: 520, S: 16.8, span: 11.5, CL0: 0.3, CLa: 4.7, dCLflap: 0.15, CD0: 0.0245, k: 0.055, retract: true, P: 172e3, Tstat: 3900, ffMax: 0.0155, ffIdle: 0.0022, Ix: 1650, Iy: 2300, pmax: 1.1, Vref: 42, vr: 65, vref: 76, vy: 100, cruise: 172, minRw: 650, climbAlt: 17500, nose: 2.8, tail: 5.0, takeoffFlaps: 1, landFlaps: 3 });
+AC.seminole = Object.assign({}, AC.wren, { id: 'seminole', name: 'Seminole T4', cls: 'Light twin trainer', price: 82000, license: 'private', blurb: 'Your first twin. Two engines, four seats and a cruise faster than any single you can afford early. Lose one engine and you will learn quickly.',
+  empty: 1010, fuelCap: 185, payloadMax: 390, S: 15.0, span: 11.8, CL0: 0.3, CLa: 4.7, dCLflap: 0.15, CD0: 0.029, k: 0.054, P: 200e3, Tstat: 4400, ffMax: 0.0165, ffIdle: 0.0022, Ix: 2100, Iy: 2500, pmax: 1.05, Vref: 40, vr: 60, vref: 72, vy: 88, cruise: 150, minRw: 650, climbAlt: 14000, nose: 2.6, tail: 4.8, takeoffFlaps: 1, landFlaps: 3, wheels: [[1.6, -1.3, 0, true], [-0.4, -1.3, -1.9], [-0.4, -1.3, 1.9]] });
+AC.marlin = Object.assign({}, AC.wren, { id: 'marlin', name: 'Marlin B58', cls: 'Fast light twin', price: 185000, license: 'private', blurb: 'Six seats, two big engines and a 195 knot cruise. The classic fast personal twin.',
+  empty: 1560, fuelCap: 400, payloadMax: 650, S: 18.5, span: 11.5, CL0: 0.28, CLa: 4.6, dCLflap: 0.14, CD0: 0.0255, k: 0.052, retract: true, P: 332e3, Tstat: 6900, ffMax: 0.0245, ffIdle: 0.0032, Ix: 2900, Iy: 3300, pmax: 1.1, Vref: 44, vr: 72, vref: 84, vy: 105, cruise: 195, minRw: 800, climbAlt: 20000, nose: 3.0, tail: 5.2, takeoffFlaps: 1, landFlaps: 3, wheels: [[1.7, -1.35, 0, true], [-0.4, -1.35, -1.9], [-0.4, -1.35, 1.9]] });
 AC.gooney = Object.assign({}, AC.wren, { id: 'gooney', name: 'Gooney 47', cls: 'Vintage twin transport', price: 210000, license: 'commercial', blurb: 'Classic twin-radial taildragger hauler. Big payload, long roll, and a tail that wants to swing. A real handful on landing.',
   empty: 3900, fuelCap: 1300, payloadMax: 2600, S: 91, span: 28.9, CL0: 0.35, CLa: 4.9, as: 15 * DEG, CD0: 0.034, k: 0.05, P: 1100e3, Tstat: 21000, ffMax: 0.14, ffIdle: 0.02, Ix: 36000, Iy: 52000, Vref: 38, vr: 65, vref: 78, vy: 95, cruise: 150, minRw: 800, climbAlt: 18000, nose: 4.3, tail: 11.5,
   wheels: TW(-8.6, -2.0, 0.6, 3.3, -0.95), tdrag: true });
@@ -791,6 +799,11 @@ AC.voyager = Object.assign({}, AC.wren, { id: 'voyager', name: 'Voyager 2T', cls
   Ix: 2600, Iy: 2900, pmax: 1.1, Vref: 38, vr: 65, vref: 78, vy: 88, cruise: 160, minRw: 800, climbAlt: 8000 });
 AC.regent = Object.assign({}, AC.heron, { id: 'regent', name: 'Regent 350', cls: 'Twin turboprop', price: 320000, license: 'turboprop', blurb: 'Pressurised twin turboprop. Fast, big payload, still lands on short runways.',
   empty: 4100, fuelCap: 1500, payloadMax: 1800, S: 28.8, span: 17.7, P: 1100e3, Tstat: 24000, ffMax: 0.16, ffIdle: 0.03, Ix: 14000, Iy: 18000, Vref: 48, vr: 95, vref: 100, vy: 120, cruise: 260, minRw: 1000, climbAlt: 14000 });
+AC.drover = Object.assign({}, AC.heron, { id: 'drover', name: 'Drover 700', cls: 'Single turboprop', price: 260000, license: 'private', blurb: 'Eight seats, one turbine, big cargo door. Climbs hard, hauls a crowd and lands short.',
+  empty: 1750, fuelCap: 520, payloadMax: 950, S: 25.5, span: 15.6, P: 520e3, Tstat: 11500, ffMax: 0.062, ffIdle: 0.012, Ix: 6000, Iy: 7500, Vref: 44, vr: 72, vref: 80, vy: 105, cruise: 170, minRw: 750, climbAlt: 12000, takeoffFlaps: 1, landFlaps: 3 });
+AC.sterling = Object.assign({}, AC.regent, { id: 'sterling', name: 'Sterling 90', cls: 'Long twin turboprop', price: 640000, license: 'private', blurb: 'Stretched twin turboprop cabin. Ten guests, two engines, 250 knots and a long reach.',
+  empty: 3700, fuelCap: 1300, payloadMax: 1700, S: 28.0, span: 17.0, P: 1000e3, Tstat: 22000, ffMax: 0.15, ffIdle: 0.028, Ix: 13000, Iy: 24000, Vref: 48, vr: 92, vref: 100, vy: 118, cruise: 255, minRw: 1000, climbAlt: 28000,
+  wheels: [[3.2, -1.6, 0, true], [-0.9, -1.6, -1.7], [-0.9, -1.6, 1.7]], nose: 3.9, tail: 8.2 });
 AC.sovereign = Object.assign({}, AC.kestrel, { id: 'sovereign', name: 'Sovereign X', cls: 'Super-midsize jet', price: 1800000, license: 'jet', blurb: 'Fast and long-legged. Crosses the whole region before the coffee cools.',
   empty: 8600, fuelCap: 5000, payloadMax: 2200, S: 47, span: 19.4, Tmax: 46000, vT: 1200, ffMax: 0.55, ffIdle: 0.08, Ix: 40000, Iy: 90000, Vref: 66, vr: 120, vref: 125, vy: 180, cruise: 440, minRw: 1500, climbAlt: 41000 });
 AC.atlas = Object.assign({}, AC.heron, { id: 'atlas', name: 'Atlas 70', cls: 'Regional airliner', price: 6500000, license: 'jet', blurb: 'Seventy-seat regional turboprop. The biggest payload in the game.',
@@ -1994,6 +2007,12 @@ PLANE_SPEC.voyager = scaleSpec(PLANE_SPEC.voyager, { r: 1, l: 1, w: 1.0, over: {
 PLANE_SPEC.regent = scaleSpec(PLANE_SPEC.regent, { r: 1.08, l: 1.18, w: 1.12, over: { prop: 0, twin: { x: 3.5, r: 0.5, n: 2, pr: 1.3, blades: 4, tp: true, len: 4.2 }, nwin: 7, wsp: 0.62 } });
 PLANE_SPEC.atlas = scaleSpec(PLANE_SPEC.atlas, { r: 1.45, l: 2.3, w: 1.72, h: 1.5, over: { prop: 0, twin: { x: 5.6, r: 0.72, n: 2, pr: 1.95, blades: 6, tp: true, len: 5.6 }, tee: true } });
 PLANE_SPEC.gooney.wing.y = -0.75;
+PLANE_SPEC.drover = scaleSpec(PLANE_SPEC.heron, { r: 1.0, l: 1.08, w: 1.0, over: { body: 0xf1f1ee, acc: 0xb5541c, acc2: 0x2c1b10, nwin: 6 } });
+PLANE_SPEC.sterling = scaleSpec(PLANE_SPEC.regent, { r: 1.0, l: 1.3, w: 1.04, over: { body: 0xe8ebee, acc: 0x23396b, acc2: 0x101a33, nwin: 10, wsp: 0.6 } });
+PLANE_SPEC.hauler = scaleSpec(PLANE_SPEC.skylark, { r: 1.06, l: 1.1, w: 1.02, over: { body: 0xe9edf0, acc: 0x1f5c8a, acc2: 0x16222e } });
+PLANE_SPEC.beacon = scaleSpec(PLANE_SPEC.meridian, { r: 1.0, l: 1.03, w: 1.02, over: { body: 0xf3f1ea, acc: 0x6b4a2b, acc2: 0x2a2a2e } });
+PLANE_SPEC.seminole = scaleSpec(PLANE_SPEC.voyager, { r: 0.9, l: 0.92, w: 0.96, over: { body: 0xf0f3f5, acc: 0x1f6b4d, acc2: 0x20262b, twin: { x: 2.0, r: 0.32, n: 2, pr: 0.9, blades: 2, tp: false, len: 2.4 } } });
+PLANE_SPEC.marlin = scaleSpec(PLANE_SPEC.voyager, { r: 1.0, l: 1.02, w: 1.0, over: { body: 0xd9dde2, acc: 0x8a1c1c, acc2: 0x15181c, twin: { x: 2.2, r: 0.36, n: 2, pr: 1.0, blades: 3, tp: false, len: 2.8 } } });
 PLANE_SPEC.sovereign = scaleSpec(PLANE_SPEC.sovereign, { r: 1.22, l: 1.5, w: 1.28, h: 1.25, over: { ez: 2.3, ex: 1.65, nwin: 8, wsp: 0.8 } });
 PLANE_SPEC.atlas.stab.y = PLANE_SPEC.atlas.fin.y + PLANE_SPEC.atlas.fin.h * 0.96;
 PLANE_SPEC.atlas.stab.z = PLANE_SPEC.atlas.fin.z + PLANE_SPEC.atlas.fin.sw * 0.7;
@@ -3589,6 +3608,16 @@ const DESC = {
 };
 const TYPE_W = [['pax', 22], ['cargo', 20], ['mail', 8], ['express', 8], ['medevac', 6], ['art', 6], ['group', 8], ['charter', 4], ['ifr', 6], ['ferry', 5], ['survey', 4], ['route', 9]];
 const DIST = { pax: [25, 200], cargo: [25, 200], mail: [30, 150], express: [25, 130], medevac: [15, 90], art: [30, 180], group: [20, 130], charter: [60, 210], ifr: [30, 170], ferry: [20, 95] };
+for (const k in DIST) DIST[k] = [DIST[k][0], Math.round(DIST[k][1] * 1.6)];
+function genJobsAll(sv) {
+  const out = genJobsAll0(sv);
+  for (const c of out) {
+    if (!c || c._pm || !c.pay || c.finale || c.type === 'lesson' || c.type === 'check') continue; const tm = (c.type === 'tour' || c.type === 'banner') ? 1.0 : 1.7;
+    const A = AC[c.ac], sp = A ? Math.max(90, A.cruise) : 110;
+    c.pay = Math.round(c.pay * tm * Math.pow(sp / 110, 0.55) / 5) * 5; c._pm = 1;
+  }
+  return out;
+}
 const REQ_OF = t => t === 'lesson' ? 'student' : (t === 'ferry' || t === 'tour' || t === 'banner') ? 'private' : t === 'ifr' ? 'instrument' : 'commercial';
 const T_MULT = { pax: 1, cargo: 0.95, mail: 1.15, express: 1.35, medevac: 1.7, art: 1.5, group: 1.25, charter: 1.9, ifr: 1.5, ferry: 0.45, survey: 1.2, route: 1.0 };
 const catOf = c => c.type === 'lesson' ? 'Lessons' : c.rn ? 'Routes' : (c.type === 'pax' || c.type === 'charter' || c.type === 'group') ? 'People' : (c.type === 'cargo' || c.type === 'mail' || c.type === 'art') ? 'Cargo' : (c.type === 'express' || c.type === 'medevac') ? 'Urgent' : c.type === 'ifr' ? 'IFR' : 'Scenic and survey';
@@ -3646,7 +3675,7 @@ function applyTwist(P, c) {
   else if (c.twist === 'hot') { w.temp = 34 + Math.floor(r() * 4); w.rhoK = 0.925; }
   return P;
 }
-function genJobsAll(sv) {
+function genJobsAll0(sv) {
   const from = apOf(sv.at), tb = Math.floor(Date.now() / 600000), rng = mulberry((sv.seed * 1013) ^ hsh(sv.at) ^ (sv.flights * 77) ^ (tb * 131)), others = AIRPORTS.filter(a => a !== from);
   const fleet = Object.values(AC), flyable = A => sv.owned.includes(A.id) && (A.license === 'student' || hasLic(sv, A.license)) && !coBusy(A.id);
   const own = fleet.filter(flyable), cls = apCls(from), keys = TYPE_W.map(t => t[0]), special = keys[Math.abs(hsh(from.id)) % keys.length];
@@ -4176,7 +4205,7 @@ function updateApPanel() {
 }
 /* ---- Help page ---- */
 function helpHTML() {
-  const dt = (t, body, open) => `<details class="dt" ${open ? 'open' : ''}><summary>${t}</summary><div class="hlp">${body}</div></details>`, ids = ['sparrow', 'cub', 'wren', 'skylark', 'husky', 'falcon', 'meridian', 'voyager', 'gooney', 'heron', 'regent', 'kestrel', 'swift', 'sovereign', 'atlas'].filter(i => AC[i]);
+  const dt = (t, body, open) => `<details class="dt" ${open ? 'open' : ''}><summary>${t}</summary><div class="hlp">${body}</div></details>`, ids = ['sparrow', 'cub', 'wren', 'skylark', 'husky', 'hauler', 'falcon', 'beacon', 'seminole', 'marlin', 'drover', 'sterling', 'meridian', 'voyager', 'gooney', 'heron', 'regent', 'kestrel', 'swift', 'sovereign', 'atlas'].filter(i => AC[i]);
   const feat = c => c.t === 0 ? 'Heading hold and altitude hold only. No speed hold, no V/S, no nav, no approach.' : c.t === 1 ? 'Heading, altitude, V/S, speed hold, direct-to and VOR tracking. APR only once you are lined up on final.' : c.t === 2 ? 'Everything above, and APR can be armed any time. You set gear, flaps and lights when it tells you.' : c.t === 3 ? 'APR arms any time and also lowers flaps, gear and lights for you.' : c.t === 4 ? 'Same as the turboprops with a lower decision height and a faster descent.' : 'APR arms any time and flies the whole approach, flares, lands, brakes and steers on the runway.';
   const rows = ids.map(i => { const A = AC[i], c = apCap(A); return `<tr><td><b>${A.name}</b><br><small>${A.cls}</small></td><td>${c.name}<br><small>${c.apr === 'none' ? 'No APR' : c.land ? 'Autoland' : c.apr === 'final' ? 'APR on final, to ' + c.dh + ' ft' : 'APR any time, to ' + c.dh + ' ft'}</small></td><td>${feat(c)}</td></tr>`; }).join('');
   return `<style>.hlp p{margin:6px 0;font-size:13px;line-height:1.5;color:#c9d4e6}.hlp h4{margin:10px 0 2px;font:700 13px var(--mono);color:var(--amber)}.hlp table{width:100%;border-collapse:collapse;font-size:12px}.hlp td,.hlp th{border-bottom:1px solid #1f2a40;padding:6px 4px;text-align:left;vertical-align:top}.hlp small{color:#8fa3c0}.hlp ul{margin:4px 0 4px 16px;padding:0;font-size:13px;line-height:1.5;color:#c9d4e6}</style>`
@@ -4218,7 +4247,18 @@ AC.sparrow.light = true; AC.husky.light = true;
 TWINS.push('gooney');
 Object.assign(FUELP, { sparrow: 2.0, husky: 2.0, swift: 0.8, gooney: 1.1 }); Object.assign(MAINT, { sparrow: 11, husky: 32, swift: 190, gooney: 230 });
 Object.assign(RATE, { sparrow: 11, husky: 22, swift: 120, gooney: 120 }); Object.assign(REACHF, { sparrow: 0.35, husky: 0.45, swift: 0.9, gooney: 0.85 });
-Object.assign(APTIER, { sparrow: 0, husky: 1, swift: 4, gooney: 2 });
+Object.assign(APTIER, { sparrow: 0, husky: 1, swift: 4, gooney: 2, hauler: 1, beacon: 2, seminole: 2, marlin: 3 });
+Object.assign(HANDLING, { hauler: { dih: 1.0, wc: 1.1, rd: 4.2, nlim: 3.8 }, beacon: { dih: 0.6, wc: 0.9, rd: 4.8, nlim: 3.8 }, seminole: { dih: 0.8, wc: 1.0, rd: 4.0, nlim: 3.8, vmc: 0.8 }, marlin: { dih: 0.6, wc: 0.9, rd: 4.6, nlim: 3.8, vmc: 0.85 } });
+for (const k of ['hauler', 'beacon', 'seminole', 'marlin']) Object.assign(AC[k], HANDLING[k]);
+AC.hauler.light = true; AC.seminole.light = true; AC.beacon.light = true;
+TWINS.push('seminole', 'marlin', 'sterling');
+Object.assign(APTIER, { drover: 3, sterling: 3 });
+Object.assign(HANDLING, { drover: { dih: 0.8, wc: 1.1, rd: 4.2, nlim: 3.6 }, sterling: { dih: 0.8, wc: 1.2, rd: 3.8, nlim: 3.5, vmc: 0.8 } });
+for (const k of ['drover', 'sterling']) Object.assign(AC[k], HANDLING[k]);
+Object.assign(FUELP, { drover: 1.0, sterling: 0.9 }); Object.assign(MAINT, { drover: 150, sterling: 230 });
+Object.assign(RATE, { drover: 50, sterling: 62 }); for (const k in REACHF) REACHF[k] = Math.min(1.6, REACHF[k] * 1.4); Object.assign(REACHF, { drover: 0.82, sterling: 0.9 });
+Object.assign(FUELP, { hauler: 2.0, beacon: 2.0, seminole: 2.0, marlin: 2.0 }); Object.assign(MAINT, { hauler: 46, beacon: 72, seminole: 88, marlin: 125 });
+Object.assign(RATE, { hauler: 30, beacon: 46, seminole: 50, marlin: 68 }); Object.assign(REACHF, { hauler: 0.55, beacon: 0.7, seminole: 0.6, marlin: 0.78 });
 if (AC.meridian) AC.meridian.turbo = true;
 ctl.spoil = 0;
 function surfKind(x, z) {
